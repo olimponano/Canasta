@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#080c14"/>
+  <title>Canasta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#080c14;font-family:'DM Sans','Segoe UI',sans-serif}
+    #root{min-height:100vh}
+    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#1e2535}
+    .btn{cursor:pointer;border:none;font-family:inherit;font-weight:600;transition:all .15s;border-radius:10px}
+    .btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+    .btn:active{transform:translateY(0);filter:brightness(.95)}
+    .card{background:#0d1321;border:1px solid #1a2235;border-radius:14px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:11px;font-weight:600;color:#4a5568;text-transform:uppercase;letter-spacing:.08em}
+    .inp{background:#080c14;border:1px solid #1a2235;color:#e8eaf0;border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
+    .inp:focus{border-color:#3b82f6}
+    .mono{font-family:'DM Mono',monospace}
+    .fade{animation:fi .22s ease}
+    @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    .row{cursor:pointer;transition:all .15s}
+    .row:hover{transform:translateX(3px);border-color:#2a3550!important}
+  </style>
+</head>
+<body>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#3b82f6;font-family:monospace">Cargando…</div></div>
+
+<!-- 1. React -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<!-- 2. D3 (requerido por Recharts) -->
+<script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
+<!-- 3. Recharts -->
+<script src="https://unpkg.com/recharts@2.9.0/umd/Recharts.js"></script>
+<!-- 4. Babel standalone -->
+<script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } = window.Recharts || {};
+
+  const STORAGE_KEY = "canasta";
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const fmt = (n) => n == null ? "—" : `$${Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmtDate = (d) => new Date(d + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "2-digit" });
+  const todayISO = () => new Date().toISOString().split("T")[0];
+  const COLORS = ["#60a5fa","#f472b6","#4ade80","#fb923c","#a78bfa","#facc15","#34d399","#f87171","#38bdf8","#e879f9"];
+  const alpha = (a, b, key="label") => (a[key]||"").localeCompare(b[key]||"", "es");
+  const alphaStr = (a, b) => (a||"").localeCompare(b||"", "es");
+  const fmtU = (u) => {
+    if (!u) return "—";
+    if (Number.isInteger(u)) return String(u);
+    const fracs = [[1/12,"1/12"],[1/6,"1/6"],[1/4,"1/4"],[1/3,"1/3"],[1/2,"1/2"],[2/3,"2/3"],[3/4,"3/4"]];
+    for (const [v,s] of fracs) if (Math.abs(u-v)<0.001) return s;
+    return Number(u.toFixed(2)).toLocaleString("es-AR");
+  };
+
+  const DEFAULT_CATS = [
+    { id:"primario",   label:"Primario",   emoji:"🛒", color:"#60a5fa", subs:[] },
+    { id:"higiene",    label:"Higiene",    emoji:"🧴", color:"#f472b6", subs:[] },
+    { id:"verduleria", label:"Verdulería", emoji:"🥦", color:"#4ade80", subs:[] },
+    { id:"carniceria", label:"Carnicería", emoji:"🥩", color:"#fb923c", subs:[] },
+    { id:"secundario", label:"Secundario", emoji:"🍪", color:"#a78bfa", subs:[] },
+  ];
+  const DEFAULT_PRODUCTOS = [];
+  const UNASSIGNED_ID = "__sin_sub__";
+
+  function isUnassignedProd(p, cat) {
+    if (!cat || !cat.subs.length) return false;
+    return !p.subId || !cat.subs.find(s => s.id === p.subId);
+  }
+
+  function buildExportText(cats, productos, filterCatId=null, filterSubId=null) {
+    const lines = [];
+    const tCats = filterCatId ? cats.filter(c=>c.id===filterCatId) : [...cats].sort((a,b)=>alpha(a,b));
+    tCats.forEach(cat => {
+      const cp = productos.filter(p=>p.catId===cat.id); if (!cp.length) return;
+      if (cat.subs.length===0) {
+        const f = filterSubId ? [] : [...cp].sort((a,b)=>alpha(a,b,"nombre"));
+        if (!f.length) return;
+        lines.push(`=== ${cat.label.toUpperCase()} ===`);
+        f.forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
+      } else {
+        const tSubs = filterSubId ? cat.subs.filter(s=>s.id===filterSubId) : [...cat.subs].sort((a,b)=>alpha(a,b));
+        const hasProds = tSubs.some(sub => cp.some(p=>p.subId===sub.id));
+        if (!hasProds) return;
+        lines.push(`=== ${cat.label.toUpperCase()} ===`);
+        tSubs.forEach(sub => {
+          const sp = [...cp.filter(p=>p.subId===sub.id)].sort((a,b)=>alpha(a,b,"nombre"));
+          if (!sp.length) return;
+          lines.push(`--- ${sub.label} ---`);
+          sp.forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
+        });
+      }
+    });
+    return lines.join("\n").trim();
+  }
+
+  async function copyToClipboard(text) {
+    try { if (navigator.clipboard) { await navigator.clipboard.writeText(text); return true; } } catch {}
+    try {
+      const el=document.createElement("textarea"); el.value=text; el.setAttribute("readonly","");
+      el.style.cssText="position:absolute;left:-9999px;top:0"; document.body.appendChild(el);
+      el.focus(); el.select(); el.setSelectionRange(0,el.value.length);
+      const ok=document.execCommand("copy"); document.body.removeChild(el); return ok;
+    } catch { return false; }
+  }
+
+  function parseImportText(text, cats) {
+    const blocks = text.trim().split(/\n\s*\n/).filter(b=>b.trim());
+    const parsed = [];
+    blocks.forEach(block => {
+      const lines = block.trim().split("\n").map(l=>l.trim()).filter(Boolean);
+      if (lines.length < 2) return;
+      let catLabel = lines[0]; let cursor = 1;
+      const isProduct = l => /\$/.test(l) && l.includes("-");
+      let subLabel = null;
+      if (!isProduct(lines[1])) { subLabel = lines[1]; cursor = 2; }
+      const products = [];
+      for (let i=cursor; i<lines.length; i++) {
+        const l = lines[i]; if (!isProduct(l)) continue;
+        const parts = l.split("-").map(p=>p.trim()); if (parts.length < 4) continue;
+        const nombre=parts[0], marca=parts[1];
+        const cantidad=parseFloat(parts[2])||null;
+        const u=parts[3].toLowerCase();
+        const unidad=u==="ml"?"mL":u==="l"?"L":u==="kg"?"kg":"gr";
+        const precioRef=parseFloat((parts[4]||"").replace(/[$\s]/g,"").replace(",","."))||null;
+        const unidadesMes=parts[5]?parseFloat(parts[5].replace(",",".")):null;
+        products.push({nombre,marca,cantidadRef:cantidad,unidad,precioRef,unidadesMes});
+      }
+      if (products.length) parsed.push({catLabel,subLabel,products});
+    });
+    return parsed;
+  }
+
+  // ── Components ──────────────────────────────────────────────────────────────
+
+  function Confirm({msg,onOk,onCancel,okLabel="Confirmar",okColor="#3b82f6"}) {
+    return (
+      <div style={{position:"fixed",inset:0,background:"#000b",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"#0d1321",border:"1px solid #2a3550",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
+          <div style={{fontSize:15,lineHeight:1.5,marginBottom:20,color:"#e8eaf0"}}>{msg}</div>
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn" onClick={onCancel} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:12}}>Cancelar</button>
+            <button className="btn" onClick={onOk} style={{flex:1,background:okColor,color:okColor==="#ef4444"?"#fff":"#080c14",padding:12}}>{okLabel}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function AddModal({title,namePlaceholder,onClose,onSave,showColor=true,accentColor="#3b82f6"}) {
+    const [label,setLabel]=useState(""); const [emoji,setEmoji]=useState("📦"); const [color,setColor]=useState(accentColor);
+    const submit=()=>{if(!label.trim())return; onSave({label:label.trim(),emoji,color});};
+    return (
+      <div style={{position:"fixed",inset:0,background:"#000c",zIndex:1500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{background:"#0d1321",borderRadius:"20px 20px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:500,border:"1px solid #1a2235",borderBottom:"none"}}>
+          <div style={{width:40,height:4,background:"#2a3550",borderRadius:2,margin:"0 auto 24px"}}/>
+          <div style={{fontWeight:700,fontSize:18,marginBottom:20,color:"#e8eaf0"}}>{title}</div>
+          <div style={{display:"grid",gridTemplateColumns:"64px 1fr",gap:10,marginBottom:16}}>
+            <div className="field"><label>Emoji</label><input className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:22,padding:"10px 4px"}} autoFocus/></div>
+            <div className="field"><label>Nombre</label><input className="inp" placeholder={namePlaceholder} value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+          </div>
+          {showColor&&(
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:10}}>Color</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{COLORS.map(c=><div key={c} onClick={()=>setColor(c)} style={{width:32,height:32,borderRadius:"50%",background:c,cursor:"pointer",border:color===c?"3px solid #fff":"3px solid transparent",transition:"all .15s",flexShrink:0}}/>)}</div>
+            </div>
+          )}
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn" onClick={onClose} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:13,fontSize:14}}>Cancelar</button>
+            <button className="btn" onClick={submit} style={{flex:2,background:showColor?color:accentColor,color:"#080c14",padding:13,fontSize:15,fontWeight:700}}>Crear</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function FloatingAdd({onClick}) {
+    return <button onClick={onClick} style={{position:"fixed",bottom:28,right:20,width:56,height:56,borderRadius:"50%",background:"#3b82f6",color:"#fff",fontSize:28,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 24px #3b82f655",zIndex:100,lineHeight:1}}>+</button>;
+  }
+
+  function TopBar({title,subtitle,onBack,right}) {
+    return (
+      <div style={{padding:"24px 0 16px",display:"flex",alignItems:"center",gap:12}}>
+        {onBack&&<button className="btn" onClick={onBack} style={{background:"#0d1321",color:"#e8eaf0",border:"1px solid #1a2235",padding:"8px 12px",fontSize:14,flexShrink:0}}>←</button>}
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:700,fontSize:17,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{title}</div>
+          {subtitle&&<div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{subtitle}</div>}
+        </div>
+        {right}
+      </div>
+    );
+  }
+
+  function SearchBar({value,onChange,placeholder="🔍 Buscar en toda la canasta…"}) {
+    return <input className="inp" placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)} style={{marginBottom:14}}/>;
+  }
+
+  function ProdCard({p,cat,gastoMensual,push,selectMode,selected,onToggle}) {
+    const gm=gastoMensual(p); const isSel=selected?.has(p.id);
+    return (
+      <div className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":cat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
+        onClick={()=>selectMode?onToggle?.(p.id):push("detalle",{prodId:p.id})}>
+        {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#3b82f6":"#2a3550"}`,background:isSel?"#3b82f6":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div>
+          <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}</div>
+        </div>
+        <div style={{textAlign:"right",flexShrink:0}}>
+          {p.precioRef
+            ?<><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{gm&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:cat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gm)}</div>}</>
+            :<div style={{fontSize:12,color:"#4a5568"}}>Sin precio</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // ── App ─────────────────────────────────────────────────────────────────────
+  function App() {
+    const [cats,setCats]=useState(DEFAULT_CATS);
+    const [productos,setProductos]=useState([]);
+    const [loaded,setLoaded]=useState(false);
+    const [stack,setStack]=useState([{screen:"home"}]);
+    const [toast,setToast]=useState(null);
+    const [confirm,setConfirm]=useState(null);
+
+    const current=stack[stack.length-1];
+    const push=(screen,params={})=>setStack(s=>[...s,{screen,...params}]);
+    const pop=()=>setStack(s=>s.length>1?s.slice(0,-1):s);
+
+    useEffect(()=>{
+      try {
+        const raw=localStorage.getItem(STORAGE_KEY);
+        if(raw){
+          const d=JSON.parse(raw);
+          const lc=d.cats||DEFAULT_CATS;
+          const validSubs=new Set(lc.flatMap(c=>c.subs.map(s=>s.id)));
+          const lp=(d.productos||DEFAULT_PRODUCTOS).map(p=>({...p,subId:p.subId&&validSubs.has(p.subId)?p.subId:null}));
+          setCats(lc); setProductos(lp);
+        } else { setProductos(DEFAULT_PRODUCTOS); }
+      } catch { setProductos(DEFAULT_PRODUCTOS); }
+      setLoaded(true);
+    },[]);
+
+    const guardar=(nextCats,nextProds)=>{
+      const nc=nextCats??cats; const np=nextProds??productos;
+      setCats(nc); setProductos(np);
+      try { localStorage.setItem(STORAGE_KEY,JSON.stringify({cats:nc,productos:np})); } catch {}
+    };
+
+    const showToast=(msg,tipo="ok")=>{setToast({msg,tipo});setTimeout(()=>setToast(null),2400);};
+    const askConfirm=(msg,onOk,okLabel="Confirmar",okColor="#3b82f6")=>setConfirm({msg,onOk,okLabel,okColor});
+    const getCat=(id)=>cats.find(c=>c.id===id);
+    const getSub=(catId,subId)=>getCat(catId)?.subs?.find(s=>s.id===subId);
+    const gastoMensual=(p)=>(p.precioRef&&p.unidadesMes)?p.precioRef*p.unidadesMes:null;
+    const handleExport=async(catId=null,subId=null)=>{
+      const text=buildExportText(cats,productos,catId,subId);
+      if(!text)return showToast("No hay productos para exportar","err");
+      const ok=await copyToClipboard(text);
+      showToast(ok?"📋 Copiado al portapapeles":"No se pudo copiar");
+    };
+
+    if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#3b82f6",fontFamily:"monospace"}}>Cargando…</div>;
+
+    const s=current.screen;
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport};
+
+    return (
+      <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",minHeight:"100vh",background:"#080c14",color:"#e8eaf0"}}>
+        {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:3000,background:toast.tipo==="err"?"#ef4444":"#10b981",color:"#fff",padding:"9px 20px",borderRadius:10,fontWeight:600,fontSize:13,boxShadow:"0 8px 32px #0008",whiteSpace:"nowrap",maxWidth:"90vw",textAlign:"center"}}>{toast.msg}</div>}
+        {confirm&&<Confirm msg={confirm.msg} onOk={()=>{confirm.onOk();setConfirm(null);}} onCancel={()=>setConfirm(null)} okLabel={confirm.okLabel} okColor={confirm.okColor}/>}
+        <div style={{maxWidth:500,margin:"0 auto",padding:"0 16px 100px"}}>
+          {s==="home"        &&<HomeScreen {...shared}/>}
+          {s==="subs"        &&<SubsScreen {...shared} catId={current.catId}/>}
+          {s==="lista"       &&<ListaScreen {...shared} catId={current.catId} subId={current.subId}/>}
+          {s==="detalle"     &&<DetalleScreen {...shared} prodId={current.prodId}/>}
+          {s==="nuevo-prod"  &&<NuevoProdScreen {...shared} initCatId={current.catId} initSubId={current.subId}/>}
+          {s==="editar-prod" &&<EditarProdScreen {...shared} prodId={current.prodId}/>}
+          {s==="nuevo-precio"&&<NuevoPrecioScreen {...shared} prodId={current.prodId}/>}
+          {s==="config"      &&<ConfigScreen {...shared}/>}
+          {s==="export"      &&<ExportScreen {...shared}/>}
+          {s==="import"      &&<ImportScreen {...shared}/>}
+        </div>
+        {!["nuevo-prod","editar-prod","nuevo-precio"].includes(s)&&(
+          <FloatingAdd onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
+        )}
+      </div>
+    );
+  }
+
+  // ── HomeScreen ───────────────────────────────────────────────────────────────
+  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast}) {
+    const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false);
+    const total=productos.reduce((s,p)=>s+(gastoMensual(p)||0),0);
+    const addCat=({label,emoji,color})=>{guardar([...cats,{id:uid(),label,emoji,color,subs:[]}],null);setShowAddCat(false);showToast("✅ Categoría creada");};
+    const sortedCats=[...cats].sort((a,b)=>alpha(a,b));
+    if(q){
+      const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
+      return (<div className="fade">
+        <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div><div style={{fontSize:12,color:"#4a5568",marginTop:3}}><span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span></div></div>
+          <div style={{display:"flex",gap:8}}>
+            <button className="btn" onClick={()=>push("import")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📥</button>
+            <button className="btn" onClick={()=>push("export")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📋</button>
+            <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>⚙️</button>
+          </div>
+        </div>
+        <SearchBar value={q} onChange={setQ}/>
+        <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;})}</div>
+      </div>);
+    }
+    return (<div className="fade">
+      <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+        <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div><div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{productos.length} productos · <span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span></div></div>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn" onClick={()=>push("import")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📥</button>
+          <button className="btn" onClick={()=>push("export")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📋</button>
+          <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>⚙️</button>
+        </div>
+      </div>
+      <SearchBar value={q} onChange={setQ}/>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {sortedCats.map(cat=>{
+          const catProds=productos.filter(p=>p.catId===cat.id);
+          const gasto=catProds.reduce((s,p)=>s+(gastoMensual(p)||0),0);
+          return (<div key={cat.id} className="card row" style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14,borderLeft:`4px solid ${cat.color}`}}
+            onClick={()=>cat.subs?.length?push("subs",{catId:cat.id}):push("lista",{catId:cat.id,subId:null})}>
+            <div style={{fontSize:28}}>{cat.emoji}</div>
+            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:16,color:"#e8eaf0"}}>{cat.label}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{cat.subs?.length?`${cat.subs.length} subcategorías · `:""}{catProds.length} productos</div></div>
+            <div style={{textAlign:"right"}}>{gasto>0&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550",marginTop:2}}>›</div></div>
+          </div>);
+        })}
+        <button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#3b82f611",border:"1px solid #3b82f6",color:"#3b82f6",padding:"13px",fontSize:14,marginTop:4,width:"100%",fontWeight:600}}>+ Agregar categoría</button>
+      </div>
+      {showAddCat&&<AddModal title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={addCat} showColor={true}/>}
+    </div>);
+  }
+
+  // ── SubsScreen ───────────────────────────────────────────────────────────────
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast}) {
+    const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
+    const cat=cats.find(c=>c.id===catId); if(!cat) return null;
+    const catGasto=productos.filter(p=>p.catId===catId).reduce((s,p)=>s+(gastoMensual(p)||0),0);
+    const addSub=({label})=>{guardar(cats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c),null);setShowAddSub(false);showToast("✅ Subcategoría creada");};
+    if(q){
+      const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
+      return (<div className="fade">
+        <TopBar title={`${cat.emoji} ${cat.label}`} onBack={pop} right={<button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>}/>
+        <SearchBar value={q} onChange={setQ}/>
+        <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const pcat=cats.find(c=>c.id===p.catId);return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;})}</div>
+      </div>);
+    }
+    return (<div className="fade">
+      <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={catGasto>0?`${fmt(catGasto)}/mes`:undefined} onBack={pop}
+        right={<div style={{display:"flex",gap:8}}>
+          <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>
+          <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Ver todos</button>
+        </div>}/>
+      <SearchBar value={q} onChange={setQ}/>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
+          const subProds=productos.filter(p=>p.catId===catId&&p.subId===sub.id);
+          const gasto=subProds.reduce((s,p)=>s+(gastoMensual(p)||0),0);
+          return (<div key={sub.id} className="card row" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${cat.color}`}} onClick={()=>push("lista",{catId,subId:sub.id})}>
+            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:15,color:"#e8eaf0"}}>{sub.label}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{subProds.length} productos</div></div>
+            <div style={{textAlign:"right"}}>{gasto>0&&<div className="mono" style={{fontWeight:600,fontSize:14,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550"}}>›</div></div>
+          </div>);
+        })}
+      </div>
+      <button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>
+      {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
+    </div>);
+  }
+
+  // ── ListaScreen ───────────────────────────────────────────────────────────────
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast}) {
+    const [q,setQ]=useState(""); const [selected,setSelected]=useState(new Set());
+    const [selectMode,setSelectMode]=useState(false); const [moveModal,setMoveModal]=useState(false); const [moveDest,setMoveDest]=useState("");
+    const cat=cats.find(c=>c.id===catId); const sub=cat?.subs?.find(s=>s.id===subId); if(!cat) return null;
+    const isUnassignedView=subId===UNASSIGNED_ID;
+    const baseLista=productos.filter(p=>{if(p.catId!==catId)return false;if(isUnassignedView)return isUnassignedProd(p,cat);if(subId)return p.subId===subId;return true;});
+    const lista=q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())):baseLista;
+    const toggleSelect=(id)=>{setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});};
+    const cancelSelect=()=>{setSelectMode(false);setSelected(new Set());};
+    const doMove=()=>{
+      if(!moveDest)return;
+      const [dCatId,dSubId]=moveDest.split("::");
+      const dCat=cats.find(c=>c.id===dCatId); const dSub=dSubId?dCat?.subs?.find(s=>s.id===dSubId):null;
+      guardar(null,productos.map(p=>selected.has(p.id)?{...p,catId:dCatId,subId:dSubId||null}:p));
+      showToast(`✅ ${selected.size} producto${selected.size>1?"s":""} movido${selected.size>1?"s":""} a ${dSub?`${dCat?.label} › ${dSub.label}`:dCat?.label}`);
+      setMoveModal(false);setMoveDest("");cancelSelect();
+    };
+    const catGasto=productos.filter(p=>p.catId===catId).reduce((s,p)=>s+(gastoMensual(p)||0),0);
+    const title=isUnassignedView?`${cat.emoji} Sin subcategoría`:sub?`${cat.emoji} ${sub.label}`:`${cat.emoji} ${cat.label}`;
+    const listSubtitle=sub?cat.label:isUnassignedView?cat.label:catGasto>0?`${fmt(catGasto)}/mes`:undefined;
+    return (<div className="fade">
+      {moveModal&&(<div style={{position:"fixed",inset:0,background:"#000b",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"#0d1321",border:"1px solid #2a3550",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
+          <div style={{fontWeight:600,marginBottom:4,color:"#e8eaf0"}}>Mover {selected.size} producto{selected.size>1?"s":""}</div>
+          <div style={{fontSize:12,color:"#4a5568",marginBottom:14}}>Elegí el destino</div>
+          <select className="inp" value={moveDest} onChange={e=>setMoveDest(e.target.value)} style={{marginBottom:16}}>
+            <option value="">— Elegir —</option>
+            {[...cats].sort((a,b)=>alpha(a,b)).map(c=>[
+              <option key={c.id+"::"} value={c.id+"::"} style={{fontWeight:600}}>{c.emoji} {c.label} (sin sub)</option>,
+              ...[...c.subs].sort((a,b)=>alpha(a,b)).map(s=><option key={c.id+"::"+s.id} value={c.id+"::"+s.id}>{c.emoji} {c.label} › {s.label}</option>)
+            ])}
+          </select>
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn" onClick={()=>{setMoveModal(false);setMoveDest("");}} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:12}}>Cancelar</button>
+            <button className="btn" onClick={doMove} style={{flex:1,background:"#3b82f6",color:"#fff",padding:12}} disabled={!moveDest}>Mover</button>
+          </div>
+        </div>
+      </div>)}
+      <TopBar title={title} subtitle={listSubtitle} onBack={()=>{cancelSelect();pop();}}
+        right={selectMode
+          ?<div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <div style={{fontSize:13,color:"#3b82f6",fontWeight:600}}>{selected.size} sel.</div>
+              {selected.size>0&&<button className="btn" onClick={()=>setMoveModal(true)} style={{background:"#3b82f6",color:"#fff",padding:"8px 12px",fontSize:13}}>Mover</button>}
+              <button className="btn" onClick={cancelSelect} style={{background:"#1a2235",color:"#8b9ab0",padding:"8px 12px",fontSize:13}}>✕</button>
+            </div>
+          :<div style={{display:"flex",gap:8}}>
+              <button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>
+              <button className="btn" onClick={()=>handleExport(catId,isUnassignedView?UNASSIGNED_ID:subId)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"8px 11px",fontSize:14}}>📋</button>
+            </div>}/>
+      <SearchBar value={q} onChange={v=>{setQ(v);if(v)cancelSelect();}} placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"}/>
+      {q&&<div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{lista.length} resultado{lista.length!==1?"s":""} en toda la canasta</div>}
+      {lista.length===0?<div style={{textAlign:"center",color:"#4a5568",padding:"60px 0",fontSize:14}}>Sin productos aún.</div>
+        :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {[...lista].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{
+            const pcat=q?cats.find(c=>c.id===p.catId):cat; const isSel=selected.has(p.id);
+            return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
+              onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
+              {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#3b82f6":"#2a3550"}`,background:isSel?"#3b82f6":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
+              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}</div></div>
+              <div style={{textAlign:"right",flexShrink:0}}>{p.precioRef?<><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{gastoMensual(p)&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:pcat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gastoMensual(p))}</div>}</>:<div style={{fontSize:12,color:"#4a5568"}}>Sin precio</div>}</div>
+            </div>);
+          })}
+        </div>}
+    </div>);
+  }
+
+  // ── DetalleScreen ─────────────────────────────────────────────────────────────
+  function DetalleScreen({prodId,productos,guardar,pop,showToast,askConfirm,push,gastoMensual,getCat,getSub}) {
+    const p=productos.find(x=>x.id===prodId); if(!p) return null;
+    const cat=getCat(p.catId); const sub=p.subId?getSub(p.catId,p.subId):null;
+    const gm=gastoMensual(p); const clr=cat?.color||"#3b82f6";
+    const hist=p.historialCompra||[];
+    const chartData=hist.map(h=>({fecha:fmtDate(h.fecha),precio:h.precio}));
+    const variacion=hist.length>=2?((hist[hist.length-1].precio-hist[0].precio)/hist[0].precio*100).toFixed(1):null;
+    const del=()=>askConfirm(`¿Eliminar "${p.nombre}"?`,()=>{guardar(null,productos.filter(x=>x.id!==prodId));showToast("🗑️ Eliminado");pop();},"Eliminar","#ef4444");
+    const delH=(hid)=>askConfirm("¿Eliminar este registro?",()=>{guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:x.historialCompra.filter(h=>h.id!==hid)}:x));showToast("Eliminado");},"Eliminar","#ef4444");
+    return (<div className="fade">
+      <TopBar title={p.nombre} subtitle={[cat?.label,sub?.label].filter(Boolean).join(" › ")} onBack={pop}
+        right={<div style={{display:"flex",gap:8}}>
+          <button className="btn" onClick={()=>push("editar-prod",{prodId})} style={{background:"#1a2235",color:"#93c5fd",border:"1px solid #2a3550",padding:"8px 12px",fontSize:13}}>Editar</button>
+          <button className="btn" onClick={del} style={{background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"8px 12px",fontSize:13}}>Eliminar</button>
+        </div>}/>
+      <div className="card" style={{padding:20,marginBottom:12,borderLeft:`4px solid ${clr}`}}>
+        <div style={{display:"flex",gap:14}}>
+          <div style={{fontSize:34}}>{cat?.emoji}</div>
+          <div style={{flex:1}}><div style={{fontWeight:700,fontSize:19,color:"#e8eaf0"}}>{p.nombre}</div><div style={{fontSize:13,color:"#4a5568",marginTop:2}}>{p.marca||"—"}</div><div style={{marginTop:8}}><span style={{background:clr+"22",color:clr,borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:600}}>{cat?.label}{sub?` › ${sub.label}`:""}</span></div></div>
+        </div>
+        <div style={{marginTop:16,background:"#080c14",borderRadius:12,padding:"14px 16px"}}>
+          <div style={{fontSize:11,color:"#4a5568",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Precio de referencia</div>
+          <div className="mono" style={{fontSize:28,fontWeight:700,color:clr}}>{p.precioRef?fmt(p.precioRef):"—"}</div>
+          {p.precioRef&&p.unidadesMes&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10,padding:"9px 12px",background:"#0d1321",borderRadius:8}}>
+            <span className="mono" style={{fontSize:14,color:"#8b9ab0",fontWeight:500}}>{fmtU(p.unidadesMes)}</span>
+            <span style={{fontSize:13,color:"#4a5568"}}>u/mes</span>
+            <span style={{fontSize:14,color:"#4a5568",fontWeight:700}}>=</span>
+            <span className="mono" style={{fontSize:15,fontWeight:700,color:clr}}>{fmt(gm)}</span>
+          </div>)}
+        </div>
+        {variacion!==null&&<div style={{marginTop:10,fontSize:12,color:parseFloat(variacion)>0?"#ef4444":"#10b981"}}>{parseFloat(variacion)>0?"▲":"▼"} {Math.abs(variacion)}% desde el primer registro</div>}
+      </div>
+      <button className="btn" onClick={()=>push("nuevo-precio",{prodId})} style={{width:"100%",background:clr,color:"#080c14",padding:13,fontSize:14,marginBottom:14}}>+ Registrar precio de compra</button>
+      {chartData.length>=2&&(<div className="card" style={{padding:"18px 12px 10px",marginBottom:12}}>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:4,paddingLeft:4,color:"#e8eaf0"}}>Evolución del precio de compra</div>
+        <ResponsiveContainer width="100%" height={150}>
+          <LineChart data={chartData}>
+            <CartesianGrid stroke="#1a2235" strokeDasharray="4 4"/>
+            <XAxis dataKey="fecha" tick={{fontSize:10,fill:"#4a5568"}} axisLine={false} tickLine={false}/>
+            <YAxis tick={{fontSize:10,fill:"#4a5568"}} axisLine={false} tickLine={false} tickFormatter={v=>`$${v}`}/>
+            <Tooltip contentStyle={{background:"#0d1321",border:"1px solid #1a2235",borderRadius:8,fontSize:12}} labelStyle={{color:"#e8eaf0"}} formatter={v=>[fmt(v),"Precio pagado"]}/>
+            <Line type="monotone" dataKey="precio" stroke={clr} strokeWidth={2.5} dot={{fill:clr,strokeWidth:0,r:4}} activeDot={{r:6}}/>
+          </LineChart>
+        </ResponsiveContainer>
+      </div>)}
+      {hist.length>0&&(<div className="card" style={{padding:16}}>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:12,color:"#e8eaf0"}}>Historial de precios de compra</div>
+        {[...hist].reverse().map((h,i)=>(<div key={h.id} style={{padding:"10px 0",borderBottom:i<hist.length-1?"1px solid #1a2235":"none"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",alignItems:"baseline",gap:8}}><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(h.precio)}</div>{h.cantidad&&p.unidad&&<div style={{fontSize:12,color:"#4a5568"}}>{h.cantidad}{p.unidad}</div>}</div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3,flexWrap:"wrap"}}>
+                <div style={{fontSize:11,color:"#4a5568"}}>{fmtDate(h.fecha)}</div>
+                {h.equivalente!=null&&p.cantidadRef&&(<div style={{fontSize:11,color:clr}}>≈ {fmt(h.equivalente)} por {p.cantidadRef}{p.unidad}</div>)}
+              </div>
+            </div>
+            <button className="btn" onClick={()=>delH(h.id)} style={{background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"5px 10px",fontSize:12}}>✕</button>
+          </div>
+        </div>))}
+      </div>)}
+    </div>);
+  }
+
+  // ── EditarProdScreen ──────────────────────────────────────────────────────────
+  function EditarProdScreen({prodId,cats,productos,guardar,pop,showToast,askConfirm}) {
+    const p=productos.find(x=>x.id===prodId); if(!p) return null;
+    const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef!=null?String(p.cantidadRef):"",unidad:p.unidad||"gr"});
+    const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
+    const createSub=()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
+    const submit=()=>askConfirm("¿Guardar los cambios?",()=>{if(!form.nombre.trim())return showToast("El nombre es obligatorio","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?parseFloat(form.cantidadRef.replace(",",".")):null;guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));showToast("✅ Guardado");pop();},"Guardar cambios");
+    return (<div className="fade"><TopBar title="Editar producto" subtitle={p.nombre} onBack={pop}/>
+      <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
+        <div className="field"><label>Nombre</label><input className="inp" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
+        <div className="field"><label>Marca / detalle</label><input className="inp" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
+        <div className="field"><label>Categoría</label><select className="inp" value={form.catId} onChange={e=>setForm(f=>({...f,catId:e.target.value,subId:""}))}>
+          {[...cats].sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}</select></div>
+        <div className="field"><label>Subcategoría</label><select className="inp" value={form.subId} onChange={e=>setForm(f=>({...f,subId:e.target.value}))}>
+          <option value="">— Sin subcategoría —</option>{[...(selCat?.subs||[])].sort((a,b)=>alpha(a,b)).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
+        <div style={{display:"flex",gap:8}}><input className="inp" placeholder="+ Crear nueva subcategoría…" value={newSubLabel} onChange={e=>setNewSubLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&createSub()} style={{flex:1,borderStyle:"dashed",fontSize:13,padding:"9px 12px"}}/><button className="btn" onClick={createSub} style={{background:selCat?.color||"#3b82f6",color:"#080c14",padding:"9px 16px",fontSize:16}}>+</button></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div className="field"><label>Unidades/mes</label><input className="inp" placeholder="ej. 2" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
+          <div className="field"><label>Precio ref. ($)</label><input className="inp" placeholder="ej. 1200" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div className="field"><label>Cantidad ref.</label><input className="inp" placeholder="ej. 300" value={form.cantidadRef} onChange={e=>setForm(f=>({...f,cantidadRef:e.target.value}))}/></div>
+          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value}))}>
+            <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option></select></div>
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:4}}>
+          <button className="btn" onClick={pop} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Cancelar</button>
+          <button className="btn" onClick={submit} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}}>Guardar cambios</button>
+        </div>
+      </div>
+    </div>);
+  }
+
+  // ── NuevoProdScreen ───────────────────────────────────────────────────────────
+  function NuevoProdScreen({cats,initCatId,initSubId,productos,guardar,pop,showToast}) {
+    const [form,setForm]=useState({nombre:"",marca:"",catId:initCatId||cats[0]?.id,subId:initSubId&&initSubId!==UNASSIGNED_ID?initSubId:"",unidadesMes:"1",precioRef:"",cantidadRef:"",unidad:"gr"});
+    const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
+    const createSub=()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
+    const submit=()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?parseFloat(form.cantidadRef.replace(",",".")):null;guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
+    return (<div className="fade"><TopBar title="Nuevo producto" onBack={pop}/>
+      <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
+        <div className="field"><label>Nombre</label><input className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
+        <div className="field"><label>Marca / detalle</label><input className="inp" placeholder="ej. La Serenísima 1L" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
+        <div className="field"><label>Categoría</label><select className="inp" value={form.catId} onChange={e=>setForm(f=>({...f,catId:e.target.value,subId:""}))}>
+          {[...cats].sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}</select></div>
+        <div className="field"><label>Subcategoría</label><select className="inp" value={form.subId} onChange={e=>setForm(f=>({...f,subId:e.target.value}))}>
+          <option value="">— Sin subcategoría —</option>{[...(selCat?.subs||[])].sort((a,b)=>alpha(a,b)).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
+        <div style={{display:"flex",gap:8}}><input className="inp" placeholder="+ Crear nueva subcategoría…" value={newSubLabel} onChange={e=>setNewSubLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&createSub()} style={{flex:1,borderStyle:"dashed",fontSize:13,padding:"9px 12px"}}/><button className="btn" onClick={createSub} style={{background:selCat?.color||"#3b82f6",color:"#080c14",padding:"9px 16px",fontSize:16}}>+</button></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div className="field"><label>Unidades/mes</label><input className="inp" placeholder="ej. 2" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
+          <div className="field"><label>Precio ref. ($)</label><input className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div className="field"><label>Cantidad ref.</label><input className="inp" placeholder="ej. 300" value={form.cantidadRef} onChange={e=>setForm(f=>({...f,cantidadRef:e.target.value}))}/></div>
+          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value}))}>
+            <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option></select></div>
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:4}}>
+          <button className="btn" onClick={pop} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Cancelar</button>
+          <button className="btn" onClick={submit} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}}>Guardar</button>
+        </div>
+      </div>
+    </div>);
+  }
+
+  // ── NuevoPrecioScreen ─────────────────────────────────────────────────────────
+  function NuevoPrecioScreen({prodId,productos,guardar,pop,showToast,getCat}) {
+    const p=productos.find(x=>x.id===prodId); if(!p) return null;
+    const cat=getCat(p.catId); const clr=cat?.color||"#3b82f6";
+    const cantRef=p.cantidadRef||null; const unidad=p.unidad||"gr";
+    const [form,setForm]=useState({precio:"",cantidad:"",fecha:todayISO()});
+    useEffect(()=>{if(cantRef)setForm(f=>({...f,cantidad:String(cantRef)}));},[]);
+    const precio=parseFloat((form.precio||"").replace(",",".")); const cantidad=parseFloat((form.cantidad||"").replace(",","."));
+    const equivalente=(precio>0&&cantidad>0&&cantRef)?(precio/cantidad)*cantRef:null;
+    const diff=(equivalente!=null&&p.precioRef)?((equivalente-p.precioRef)/p.precioRef*100):null;
+    const submit=()=>{if(!precio||precio<=0)return showToast("Precio inválido","err");const entrada={id:uid(),precio,cantidad:cantidad||null,equivalente,fecha:form.fecha};guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));showToast("✅ Registrado");pop();};
+    return (<div className="fade"><TopBar title="Precio de compra" subtitle={`${p.nombre} · ${p.marca||""}`} onBack={pop}/>
+      <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{background:clr+"15",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#8b9ab0"}}>Precio de referencia: <span style={{color:clr,fontWeight:700}}>{p.precioRef?fmt(p.precioRef):"no definido"}</span>{cantRef&&<span style={{marginLeft:8,color:"#4a5568"}}>· {cantRef}{unidad}</span>}</div>
+        <div className="field"><label>Precio que pagué ($)</label><input className="inp" placeholder="ej. 1200" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} autoFocus/></div>
+        <div className="field"><label>Cantidad comprada ({unidad})</label><input className="inp" placeholder={cantRef?String(cantRef):"ej. 100"} value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))}/></div>
+        {equivalente!=null&&(<div style={{background:"#080c14",borderRadius:10,padding:"12px 14px"}}>
+          <div style={{fontSize:11,color:"#4a5568",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Equivalente a {cantRef}{unidad}</div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div className="mono" style={{fontSize:22,fontWeight:700,color:clr}}>{fmt(equivalente)}</div>
+            {diff!=null&&(<div style={{fontSize:13,fontWeight:600,color:diff>0?"#ef4444":"#10b981",background:diff>0?"#ef444418":"#10b98118",padding:"3px 10px",borderRadius:6}}>{diff>0?"▲":"▼"} {Math.abs(diff).toFixed(1)}% {diff>0?"más caro":"más barato"}</div>)}
+          </div>
+        </div>)}
+        <div className="field"><label>Fecha</label><input className="inp" type="date" value={form.fecha} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))}/></div>
+        <div style={{display:"flex",gap:10,marginTop:4}}>
+          <button className="btn" onClick={pop} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Cancelar</button>
+          <button className="btn" onClick={submit} style={{flex:2,background:clr,color:"#080c14",padding:13,fontSize:15}}>Guardar</button>
+        </div>
+      </div>
+    </div>);
+  }
+
+  // ── ExportScreen ──────────────────────────────────────────────────────────────
+  function ExportScreen({cats,productos,pop,showToast}) {
+    const [preview,setPreview]=useState(null);
+    const showPreview=(catId=null,subId=null)=>setPreview({text:buildExportText(cats,productos,catId,subId)});
+    const doCopy=async()=>{if(!preview?.text)return;const ok=await copyToClipboard(preview.text);if(ok){showToast("📋 Copiado al portapapeles");return;}const el=document.querySelector(".export-pre");if(el){const range=document.createRange();range.selectNodeContents(el);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);showToast("Seleccionado — copiá con Ctrl+C");}else showToast("No se pudo copiar","err");};
+    return (<div className="fade"><TopBar title="📋 Exportar lista" subtitle="Elegí qué querés copiar" onBack={pop}/>
+      {preview&&(<div className="card" style={{padding:16,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>Vista previa</div><button className="btn" onClick={doCopy} style={{background:"#3b82f6",color:"#fff",padding:"7px 16px",fontSize:13}}>Copiar</button></div>
+        <pre className="export-pre" style={{fontSize:13,color:"#c8cfe0",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:"#080c14",borderRadius:8,padding:12,maxHeight:260,overflowY:"auto"}}>{preview.text||"Sin productos."}</pre>
+      </div>)}
+      <div className="card row" style={{padding:"14px 18px",marginBottom:10,display:"flex",alignItems:"center",gap:12,borderLeft:"4px solid #3b82f6"}} onClick={()=>showPreview(null,null)}>
+        <div style={{flex:1}}><div style={{fontWeight:600,fontSize:15,color:"#e8eaf0"}}>Toda la canasta</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{productos.length} productos en total</div></div>
+        <div style={{fontSize:18,color:"#2a3550"}}>›</div>
+      </div>
+      <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,marginTop:4}}>Por sección</div>
+      {[...cats].sort((a,b)=>alpha(a,b)).map(cat=>{const cp=productos.filter(p=>p.catId===cat.id);return(
+        <div key={cat.id} className="card" style={{marginBottom:8,overflow:"hidden",borderLeft:`3px solid ${cat.color}`}}>
+          <div className="row" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10}} onClick={()=>showPreview(cat.id,null)}>
+            <span style={{fontSize:18}}>{cat.emoji}</span><div style={{flex:1}}><div style={{fontWeight:600,fontSize:14,color:"#e8eaf0"}}>{cat.label}</div><div style={{fontSize:11,color:"#4a5568"}}>{cp.length} productos</div></div><div style={{fontSize:16,color:"#2a3550"}}>›</div>
+          </div>
+          {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{const sp=cp.filter(p=>p.subId===sub.id);if(!sp.length)return null;return(
+            <div key={sub.id} className="row" style={{padding:"9px 16px 9px 44px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid #1a2235"}} onClick={()=>showPreview(cat.id,sub.id)}>
+              <div style={{flex:1}}><div style={{fontSize:13,color:"#c8cfe0"}}>{sub.label}</div><div style={{fontSize:11,color:"#4a5568"}}>{sp.length} productos</div></div><div style={{fontSize:14,color:"#2a3550"}}>›</div>
+            </div>);})}
+        </div>);})}
+    </div>);
+  }
+
+  // ── ImportScreen ──────────────────────────────────────────────────────────────
+  function ImportScreen({cats,productos,guardar,pop,showToast}) {
+    const [step,setStep]=useState("input"); const [text,setText]=useState(""); const [parsed,setParsed]=useState([]);
+    const [conflicts,setConflicts]=useState([]); const [resolutions,setResolutions]=useState({});
+    const doParse=()=>{const blocks=parseImportText(text,cats);if(!blocks.length)return showToast("No se encontraron productos válidos","err");const matched=blocks.map(b=>{const cat=cats.find(c=>c.label.toLowerCase()===b.catLabel.toLowerCase());const sub=cat&&b.subLabel?cat.subs.find(s=>s.label.toLowerCase()===b.subLabel.toLowerCase()):null;return{...b,catId:cat?.id||null,subId:sub?.id||null,catMatched:!!cat,subMatched:b.subLabel?!!sub:true};});setParsed(matched);setStep("preview");};
+    const doImport=()=>{const toAdd=[];const toUpdate=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex){if(resolutions[ex.id]==="overwrite")toUpdate.push({...ex,...p,catId:block.catId,subId:block.subId||null});}else{toAdd.push({...p,id:uid(),catId:block.catId,subId:block.subId||null,historialCompra:[]});}});});const updated=productos.map(p=>{const u=toUpdate.find(x=>x.id===p.id);return u||p;}).concat(toAdd);guardar(null,updated);showToast(`✅ ${toAdd.length} agregados, ${toUpdate.length} actualizados`);pop();};
+    const checkConflicts=()=>{const found=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex)found.push({existing:ex,incoming:p,block});});});if(found.length){setConflicts(found);const def={};found.forEach(c=>{def[c.existing.id]="skip";});setResolutions(def);setStep("conflicts");}else doImport();};
+    return (<div className="fade"><TopBar title="📥 Importar lista" onBack={pop}/>
+      {step==="input"&&(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <div className="card" style={{padding:16}}>
+          <div style={{fontSize:13,color:"#8b9ab0",marginBottom:10,lineHeight:1.6}}>Formato por bloque (separá bloques con línea en blanco):<pre style={{marginTop:8,fontSize:12,color:"#4a90d9",background:"#080c14",borderRadius:8,padding:10,lineHeight:1.8}}>{`Higiene\nPersonal\nShampoo-Dove-400-mL-4500$-1\n\nPrimario\nLeche-Carrefour-1-L-1182$-9`}</pre></div>
+          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Pegá tu lista acá…" style={{width:"100%",minHeight:200,background:"#080c14",border:"1px solid #1a2235",color:"#e8eaf0",borderRadius:10,padding:"11px 14px",fontSize:13,fontFamily:"'DM Mono',monospace",outline:"none",resize:"vertical",lineHeight:1.7}}/>
+        </div>
+        <div style={{display:"flex",gap:10}}><button className="btn" onClick={pop} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Cancelar</button><button className="btn" onClick={doParse} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}} disabled={!text.trim()}>Parsear</button></div>
+      </div>)}
+      {step==="preview"&&(<div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{fontSize:13,color:"#4a5568",marginBottom:4}}>Se van a importar {parsed.reduce((s,b)=>s+b.products.length,0)} productos:</div>
+        {parsed.map((block,bi)=>{const cat=cats.find(c=>c.id===block.catId);return(<div key={bi} className="card" style={{padding:14,borderLeft:`3px solid ${cat?.color||"#4a5568"}`}}>
+          <div style={{fontWeight:600,fontSize:14,marginBottom:2,color:"#e8eaf0"}}>{cat?.emoji} {block.catLabel}{block.subLabel?` › ${block.subLabel}`:""}</div>
+          {!block.catMatched&&<div style={{fontSize:12,color:"#ef4444",marginBottom:6}}>⚠️ Categoría no encontrada — se omitirá</div>}
+          {block.subLabel&&!block.subMatched&&<div style={{fontSize:12,color:"#facc15",marginBottom:6}}>⚠️ Subcategoría no encontrada — quedará sin asignar</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>{block.products.map((p,pi)=>(<div key={pi} style={{fontSize:13,color:"#c8cfe0",display:"flex",justifyContent:"space-between"}}><span>{p.nombre} · <span style={{color:"#4a5568"}}>{p.marca}</span></span><span className="mono" style={{color:"#60a5fa"}}>{p.precioRef?fmt(p.precioRef):"—"}</span></div>))}</div>
+        </div>);})}
+        <div style={{display:"flex",gap:10,marginTop:4}}><button className="btn" onClick={()=>setStep("input")} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Volver</button><button className="btn" onClick={checkConflicts} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}}>Importar</button></div>
+      </div>)}
+      {step==="conflicts"&&(<div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{fontSize:13,color:"#facc15",marginBottom:4}}>⚠️ {conflicts.length} producto{conflicts.length!==1?"s":""} ya existe{conflicts.length===1?"":"n"}.</div>
+        {conflicts.map((c,i)=>(<div key={i} className="card" style={{padding:14}}>
+          <div style={{fontWeight:600,fontSize:14,marginBottom:8,color:"#e8eaf0"}}>{c.existing.nombre}</div>
+          <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>Actual: {fmt(c.existing.precioRef)} · Nuevo: {fmt(c.incoming.precioRef)}</div>
+          <div style={{display:"flex",gap:8}}>
+            <button className="btn" onClick={()=>setResolutions(r=>({...r,[c.existing.id]:"skip"}))} style={{flex:1,padding:"9px 0",fontSize:13,background:resolutions[c.existing.id]==="skip"?"#1a2235":"#0d1321",color:resolutions[c.existing.id]==="skip"?"#e8eaf0":"#4a5568",border:`1px solid ${resolutions[c.existing.id]==="skip"?"#3b82f6":"#1a2235"}`}}>Mantener</button>
+            <button className="btn" onClick={()=>setResolutions(r=>({...r,[c.existing.id]:"overwrite"}))} style={{flex:1,padding:"9px 0",fontSize:13,background:resolutions[c.existing.id]==="overwrite"?"#3b82f622":"#0d1321",color:resolutions[c.existing.id]==="overwrite"?"#3b82f6":"#4a5568",border:`1px solid ${resolutions[c.existing.id]==="overwrite"?"#3b82f6":"#1a2235"}`}}>Sobreescribir</button>
+          </div>
+        </div>))}
+        <div style={{display:"flex",gap:10,marginTop:4}}><button className="btn" onClick={()=>setStep("preview")} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Volver</button><button className="btn" onClick={doImport} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}}>Confirmar</button></div>
+      </div>)}
+    </div>);
+  }
+
+  // ── ConfigScreen ──────────────────────────────────────────────────────────────
+  function ConfigScreen({cats,productos,guardar,pop,showToast,askConfirm}) {
+    const [openId,setOpenId]=useState(null); const [localCats,setLocalCats]=useState(cats);
+    const [newSubInputs,setNewSubInputs]=useState({}); const [movingSub,setMovingSub]=useState(null); const [moveTarget,setMoveTarget]=useState("");
+    useEffect(()=>{setLocalCats(cats);},[cats]);
+    const save=(next)=>{setLocalCats(next);guardar(next,null);};
+    const deleteCat=(id)=>askConfirm("¿Eliminar esta categoría?",()=>{if(productos.some(p=>p.catId===id))return showToast("Eliminá los productos primero","err");save(localCats.filter(c=>c.id!==id));showToast("Categoría eliminada");setOpenId(null);},"Eliminar","#ef4444");
+    const addSub=(catId)=>askConfirm(`¿Crear subcategoría "${(newSubInputs[catId]||"").trim()}"?`,()=>{const label=(newSubInputs[catId]||"").trim();if(!label)return;save(localCats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c));setNewSubInputs(f=>({...f,[catId]:""}));showToast("✅ Subcategoría creada");},"Crear");
+    const deleteSub=(catId,subId)=>askConfirm("¿Eliminar esta subcategoría?",()=>{if(productos.some(p=>p.catId===catId&&p.subId===subId))return showToast("Eliminá los productos primero","err");save(localCats.map(c=>c.id===catId?{...c,subs:c.subs.filter(s=>s.id!==subId)}:c));},"Eliminar","#ef4444");
+    const doMoveSub=()=>{if(!moveTarget||!movingSub)return;const sub=localCats.find(c=>c.id===movingSub.catId)?.subs?.find(s=>s.id===movingSub.subId);if(!sub)return;const nc=localCats.map(c=>{if(c.id===movingSub.catId)return{...c,subs:c.subs.filter(s=>s.id!==movingSub.subId)};if(c.id===moveTarget)return{...c,subs:[...c.subs,sub]};return c;});const np=productos.map(p=>p.catId===movingSub.catId&&p.subId===movingSub.subId?{...p,catId:moveTarget}:p);guardar(nc,np);setMovingSub(null);setMoveTarget("");showToast("✅ Subcategoría movida");};
+    return (<div className="fade"><TopBar title="⚙️ Configuración" subtitle="Categorías y subcategorías" onBack={pop}/>
+      {movingSub&&(<div style={{position:"fixed",inset:0,background:"#000b",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"#0d1321",border:"1px solid #2a3550",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
+          <div style={{fontWeight:600,marginBottom:4,color:"#e8eaf0"}}>Mover "{movingSub.label}"</div>
+          <div style={{fontSize:12,color:"#4a5568",marginBottom:14}}>Elegí la categoría destino:</div>
+          <select className="inp" value={moveTarget} onChange={e=>setMoveTarget(e.target.value)} style={{marginBottom:16}}><option value="">— Elegir —</option>{localCats.filter(c=>c.id!==movingSub.catId).sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}</select>
+          <div style={{display:"flex",gap:10}}><button className="btn" onClick={()=>{setMovingSub(null);setMoveTarget("");}} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:12}}>Cancelar</button><button className="btn" onClick={doMoveSub} style={{flex:1,background:"#3b82f6",color:"#fff",padding:12}} disabled={!moveTarget}>Mover</button></div>
+        </div>
+      </div>)}
+      {[...localCats].sort((a,b)=>alpha(a,b)).map(cat=>(<div key={cat.id} className="card" style={{marginBottom:10,overflow:"hidden",borderTop:`3px solid ${cat.color}`}}>
+        <div style={{padding:"14px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setOpenId(openId===cat.id?null:cat.id)}>
+          <span style={{fontSize:20}}>{cat.emoji}</span><span style={{fontWeight:600,flex:1,color:"#e8eaf0"}}>{cat.label}</span><span style={{fontSize:12,color:"#4a5568"}}>{cat.subs.length} sub</span><span style={{color:"#4a5568",fontSize:13,marginLeft:4}}>{openId===cat.id?"▲":"▼"}</span>
+        </div>
+        {openId===cat.id&&(<div style={{padding:"0 16px 16px",borderTop:"1px solid #1a2235"}}>
+          <CatEditFields cat={cat} onSave={(changes)=>askConfirm("¿Guardar cambios?",()=>save(localCats.map(c=>c.id===cat.id?{...c,...changes}:c)),"Guardar")}/>
+          <div style={{marginTop:14}}>
+            <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Subcategorías</div>
+            {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>(<SubEditRow key={sub.id} sub={sub} catColor={cat.color}
+              onSave={(label)=>askConfirm("¿Guardar cambios?",()=>save(localCats.map(c=>c.id===cat.id?{...c,subs:c.subs.map(s=>s.id===sub.id?{...s,label}:s)}:c)),"Guardar")}
+              onDelete={()=>deleteSub(cat.id,sub.id)} onMove={()=>{setMovingSub({catId:cat.id,subId:sub.id,label:sub.label});setMoveTarget("");}}/>))}
+            <div style={{display:"flex",gap:8,marginTop:6}}><input className="inp" placeholder="+ Nueva subcategoría…" value={newSubInputs[cat.id]||""} onChange={e=>setNewSubInputs(f=>({...f,[cat.id]:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&addSub(cat.id)} style={{flex:1,borderStyle:"dashed",padding:"8px 12px",fontSize:13}}/><button className="btn" onClick={()=>addSub(cat.id)} style={{background:cat.color,color:"#080c14",padding:"7px 14px",fontSize:14}}>+</button></div>
+          </div>
+          <button className="btn" onClick={()=>deleteCat(cat.id)} style={{marginTop:14,width:"100%",background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:10,fontSize:13}}>Eliminar categoría</button>
+        </div>)}
+      </div>))}
+    </div>);
+  }
+
+  function CatEditFields({cat,onSave}) {
+    const [emoji,setEmoji]=useState(cat.emoji); const [label,setLabel]=useState(cat.label); const [color,setColor]=useState(cat.color);
+    return (<div style={{marginTop:12}}>
+      <div style={{display:"grid",gridTemplateColumns:"64px 1fr",gap:8}}>
+        <div className="field"><label>Emoji</label><input className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:18,padding:"8px 4px"}}/></div>
+        <div className="field"><label>Nombre</label><input className="inp" value={label} onChange={e=>setLabel(e.target.value)}/></div>
+      </div>
+      <div style={{marginTop:10}}><div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Color</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{COLORS.map(c=><div key={c} onClick={()=>setColor(c)} style={{width:26,height:26,borderRadius:"50%",background:c,cursor:"pointer",border:color===c?"3px solid #fff":"3px solid transparent",transition:"all .15s"}}/>)}</div></div>
+      <button className="btn" onClick={()=>onSave({emoji,label,color})} style={{marginTop:10,width:"100%",background:"#1a2235",color:"#93c5fd",padding:10,fontSize:13}}>Guardar cambios categoría</button>
+    </div>);
+  }
+
+  function SubEditRow({sub,catColor,onSave,onDelete,onMove}) {
+    const [label,setLabel]=useState(sub.label);
+    return (<div style={{background:"#080c14",borderRadius:8,padding:"8px 10px",marginBottom:6}}>
+      <input className="inp" value={label} onChange={e=>setLabel(e.target.value)} style={{marginBottom:6,padding:"7px 10px",fontSize:13}}/>
+      <div style={{display:"flex",gap:6}}>
+        <button className="btn" onClick={()=>onSave(label)} style={{flex:1,background:"#1a2235",color:"#93c5fd",padding:"6px 0",fontSize:12}}>Guardar</button>
+        <button className="btn" onClick={onMove} style={{flex:1,background:"#1a2235",color:"#facc15",padding:"6px 0",fontSize:12}}>Mover</button>
+        <button className="btn" onClick={onDelete} style={{flex:1,background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"6px 0",fontSize:12}}>Eliminar</button>
+      </div>
+    </div>);
+  }
+
+  // ── Mount ────────────────────────────────────────────────────────────────────
+  const root = ReactDOM.createRoot(document.getElementById("root"));
+  root.render(<App/>);
+
+})();
+</script>
+</body>
+</html>
