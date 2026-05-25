@@ -39,7 +39,9 @@
 <script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
 <!-- 3. Recharts -->
 <script src="https://unpkg.com/recharts@2.9.0/umd/Recharts.js"></script>
-<!-- 4. Babel standalone -->
+<!-- 4. Supabase -->
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<!-- 5. Babel standalone -->
 <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
 
 <script type="text/babel" data-presets="react">
@@ -47,7 +49,10 @@
   const { useState, useEffect, useRef } = React;
   const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } = window.Recharts || {};
 
-  const STORAGE_KEY = "canasta";
+  const SUPABASE_URL = "https://czktusbzqrqcdxfmhioc.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_nJE2_030ourYKjbk_lKlTQ__8l2O0Sg";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const fmt = (n) => n == null ? "—" : `$${Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const fmtDate = (d) => new Date(d + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "2-digit" });
@@ -238,23 +243,57 @@
     const pop=()=>setStack(s=>s.length>1?s.slice(0,-1):s);
 
     useEffect(()=>{
-      try {
-        const raw=localStorage.getItem(STORAGE_KEY);
-        if(raw){
-          const d=JSON.parse(raw);
-          const lc=d.cats||DEFAULT_CATS;
-          const validSubs=new Set(lc.flatMap(c=>c.subs.map(s=>s.id)));
-          const lp=(d.productos||DEFAULT_PRODUCTOS).map(p=>({...p,subId:p.subId&&validSubs.has(p.subId)?p.subId:null}));
-          setCats(lc); setProductos(lp);
-        } else { setProductos(DEFAULT_PRODUCTOS); }
-      } catch { setProductos(DEFAULT_PRODUCTOS); }
-      setLoaded(true);
+      (async()=>{
+        try {
+          const [{ data: catRows }, { data: prodRows }] = await Promise.all([
+            sb.from("categorias").select("*"),
+            sb.from("productos").select("*")
+          ]);
+          if (catRows && catRows.length) {
+            const lc = catRows.map(r=>({id:r.id,label:r.label,emoji:r.emoji,color:r.color,subs:r.subs||[]}));
+            const validSubs = new Set(lc.flatMap(c=>c.subs.map(s=>s.id)));
+            const lp = (prodRows||[]).map(r=>({
+              id:r.id, nombre:r.nombre, marca:r.marca||"", catId:r.cat_id, subId:r.sub_id&&validSubs.has(r.sub_id)?r.sub_id:null,
+              precioRef:r.precio_ref, unidadesMes:r.unidades_mes, cantidadRef:r.cantidad_ref, unidad:r.unidad||"gr",
+              historialCompra:r.historial_compra||[]
+            }));
+            setCats(lc); setProductos(lp);
+          } else {
+            // First time: seed default cats
+            const inserts = DEFAULT_CATS.map(c=>({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs}));
+            await sb.from("categorias").insert(inserts);
+            setCats(DEFAULT_CATS); setProductos([]);
+          }
+        } catch(e) { console.error(e); setProductos(DEFAULT_PRODUCTOS); }
+        setLoaded(true);
+      })();
     },[]);
 
-    const guardar=(nextCats,nextProds)=>{
+    const guardar=async(nextCats,nextProds)=>{
       const nc=nextCats??cats; const np=nextProds??productos;
       setCats(nc); setProductos(np);
-      try { localStorage.setItem(STORAGE_KEY,JSON.stringify({cats:nc,productos:np})); } catch {}
+      try {
+        if (nextCats) {
+          await sb.from("categorias").upsert(
+            nc.map(c=>({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs}))
+          );
+          // Delete removed cats
+          const ncIds = nc.map(c=>c.id);
+          const oldIds = cats.map(c=>c.id).filter(id=>!ncIds.includes(id));
+          if (oldIds.length) await sb.from("categorias").delete().in("id", oldIds);
+        }
+        if (nextProds) {
+          await sb.from("productos").upsert(
+            np.map(p=>({id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
+              precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:p.cantidadRef,
+              unidad:p.unidad||"gr",historial_compra:p.historialCompra||[]}))
+          );
+          // Delete removed products
+          const npIds = np.map(p=>p.id);
+          const oldPIds = productos.map(p=>p.id).filter(id=>!npIds.includes(id));
+          if (oldPIds.length) await sb.from("productos").delete().in("id", oldPIds);
+        }
+      } catch(e) { console.error("Supabase error:", e); }
     };
 
     const showToast=(msg,tipo="ok")=>{setToast({msg,tipo});setTimeout(()=>setToast(null),2400);};
