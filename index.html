@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#080c14"/>
   <title>Canasta</title>
@@ -38,7 +39,7 @@
 <!-- 2. D3 (requerido por Recharts) -->
 <script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
 <!-- 3. Recharts -->
-<script src="https://unpkg.com/recharts@2.9.0/umd/Recharts.js"></script>
+<script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.js"></script>
 <!-- 4. Supabase -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <!-- 5. Babel standalone -->
@@ -340,7 +341,7 @@
   function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast}) {
     const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false);
     const total=productos.reduce((s,p)=>s+(gastoMensual(p)||0),0);
-    const addCat=({label,emoji,color})=>{guardar([...cats,{id:uid(),label,emoji,color,subs:[]}],null);setShowAddCat(false);showToast("✅ Categoría creada");};
+    const addCat=async({label,emoji,color})=>{await guardar([...cats,{id:uid(),label,emoji,color,subs:[]}],null);setShowAddCat(false);showToast("✅ Categoría creada");};
     const sortedCats=[...cats].sort((a,b)=>alpha(a,b));
     if(q){
       const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
@@ -390,7 +391,7 @@
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const cat=cats.find(c=>c.id===catId); if(!cat) return null;
     const catGasto=productos.filter(p=>p.catId===catId).reduce((s,p)=>s+(gastoMensual(p)||0),0);
-    const addSub=({label})=>{guardar(cats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c),null);setShowAddSub(false);showToast("✅ Subcategoría creada");};
+    const addSub=async({label})=>{await guardar(cats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c),null);setShowAddSub(false);showToast("✅ Subcategoría creada");};
     if(q){
       const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
       return (<div className="fade">
@@ -436,7 +437,7 @@
       if(!moveDest)return;
       const [dCatId,dSubId]=moveDest.split("::");
       const dCat=cats.find(c=>c.id===dCatId); const dSub=dSubId?dCat?.subs?.find(s=>s.id===dSubId):null;
-      guardar(null,productos.map(p=>selected.has(p.id)?{...p,catId:dCatId,subId:dSubId||null}:p));
+      await guardar(null,productos.map(p=>selected.has(p.id)?{...p,catId:dCatId,subId:dSubId||null}:p));
       showToast(`✅ ${selected.size} producto${selected.size>1?"s":""} movido${selected.size>1?"s":""} a ${dSub?`${dCat?.label} › ${dSub.label}`:dCat?.label}`);
       setMoveModal(false);setMoveDest("");cancelSelect();
     };
@@ -497,8 +498,8 @@
     const hist=p.historialCompra||[];
     const chartData=hist.map(h=>({fecha:fmtDate(h.fecha),precio:h.precio}));
     const variacion=hist.length>=2?((hist[hist.length-1].precio-hist[0].precio)/hist[0].precio*100).toFixed(1):null;
-    const del=()=>askConfirm(`¿Eliminar "${p.nombre}"?`,()=>{guardar(null,productos.filter(x=>x.id!==prodId));showToast("🗑️ Eliminado");pop();},"Eliminar","#ef4444");
-    const delH=(hid)=>askConfirm("¿Eliminar este registro?",()=>{guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:x.historialCompra.filter(h=>h.id!==hid)}:x));showToast("Eliminado");},"Eliminar","#ef4444");
+    const del=()=>askConfirm(`¿Eliminar "${p.nombre}"?`,async()=>{await guardar(null,productos.filter(x=>x.id!==prodId));showToast("🗑️ Eliminado");pop();},"Eliminar","#ef4444");
+    const delH=(hid)=>askConfirm("¿Eliminar este registro?",async()=>{await guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:x.historialCompra.filter(h=>h.id!==hid)}:x));showToast("Eliminado");},"Eliminar","#ef4444");
     return (<div className="fade">
       <TopBar title={p.nombre} subtitle={[cat?.label,sub?.label].filter(Boolean).join(" › ")} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
@@ -558,8 +559,8 @@
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
     const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef!=null?String(p.cantidadRef):"",unidad:p.unidad||"gr"});
     const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
-    const createSub=()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
-    const submit=()=>askConfirm("¿Guardar los cambios?",()=>{if(!form.nombre.trim())return showToast("El nombre es obligatorio","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?parseFloat(form.cantidadRef.replace(",",".")):null;guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));showToast("✅ Guardado");pop();},"Guardar cambios");
+    const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
+    const submit=()=>askConfirm("¿Guardar los cambios?",async()=>{if(!form.nombre.trim())return showToast("El nombre es obligatorio","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?parseFloat(form.cantidadRef.replace(",",".")):null;guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));showToast("✅ Guardado");pop();},"Guardar cambios");
     return (<div className="fade"><TopBar title="Editar producto" subtitle={p.nombre} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input className="inp" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
@@ -590,8 +591,8 @@
   function NuevoProdScreen({cats,initCatId,initSubId,productos,guardar,pop,showToast}) {
     const [form,setForm]=useState({nombre:"",marca:"",catId:initCatId||cats[0]?.id,subId:initSubId&&initSubId!==UNASSIGNED_ID?initSubId:"",unidadesMes:"1",precioRef:"",cantidadRef:"",unidad:"gr"});
     const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
-    const createSub=()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
-    const submit=()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?parseFloat(form.cantidadRef.replace(",",".")):null;guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
+    const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
+    const submit=async()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?parseFloat(form.cantidadRef.replace(",",".")):null;await guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
     return (<div className="fade"><TopBar title="Nuevo producto" onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
@@ -628,7 +629,7 @@
     const precio=parseFloat((form.precio||"").replace(",",".")); const cantidad=parseFloat((form.cantidad||"").replace(",","."));
     const equivalente=(precio>0&&cantidad>0&&cantRef)?(precio/cantidad)*cantRef:null;
     const diff=(equivalente!=null&&p.precioRef)?((equivalente-p.precioRef)/p.precioRef*100):null;
-    const submit=()=>{if(!precio||precio<=0)return showToast("Precio inválido","err");const entrada={id:uid(),precio,cantidad:cantidad||null,equivalente,fecha:form.fecha};guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));showToast("✅ Registrado");pop();};
+    const submit=async()=>{if(!precio||precio<=0)return showToast("Precio inválido","err");const entrada={id:uid(),precio,cantidad:cantidad||null,equivalente,fecha:form.fecha};await guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));showToast("✅ Registrado");pop();};
     return (<div className="fade"><TopBar title="Precio de compra" subtitle={`${p.nombre} · ${p.marca||""}`} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div style={{background:clr+"15",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#8b9ab0"}}>Precio de referencia: <span style={{color:clr,fontWeight:700}}>{p.precioRef?fmt(p.precioRef):"no definido"}</span>{cantRef&&<span style={{marginLeft:8,color:"#4a5568"}}>· {cantRef}{unidad}</span>}</div>
@@ -683,7 +684,7 @@
     const [step,setStep]=useState("input"); const [text,setText]=useState(""); const [parsed,setParsed]=useState([]);
     const [conflicts,setConflicts]=useState([]); const [resolutions,setResolutions]=useState({});
     const doParse=()=>{const blocks=parseImportText(text,cats);if(!blocks.length)return showToast("No se encontraron productos válidos","err");const matched=blocks.map(b=>{const cat=cats.find(c=>c.label.toLowerCase()===b.catLabel.toLowerCase());const sub=cat&&b.subLabel?cat.subs.find(s=>s.label.toLowerCase()===b.subLabel.toLowerCase()):null;return{...b,catId:cat?.id||null,subId:sub?.id||null,catMatched:!!cat,subMatched:b.subLabel?!!sub:true};});setParsed(matched);setStep("preview");};
-    const doImport=()=>{const toAdd=[];const toUpdate=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex){if(resolutions[ex.id]==="overwrite")toUpdate.push({...ex,...p,catId:block.catId,subId:block.subId||null});}else{toAdd.push({...p,id:uid(),catId:block.catId,subId:block.subId||null,historialCompra:[]});}});});const updated=productos.map(p=>{const u=toUpdate.find(x=>x.id===p.id);return u||p;}).concat(toAdd);guardar(null,updated);showToast(`✅ ${toAdd.length} agregados, ${toUpdate.length} actualizados`);pop();};
+    const doImport=()=>{const toAdd=[];const toUpdate=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex){if(resolutions[ex.id]==="overwrite")toUpdate.push({...ex,...p,catId:block.catId,subId:block.subId||null});}else{toAdd.push({...p,id:uid(),catId:block.catId,subId:block.subId||null,historialCompra:[]});}});});const updated=productos.map(p=>{const u=toUpdate.find(x=>x.id===p.id);return u||p;}).concat(toAdd);await guardar(null,updated);showToast(`✅ ${toAdd.length} agregados, ${toUpdate.length} actualizados`);pop();};
     const checkConflicts=()=>{const found=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex)found.push({existing:ex,incoming:p,block});});});if(found.length){setConflicts(found);const def={};found.forEach(c=>{def[c.existing.id]="skip";});setResolutions(def);setStep("conflicts");}else doImport();};
     return (<div className="fade"><TopBar title="📥 Importar lista" onBack={pop}/>
       {step==="input"&&(<div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -723,11 +724,11 @@
     const [openId,setOpenId]=useState(null); const [localCats,setLocalCats]=useState(cats);
     const [newSubInputs,setNewSubInputs]=useState({}); const [movingSub,setMovingSub]=useState(null); const [moveTarget,setMoveTarget]=useState("");
     useEffect(()=>{setLocalCats(cats);},[cats]);
-    const save=(next)=>{setLocalCats(next);guardar(next,null);};
+    const save=async(next)=>{setLocalCats(next);await guardar(next,null);};
     const deleteCat=(id)=>askConfirm("¿Eliminar esta categoría?",()=>{if(productos.some(p=>p.catId===id))return showToast("Eliminá los productos primero","err");save(localCats.filter(c=>c.id!==id));showToast("Categoría eliminada");setOpenId(null);},"Eliminar","#ef4444");
     const addSub=(catId)=>askConfirm(`¿Crear subcategoría "${(newSubInputs[catId]||"").trim()}"?`,()=>{const label=(newSubInputs[catId]||"").trim();if(!label)return;save(localCats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c));setNewSubInputs(f=>({...f,[catId]:""}));showToast("✅ Subcategoría creada");},"Crear");
     const deleteSub=(catId,subId)=>askConfirm("¿Eliminar esta subcategoría?",()=>{if(productos.some(p=>p.catId===catId&&p.subId===subId))return showToast("Eliminá los productos primero","err");save(localCats.map(c=>c.id===catId?{...c,subs:c.subs.filter(s=>s.id!==subId)}:c));},"Eliminar","#ef4444");
-    const doMoveSub=()=>{if(!moveTarget||!movingSub)return;const sub=localCats.find(c=>c.id===movingSub.catId)?.subs?.find(s=>s.id===movingSub.subId);if(!sub)return;const nc=localCats.map(c=>{if(c.id===movingSub.catId)return{...c,subs:c.subs.filter(s=>s.id!==movingSub.subId)};if(c.id===moveTarget)return{...c,subs:[...c.subs,sub]};return c;});const np=productos.map(p=>p.catId===movingSub.catId&&p.subId===movingSub.subId?{...p,catId:moveTarget}:p);guardar(nc,np);setMovingSub(null);setMoveTarget("");showToast("✅ Subcategoría movida");};
+    const doMoveSub=()=>{if(!moveTarget||!movingSub)return;const sub=localCats.find(c=>c.id===movingSub.catId)?.subs?.find(s=>s.id===movingSub.subId);if(!sub)return;const nc=localCats.map(c=>{if(c.id===movingSub.catId)return{...c,subs:c.subs.filter(s=>s.id!==movingSub.subId)};if(c.id===moveTarget)return{...c,subs:[...c.subs,sub]};return c;});const np=productos.map(p=>p.catId===movingSub.catId&&p.subId===movingSub.subId?{...p,catId:moveTarget}:p);await guardar(nc,np);setMovingSub(null);setMoveTarget("");showToast("✅ Subcategoría movida");};
     return (<div className="fade"><TopBar title="⚙️ Configuración" subtitle="Categorías y subcategorías" onBack={pop}/>
       {movingSub&&(<div style={{position:"fixed",inset:0,background:"#000b",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
         <div style={{background:"#0d1321",border:"1px solid #2a3550",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
