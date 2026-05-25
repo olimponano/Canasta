@@ -137,7 +137,8 @@ const ResponsiveContainer=({children})=>children||null;
         const u=parts[3].toLowerCase();
         const unidad=u==="ml"?"mL":u==="l"?"L":u==="kg"?"kg":"gr";
         const precioRef=parseFloat((parts[4]||"").replace(/[$\s]/g,"").replace(",","."))||null;
-        const unidadesMes=parts[5]?parseFloat(parts[5].replace(",",".")):null;
+        const umStr=(parts[5]||"").trim();
+        const unidadesMes=umStr?(umStr.includes("/")?parseFloat(umStr.split("/")[0])/parseFloat(umStr.split("/")[1]):parseFloat(umStr.replace(",","."))):null;
         products.push({nombre,marca,cantidadRef:cantidad,unidad,precioRef,unidadesMes});
       }
       if (products.length) parsed.push({catLabel,subLabel,products});
@@ -690,7 +691,7 @@ const ResponsiveContainer=({children})=>children||null;
           <div style={{fontSize:13,color:"#8b9ab0",marginBottom:10,lineHeight:1.6}}>Formato por bloque (separá bloques con línea en blanco):<pre style={{marginTop:8,fontSize:12,color:"#4a90d9",background:"#080c14",borderRadius:8,padding:10,lineHeight:1.8}}>{`Higiene\nPersonal\nShampoo-Dove-400-mL-4500$-1\n\nPrimario\nLeche-Carrefour-1-L-1182$-9`}</pre></div>
           <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Pegá tu lista acá…" style={{width:"100%",minHeight:200,background:"#080c14",border:"1px solid #1a2235",color:"#e8eaf0",borderRadius:10,padding:"11px 14px",fontSize:13,fontFamily:"'DM Mono',monospace",outline:"none",resize:"vertical",lineHeight:1.7}}/>
         </div>
-        <div style={{display:"flex",gap:10}}><button className="btn" onClick={pop} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Cancelar</button><button className="btn" onClick={doParse} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}} disabled={!text.trim()}>Parsear</button></div>
+        <div style={{display:"flex",gap:10}}><button className="btn" onClick={pop} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Cancelar</button><button className="btn" onClick={doParse} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}} disabled={!text.trim()}>Importar</button></div>
       </div>)}
       {step==="preview"&&(<div style={{display:"flex",flexDirection:"column",gap:12}}>
         <div style={{fontSize:13,color:"#4a5568",marginBottom:4}}>Se van a importar {parsed.reduce((s,b)=>s+b.products.length,0)} productos:</div>
