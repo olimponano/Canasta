@@ -39,7 +39,7 @@
 <!-- 2. D3 (requerido por Recharts) -->
 <script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
 <!-- 3. Recharts -->
-<script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.js"></script>
+<script src="https://unpkg.com/recharts@2.1.16/umd/Recharts.js"></script>
 <!-- 4. Supabase -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <!-- 5. Babel standalone -->
@@ -433,7 +433,7 @@
     const lista=q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())):baseLista;
     const toggleSelect=(id)=>{setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});};
     const cancelSelect=()=>{setSelectMode(false);setSelected(new Set());};
-    const doMove=()=>{
+    const doMove=async()=>{
       if(!moveDest)return;
       const [dCatId,dSubId]=moveDest.split("::");
       const dCat=cats.find(c=>c.id===dCatId); const dSub=dSubId?dCat?.subs?.find(s=>s.id===dSubId):null;
