@@ -67,6 +67,18 @@ const ResponsiveContainer=({children})=>children||null;
     return Number(u.toFixed(2)).toLocaleString("es-AR");
   };
 
+  // Parse "NxM" format → total numeric value. "4x30"→120, "300"→300
+  const parseQty = (s) => {
+    if (!s) return null;
+    const str = String(s).trim();
+    if (str.includes("x")) {
+      const [a, b] = str.split("x").map(Number);
+      return (isNaN(a)||isNaN(b)) ? null : a * b;
+    }
+    const n = parseFloat(str.replace(",","."));
+    return isNaN(n) ? null : n;
+  };
+
   const DEFAULT_CATS = [
     { id:"primario",   label:"Primario",   emoji:"🛒", color:"#60a5fa", subs:[] },
     { id:"higiene",    label:"Higiene",    emoji:"🧴", color:"#f472b6", subs:[] },
@@ -133,7 +145,7 @@ const ResponsiveContainer=({children})=>children||null;
         const l = lines[i]; if (!isProduct(l)) continue;
         const parts = l.split("-").map(p=>p.trim()); if (parts.length < 4) continue;
         const nombre=parts[0], marca=parts[1];
-        const cantidad=parseFloat(parts[2])||null;
+        const rawCant=(parts[2]||"").trim(); const uLow=(parts[3]||"").toLowerCase(); const cantidad=(uLow==="m"||uLow==="un")?rawCant:(parseFloat(rawCant)||null);
         const u=parts[3].toLowerCase();
         const unidad=u==="ml"?"mL":u==="l"?"L":u==="kg"?"kg":"gr";
         const precioRef=parseFloat((parts[4]||"").replace(/[$\s]/g,"").replace(",","."))||null;
@@ -222,7 +234,7 @@ const ResponsiveContainer=({children})=>children||null;
         </div>
         <div style={{textAlign:"right",flexShrink:0}}>
           {p.precioRef
-            ?<><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{gm&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:cat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gm)}</div>}</>
+            ?<><div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"flex-end"}}><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{p.cantidadRef&&<div style={{fontSize:11,color:"#4a5568"}}>{p.cantidadRef}{p.unidad||""}</div>}</div>{gm&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:cat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gm)}</div>}</>
             :<div style={{fontSize:12,color:"#4a5568"}}>Sin precio</div>}
         </div>
       </div>
@@ -482,11 +494,57 @@ const ResponsiveContainer=({children})=>children||null;
               onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
               {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#3b82f6":"#2a3550"}`,background:isSel?"#3b82f6":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
               <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}</div></div>
-              <div style={{textAlign:"right",flexShrink:0}}>{p.precioRef?<><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{gastoMensual(p)&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:pcat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gastoMensual(p))}</div>}</>:<div style={{fontSize:12,color:"#4a5568"}}>Sin precio</div>}</div>
+              <div style={{textAlign:"right",flexShrink:0}}>{p.precioRef?<><div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"flex-end"}}><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{p.cantidadRef&&<div style={{fontSize:11,color:"#4a5568"}}>{p.cantidadRef}{p.unidad||""}</div>}</div>{gastoMensual(p)&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:pcat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gastoMensual(p))}</div>}</>:<div style={{fontSize:12,color:"#4a5568"}}>Sin precio</div>}</div>
             </div>);
           })}
         </div>}
     </div>);
+  }
+
+
+  // ── PriceChart (SVG puro) ──────────────────────────────────────────────────
+  function PriceChart({hist, precioRef, clr}) {
+    const W=320, H=150, PL=52, PR=20, PT=14, PB=28;
+    const iW=W-PL-PR, iH=H-PT-PB;
+    if (!hist||hist.length<1) return null;
+    const prices=hist.map(h=>h.precio);
+    const allVals=precioRef?[...prices,precioRef]:prices;
+    const minV=Math.min(...allVals)*0.93;
+    const maxV=Math.max(...allVals)*1.07;
+    const range=maxV-minV||1;
+    const toX=(i)=>PL+(hist.length===1?iW/2:(i/(hist.length-1))*iW);
+    const toY=(v)=>PT+(1-(v-minV)/range)*iH;
+    const refY=precioRef!=null?toY(precioRef):null;
+    const pts=hist.map((h,i)=>`${toX(i).toFixed(1)},${toY(h.precio).toFixed(1)}`).join(" ");
+    const yTicks=[minV,(minV+maxV)/2,maxV];
+    return (
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{overflow:"visible",display:"block"}}>
+        {yTicks.map((v,i)=>[
+          <line key={"g"+i} x1={PL} y1={toY(v)} x2={W-PR} y2={toY(v)} stroke="#1a2235" strokeWidth={1}/>,
+          <text key={"t"+i} x={PL-4} y={toY(v)+4} textAnchor="end" fontSize={9} fill="#4a5568">${Math.round(v)}</text>
+        ])}
+        {refY!=null&&(
+          <line x1={PL} y1={refY} x2={W-PR} y2={refY} stroke={clr} strokeWidth={1.5} strokeDasharray="6 4" opacity={0.7}/>
+        )}
+        {refY!=null&&(
+          <text x={W-PR+2} y={refY+4} fontSize={9} fill={clr} opacity={0.8}>ref</text>
+        )}
+        {hist.length>1&&<polyline points={pts} fill="none" stroke="#4ade80" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>}
+        {hist.map((h,i)=>{
+          const x=toX(i), y=toY(h.precio);
+          const dotColor=refY!=null?(h.precio>precioRef?"#ef4444":"#4ade80"):"#4ade80";
+          const lblY=y>PT+20?y-8:y+16;
+          const show=hist.length<=6||i===0||i===hist.length-1||i%Math.ceil(hist.length/5)===0;
+          return (
+            <g key={i}>
+              <circle cx={x} cy={y} r={5} fill={dotColor} stroke="#080c14" strokeWidth={1.5}/>
+              {show&&<text x={x} y={lblY} textAnchor="middle" fontSize={9} fill={dotColor}>{fmt(h.precio)}</text>}
+              <text x={x} y={H} textAnchor="middle" fontSize={8} fill="#4a5568">{h.fecha?h.fecha.slice(5):""}</text>
+            </g>
+          );
+        })}
+      </svg>
+    );
   }
 
   // ── DetalleScreen ─────────────────────────────────────────────────────────────
@@ -512,7 +570,7 @@ const ResponsiveContainer=({children})=>children||null;
         </div>
         <div style={{marginTop:16,background:"#080c14",borderRadius:12,padding:"14px 16px"}}>
           <div style={{fontSize:11,color:"#4a5568",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Precio de referencia</div>
-          <div className="mono" style={{fontSize:28,fontWeight:700,color:clr}}>{p.precioRef?fmt(p.precioRef):"—"}</div>
+          <div style={{display:"flex",alignItems:"baseline",gap:8}}><div className="mono" style={{fontSize:28,fontWeight:700,color:clr}}>{p.precioRef?fmt(p.precioRef):"—"}</div>{p.cantidadRef&&<div style={{fontSize:14,color:"#4a5568"}}>{p.cantidadRef}{p.unidad||""}</div>}</div>
           {p.precioRef&&p.unidadesMes&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10,padding:"9px 12px",background:"#0d1321",borderRadius:8}}>
             <span className="mono" style={{fontSize:14,color:"#8b9ab0",fontWeight:500}}>{fmtU(p.unidadesMes)}</span>
             <span style={{fontSize:13,color:"#4a5568"}}>u/mes</span>
@@ -523,18 +581,12 @@ const ResponsiveContainer=({children})=>children||null;
         {variacion!==null&&<div style={{marginTop:10,fontSize:12,color:parseFloat(variacion)>0?"#ef4444":"#10b981"}}>{parseFloat(variacion)>0?"▲":"▼"} {Math.abs(variacion)}% desde el primer registro</div>}
       </div>
       <button className="btn" onClick={()=>push("nuevo-precio",{prodId})} style={{width:"100%",background:clr,color:"#080c14",padding:13,fontSize:14,marginBottom:14}}>+ Registrar precio de compra</button>
-      {false&&(<div className="card" style={{padding:"18px 12px 10px",marginBottom:12}}>
-        <div style={{fontSize:13,fontWeight:600,marginBottom:4,paddingLeft:4,color:"#e8eaf0"}}>Evolución del precio de compra</div>
-        <ResponsiveContainer width="100%" height={150}>
-          <LineChart data={chartData}>
-            <CartesianGrid stroke="#1a2235" strokeDasharray="4 4"/>
-            <XAxis dataKey="fecha" tick={{fontSize:10,fill:"#4a5568"}} axisLine={false} tickLine={false}/>
-            <YAxis tick={{fontSize:10,fill:"#4a5568"}} axisLine={false} tickLine={false} tickFormatter={v=>`$${v}`}/>
-            <Tooltip contentStyle={{background:"#0d1321",border:"1px solid #1a2235",borderRadius:8,fontSize:12}} labelStyle={{color:"#e8eaf0"}} formatter={v=>[fmt(v),"Precio pagado"]}/>
-            <Line type="monotone" dataKey="precio" stroke={clr} strokeWidth={2.5} dot={{fill:clr,strokeWidth:0,r:4}} activeDot={{r:6}}/>
-          </LineChart>
-        </ResponsiveContainer>
-      </div>)}
+      {hist.length>=1&&(
+      <div className="card" style={{padding:"18px 12px 10px",marginBottom:12}}>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:8,paddingLeft:4,color:"#e8eaf0"}}>Evolución del precio de compra</div>
+        <PriceChart hist={hist} precioRef={p.precioRef} clr={clr}/>
+      </div>
+    )}
       {hist.length>0&&(<div className="card" style={{padding:16}}>
         <div style={{fontSize:13,fontWeight:600,marginBottom:12,color:"#e8eaf0"}}>Historial de precios de compra</div>
         {[...hist].reverse().map((h,i)=>(<div key={h.id} style={{padding:"10px 0",borderBottom:i<hist.length-1?"1px solid #1a2235":"none"}}>
@@ -559,7 +611,7 @@ const ResponsiveContainer=({children})=>children||null;
     const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef!=null?String(p.cantidadRef):"",unidad:p.unidad||"gr"});
     const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
     const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
-    const submit=()=>askConfirm("¿Guardar los cambios?",async()=>{if(!form.nombre.trim())return showToast("El nombre es obligatorio","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?parseFloat(form.cantidadRef.replace(",",".")):null;guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));showToast("✅ Guardado");pop();},"Guardar cambios");
+    const submit=()=>askConfirm("¿Guardar los cambios?",async()=>{if(!form.nombre.trim())return showToast("El nombre es obligatorio","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?(["m","un"].includes(form.unidad)?form.cantidadRef.trim():parseFloat(form.cantidadRef.replace(",","."))||null):null;await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));showToast("✅ Guardado");pop();},"Guardar cambios");
     return (<div className="fade"><TopBar title="Editar producto" subtitle={p.nombre} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input className="inp" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
@@ -576,7 +628,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div className="field"><label>Cantidad ref.</label><input className="inp" placeholder="ej. 300" value={form.cantidadRef} onChange={e=>setForm(f=>({...f,cantidadRef:e.target.value}))}/></div>
           <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value}))}>
-            <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option></select></div>
+            <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
           <button className="btn" onClick={pop} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Cancelar</button>
@@ -591,7 +643,7 @@ const ResponsiveContainer=({children})=>children||null;
     const [form,setForm]=useState({nombre:"",marca:"",catId:initCatId||cats[0]?.id,subId:initSubId&&initSubId!==UNASSIGNED_ID?initSubId:"",unidadesMes:"1",precioRef:"",cantidadRef:"",unidad:"gr"});
     const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
     const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
-    const submit=async()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?parseFloat(form.cantidadRef.replace(",",".")):null;await guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
+    const submit=async()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFloat(form.unidadesMes.replace(",",".")):null;const cr=form.cantidadRef?(["m","un"].includes(form.unidad)?form.cantidadRef.trim():parseFloat(form.cantidadRef.replace(",","."))||null):null;await guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
     return (<div className="fade"><TopBar title="Nuevo producto" onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
@@ -608,7 +660,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div className="field"><label>Cantidad ref.</label><input className="inp" placeholder="ej. 300" value={form.cantidadRef} onChange={e=>setForm(f=>({...f,cantidadRef:e.target.value}))}/></div>
           <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value}))}>
-            <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option></select></div>
+            <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
           <button className="btn" onClick={pop} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Cancelar</button>
@@ -625,15 +677,18 @@ const ResponsiveContainer=({children})=>children||null;
     const cantRef=p.cantidadRef||null; const unidad=p.unidad||"gr";
     const [form,setForm]=useState({precio:"",cantidad:"",fecha:todayISO()});
     useEffect(()=>{if(cantRef)setForm(f=>({...f,cantidad:String(cantRef)}));},[]);
-    const precio=parseFloat((form.precio||"").replace(",",".")); const cantidad=parseFloat((form.cantidad||"").replace(",","."));
-    const equivalente=(precio>0&&cantidad>0&&cantRef)?(precio/cantidad)*cantRef:null;
+    const precio=parseFloat((form.precio||"").replace(",","."));
+    const cantidadNum=unidad==="m"||unidad==="un"?parseQty(form.cantidad):parseFloat((form.cantidad||"").replace(",","."));
+    const cantRefNum=unidad==="m"||unidad==="un"?parseQty(String(cantRef||"")):cantRef;
+    const equivalente=(precio>0&&cantidadNum>0&&cantRefNum)?(precio/cantidadNum)*cantRefNum:null;
     const diff=(equivalente!=null&&p.precioRef)?((equivalente-p.precioRef)/p.precioRef*100):null;
+    const cantRef2=cantRefNum;
     const submit=async()=>{if(!precio||precio<=0)return showToast("Precio inválido","err");const entrada={id:uid(),precio,cantidad:cantidad||null,equivalente,fecha:form.fecha};await guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));showToast("✅ Registrado");pop();};
     return (<div className="fade"><TopBar title="Precio de compra" subtitle={`${p.nombre} · ${p.marca||""}`} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div style={{background:clr+"15",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#8b9ab0"}}>Precio de referencia: <span style={{color:clr,fontWeight:700}}>{p.precioRef?fmt(p.precioRef):"no definido"}</span>{cantRef&&<span style={{marginLeft:8,color:"#4a5568"}}>· {cantRef}{unidad}</span>}</div>
         <div className="field"><label>Precio que pagué ($)</label><input className="inp" placeholder="ej. 1200" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} autoFocus/></div>
-        <div className="field"><label>Cantidad comprada ({unidad})</label><input className="inp" placeholder={cantRef?String(cantRef):"ej. 100"} value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))}/></div>
+        <div className="field"><label>Cantidad comprada ({unidad})</label><input className="inp" placeholder={cantRef?String(cantRef):unidad==="m"?"ej. 6x50":unidad==="un"?"ej. 50":"ej. 100"} value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))}/></div>
         {equivalente!=null&&(<div style={{background:"#080c14",borderRadius:10,padding:"12px 14px"}}>
           <div style={{fontSize:11,color:"#4a5568",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Equivalente a {cantRef}{unidad}</div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
