@@ -572,10 +572,11 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{display:"flex",gap:14}}>
           <div style={{fontSize:34}}>{cat?.emoji}</div>
           <div style={{flex:1}}><div style={{fontWeight:700,fontSize:19,color:"#e8eaf0"}}>{p.nombre}</div><div style={{fontSize:13,color:"#4a5568",marginTop:2}}>{p.marca||"—"}</div><div style={{marginTop:8}}><span style={{background:clr+"22",color:clr,borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:600}}>{cat?.label}{sub?` › ${sub.label}`:""}</span></div></div>
+          {p.cantidadRef&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:700,color:"#e8eaf0"}}>{p.cantidadRef}</div><div style={{fontSize:12,color:"#4a5568"}}>{p.unidad||""}</div></div>}
         </div>
         <div style={{marginTop:16,background:"#080c14",borderRadius:12,padding:"14px 16px"}}>
           <div style={{fontSize:11,color:"#4a5568",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Precio de referencia</div>
-          <div style={{display:"flex",alignItems:"baseline",gap:8}}><div className="mono" style={{fontSize:28,fontWeight:700,color:clr}}>{p.precioRef?fmt(p.precioRef):"—"}</div>{p.cantidadRef&&<div style={{fontSize:14,color:"#4a5568"}}>{p.cantidadRef}{p.unidad||""}</div>}</div>
+          <div className="mono" style={{fontSize:28,fontWeight:700,color:clr}}>{p.precioRef?fmt(p.precioRef):"—"}</div>
           {p.precioRef&&p.unidadesMes&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10,padding:"9px 12px",background:"#0d1321",borderRadius:8}}>
             <span className="mono" style={{fontSize:14,color:"#8b9ab0",fontWeight:500}}>{fmtU(p.unidadesMes)}</span>
             <span style={{fontSize:13,color:"#4a5568"}}>u/mes</span>
@@ -742,7 +743,38 @@ const ResponsiveContainer=({children})=>children||null;
   function ImportScreen({cats,productos,guardar,pop,showToast}) {
     const [step,setStep]=useState("input"); const [text,setText]=useState(""); const [parsed,setParsed]=useState([]);
     const [conflicts,setConflicts]=useState([]); const [resolutions,setResolutions]=useState({});
-    const doParse=()=>{const blocks=parseImportText(text,cats);if(!blocks.length)return showToast("No se encontraron productos válidos","err");const matched=blocks.map(b=>{const cat=cats.find(c=>matchStr(c.label,b.catLabel));const sub=cat&&b.subLabel?cat.subs.find(s=>matchStr(s.label,b.subLabel)):null;return{...b,catId:cat?.id||null,subId:sub?.id||null,catMatched:!!cat,subMatched:b.subLabel?!!sub:true};});setParsed(matched);setStep("preview");};
+    const doParse=async()=>{
+    const blocks=parseImportText(text,cats);
+    if(!blocks.length)return showToast("No se encontraron productos válidos","err");
+    // Auto-create missing cats and subs
+    let updatedCats=[...cats];
+    const matched=blocks.map(b=>{
+      let cat=updatedCats.find(c=>matchStr(c.label,b.catLabel));
+      if(!cat){
+        // Create new category
+        const CATCOLORS=["#60a5fa","#f472b6","#4ade80","#fb923c","#a78bfa","#facc15","#34d399","#f87171","#38bdf8","#e879f9"];
+        cat={id:uid(),label:b.catLabel,emoji:"📦",color:CATCOLORS[updatedCats.length%CATCOLORS.length],subs:[]};
+        updatedCats=[...updatedCats,cat];
+      }
+      let sub=null;
+      if(b.subLabel){
+        sub=cat.subs.find(s=>matchStr(s.label,b.subLabel));
+        if(!sub){
+          // Create new subcategory
+          sub={id:uid(),label:b.subLabel};
+          const newSubs=[...cat.subs,sub];
+          updatedCats=updatedCats.map(c=>c.id===cat.id?{...c,subs:newSubs}:c);
+          cat={...cat,subs:newSubs};
+        }
+      }
+      return{...b,catId:cat.id,subId:sub?.id||null,catMatched:true,subMatched:true,autoCreated:!cats.find(c=>c.id===cat.id),autoCreatedSub:b.subLabel&&!cats.find(c=>c.id===cat.id||c.subs.find(s=>s.id===sub?.id))};
+    });
+    // Save updated cats if any were created
+    if(updatedCats.length>cats.length||updatedCats.some((c,i)=>c.subs.length!==(cats[i]?.subs.length||0))){
+      await guardar(updatedCats,null);
+    }
+    setParsed(matched);setStep("preview");
+  };
     const doImport=async()=>{const toAdd=[];const toUpdate=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex){if(resolutions[ex.id]==="overwrite")toUpdate.push({...ex,...p,catId:block.catId,subId:block.subId||null});}else{toAdd.push({...p,id:uid(),catId:block.catId,subId:block.subId||null,historialCompra:[]});}});});const updated=productos.map(p=>{const u=toUpdate.find(x=>x.id===p.id);return u||p;}).concat(toAdd);await guardar(null,updated);showToast(`✅ ${toAdd.length} agregados, ${toUpdate.length} actualizados`);pop();};
     const checkConflicts=()=>{const found=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex)found.push({existing:ex,incoming:p,block});});});if(found.length){setConflicts(found);const def={};found.forEach(c=>{def[c.existing.id]="skip";});setResolutions(def);setStep("conflicts");}else doImport();};
     return (<div className="fade"><TopBar title="📥 Importar lista" onBack={pop}/>
@@ -757,8 +789,8 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{fontSize:13,color:"#4a5568",marginBottom:4}}>Se van a importar {parsed.reduce((s,b)=>s+b.products.length,0)} productos:</div>
         {parsed.map((block,bi)=>{const cat=cats.find(c=>c.id===block.catId);return(<div key={bi} className="card" style={{padding:14,borderLeft:`3px solid ${cat?.color||"#4a5568"}`}}>
           <div style={{fontWeight:600,fontSize:14,marginBottom:2,color:"#e8eaf0"}}>{cat?.emoji} {block.catLabel}{block.subLabel?` › ${block.subLabel}`:""}</div>
-          {!block.catMatched&&<div style={{fontSize:12,color:"#ef4444",marginBottom:6}}>⚠️ Categoría no encontrada — se omitirá</div>}
-          {block.subLabel&&!block.subMatched&&<div style={{fontSize:12,color:"#facc15",marginBottom:6}}>⚠️ Subcategoría no encontrada — quedará sin asignar</div>}
+          {block.autoCreated&&<div style={{fontSize:12,color:"#4ade80",marginBottom:6}}>✅ Categoría nueva creada</div>}
+          {block.autoCreatedSub&&<div style={{fontSize:12,color:"#4ade80",marginBottom:6}}>✅ Subcategoría nueva creada</div>}
           <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>{block.products.map((p,pi)=>(<div key={pi} style={{fontSize:13,color:"#c8cfe0",display:"flex",justifyContent:"space-between"}}><span>{p.nombre} · <span style={{color:"#4a5568"}}>{p.marca}</span></span><span className="mono" style={{color:"#60a5fa"}}>{p.precioRef?fmt(p.precioRef):"—"}</span></div>))}</div>
         </div>);})}
         <div style={{display:"flex",gap:10,marginTop:4}}><button className="btn" onClick={()=>setStep("input")} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Volver</button><button className="btn" onClick={checkConflicts} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}}>Importar</button></div>
