@@ -53,6 +53,11 @@ const ResponsiveContainer=({children})=>children||null;
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const norm = (s) => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  const matchStr = (a, b) => {
+    const na=norm(a), nb=norm(b);
+    return na===nb || na.includes(nb) || nb.includes(na);
+  };
   const fmt = (n) => n == null ? "—" : `$${Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const fmtDate = (d) => new Date(d + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "2-digit" });
   const todayISO = () => new Date().toISOString().split("T")[0];
@@ -737,7 +742,7 @@ const ResponsiveContainer=({children})=>children||null;
   function ImportScreen({cats,productos,guardar,pop,showToast}) {
     const [step,setStep]=useState("input"); const [text,setText]=useState(""); const [parsed,setParsed]=useState([]);
     const [conflicts,setConflicts]=useState([]); const [resolutions,setResolutions]=useState({});
-    const doParse=()=>{const blocks=parseImportText(text,cats);if(!blocks.length)return showToast("No se encontraron productos válidos","err");const matched=blocks.map(b=>{const cat=cats.find(c=>c.label.toLowerCase()===b.catLabel.toLowerCase());const sub=cat&&b.subLabel?cat.subs.find(s=>s.label.toLowerCase()===b.subLabel.toLowerCase()):null;return{...b,catId:cat?.id||null,subId:sub?.id||null,catMatched:!!cat,subMatched:b.subLabel?!!sub:true};});setParsed(matched);setStep("preview");};
+    const doParse=()=>{const blocks=parseImportText(text,cats);if(!blocks.length)return showToast("No se encontraron productos válidos","err");const matched=blocks.map(b=>{const cat=cats.find(c=>matchStr(c.label,b.catLabel));const sub=cat&&b.subLabel?cat.subs.find(s=>matchStr(s.label,b.subLabel)):null;return{...b,catId:cat?.id||null,subId:sub?.id||null,catMatched:!!cat,subMatched:b.subLabel?!!sub:true};});setParsed(matched);setStep("preview");};
     const doImport=async()=>{const toAdd=[];const toUpdate=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex){if(resolutions[ex.id]==="overwrite")toUpdate.push({...ex,...p,catId:block.catId,subId:block.subId||null});}else{toAdd.push({...p,id:uid(),catId:block.catId,subId:block.subId||null,historialCompra:[]});}});});const updated=productos.map(p=>{const u=toUpdate.find(x=>x.id===p.id);return u||p;}).concat(toAdd);await guardar(null,updated);showToast(`✅ ${toAdd.length} agregados, ${toUpdate.length} actualizados`);pop();};
     const checkConflicts=()=>{const found=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex)found.push({existing:ex,incoming:p,block});});});if(found.length){setConflicts(found);const def={};found.forEach(c=>{def[c.existing.id]="skip";});setResolutions(def);setStep("conflicts");}else doImport();};
     return (<div className="fade"><TopBar title="📥 Importar lista" onBack={pop}/>
