@@ -154,6 +154,16 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   function buildExportText(cats, productos, filterCatId=null, filterSubId=null) {
+    // Handle orphans export
+    if(filterSubId==="__sin_sub__"&&filterCatId){
+      const cat=cats.find(c=>c.id===filterCatId);
+      const validSubs=new Set((cat?.subs||[]).map(s=>s.id));
+      const orphans=productos.filter(p=>p.catId===filterCatId&&(!p.subId||!validSubs.has(p.subId)));
+      const lines=[];
+      lines.push(`=== ${cat?.label.toUpperCase()} — SIN SUBCATEGORÍA ===`);
+      [...orphans].sort((a,b)=>alpha(a,b,"nombre")).forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
+      return lines.join("\n").trim();
+    }
     const lines = [];
     const tCats = filterCatId ? cats.filter(c=>c.id===filterCatId) : [...cats].sort((a,b)=>alpha(a,b));
     tCats.forEach(cat => {
@@ -291,11 +301,11 @@ const ResponsiveContainer=({children})=>children||null;
         {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#3b82f6":"#2a3550"}`,background:isSel?"#3b82f6":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div>
-          <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}</div>
+          <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#3a4255"}}>{p.cantidadRef}{p.unidad||""}</span>}</div>
         </div>
         <div style={{textAlign:"right",flexShrink:0}}>
           {p.precioRef
-            ?<><div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"flex-end"}}><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{p.cantidadRef&&<div style={{fontSize:11,color:"#4a5568"}}>{p.cantidadRef}{p.unidad||""}</div>}</div>{gm&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:cat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gm)}</div>}</>
+            ?<><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{gm&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:cat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gm)}</div>}</>
             :<div style={{fontSize:12,color:"#4a5568"}}>Sin precio</div>}
         </div>
       </div>
@@ -398,7 +408,7 @@ const ResponsiveContainer=({children})=>children||null;
           {s==="nuevo-prod"  &&<NuevoProdScreen {...shared} initCatId={current.catId} initSubId={current.subId}/>}
           {s==="editar-prod" &&<EditarProdScreen {...shared} prodId={current.prodId}/>}
           {s==="nuevo-precio"&&<NuevoPrecioScreen {...shared} prodId={current.prodId}/>}
-          {s==="config"      &&<ConfigScreen {...shared}/>}
+          {s==="config"      &&<ConfigScreen {...shared} openCatId={current.openCatId||null}/>}
           {s==="export"      &&<ExportScreen {...shared}/>}
           {s==="import"      &&<ImportScreen {...shared}/>}
         </div>
@@ -475,7 +485,7 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
     const cat=cats.find(c=>c.id===catId); if(!cat) return null;
@@ -512,7 +522,8 @@ const ResponsiveContainer=({children})=>children||null;
     return (<div className="fade">
       <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={catGasto>0?`${fmt(catGasto)}/mes`:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
-          <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>
+          <button className="btn" onClick={()=>handleExport(catId)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"8px 11px",fontSize:14}}>📋</button>
+          <button className="btn" onClick={()=>push("config",{openCatId:catId})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Ver todos</button>
         </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
@@ -602,8 +613,8 @@ const ResponsiveContainer=({children})=>children||null;
               <button className="btn" onClick={cancelSelect} style={{background:"#1a2235",color:"#8b9ab0",padding:"8px 12px",fontSize:13}}>✕</button>
             </div>
           :<div style={{display:"flex",gap:8}}>
-              <button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>
               <button className="btn" onClick={()=>handleExport(catId,isUnassignedView?UNASSIGNED_ID:subId)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"8px 11px",fontSize:14}}>📋</button>
+              <button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0}}/>
@@ -624,8 +635,8 @@ const ResponsiveContainer=({children})=>children||null;
             return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
               onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
               {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#3b82f6":"#2a3550"}`,background:isSel?"#3b82f6":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
-              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}</div></div>
-              <div style={{textAlign:"right",flexShrink:0}}>{p.precioRef?<><div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"flex-end"}}><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{p.cantidadRef&&<div style={{fontSize:11,color:"#4a5568"}}>{p.cantidadRef}{p.unidad||""}</div>}</div>{gastoMensual(p)&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:pcat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gastoMensual(p))}</div>}</>:<div style={{fontSize:12,color:"#4a5568"}}>Sin precio</div>}</div>
+              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#3a4255"}}>{p.cantidadRef}{p.unidad||""}</span>}</div></div>
+              <div style={{textAlign:"right",flexShrink:0}}>{p.precioRef?<><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{gastoMensual(p)&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:pcat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gastoMensual(p))}</div>}</>:<div style={{fontSize:12,color:"#4a5568"}}>Sin precio</div>}</div>
             </div>);
           })}
         </div>}
@@ -779,7 +790,7 @@ const ResponsiveContainer=({children})=>children||null;
     return (<div className="fade"><TopBar title="Nuevo producto" onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
-        <div className="field"><label>Marca / detalle</label><input className="inp" placeholder="ej. La Serenísima 1L" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
+        <div className="field"><label>Marca / detalle</label><input className="inp" placeholder="ej. La Serenísima" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
         <div className="field"><label>Categoría</label><select className="inp" value={form.catId} onChange={e=>setForm(f=>({...f,catId:e.target.value,subId:""}))}>
           {[...cats].sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}</select></div>
         <div className="field"><label>Subcategoría</label><select className="inp" value={form.subId} onChange={e=>setForm(f=>({...f,subId:e.target.value}))}>
@@ -865,6 +876,7 @@ const ResponsiveContainer=({children})=>children||null;
             <div key={sub.id} className="row" style={{padding:"9px 16px 9px 44px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid #1a2235"}} onClick={()=>showPreview(cat.id,sub.id)}>
               <div style={{flex:1}}><div style={{fontSize:13,color:"#c8cfe0"}}>{sub.label}</div><div style={{fontSize:11,color:"#4a5568"}}>{sp.length} productos</div></div><div style={{fontSize:14,color:"#2a3550"}}>›</div>
             </div>);})}
+          {(()=>{const validS=new Set(cat.subs.map(s=>s.id));const orph=cp.filter(p=>!p.subId||!validS.has(p.subId));return orph.length>0?(<div className="row" style={{padding:"9px 16px 9px 44px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid #1a2235"}} onClick={()=>showPreview(cat.id,"__sin_sub__")}><div style={{flex:1}}><div style={{fontSize:13,color:"#8b9ab0"}}>Sin subcategoría</div><div style={{fontSize:11,color:"#4a5568"}}>{orph.length} productos</div></div><div style={{fontSize:14,color:"#2a3550"}}>›</div></div>):null;})()}
         </div>);})}
     </div>);
   }
@@ -941,8 +953,8 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── ConfigScreen ──────────────────────────────────────────────────────────────
-  function ConfigScreen({cats,productos,guardar,pop,showToast,askConfirm}) {
-    const [openId,setOpenId]=useState(null); const [localCats,setLocalCats]=useState(cats);
+  function ConfigScreen({cats,productos,guardar,pop,showToast,askConfirm,openCatId}) {
+    const [openId,setOpenId]=useState(openCatId||null); const [localCats,setLocalCats]=useState(cats);
     const [newSubInputs,setNewSubInputs]=useState({}); const [movingSub,setMovingSub]=useState(null); const [moveTarget,setMoveTarget]=useState("");
     useEffect(()=>{setLocalCats(cats);},[cats]);
     const save=async(next)=>{setLocalCats(next);await guardar(next,null);};
