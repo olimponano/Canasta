@@ -411,10 +411,18 @@ const ResponsiveContainer=({children})=>children||null;
 
   // ── HomeScreen ───────────────────────────────────────────────────────────────
   function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast}) {
-    const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false);
+    const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false); const [sortCats,setSortCats]=useState("nombre-az");
     const total=productos.reduce((s,p)=>s+(gastoMensual(p)||0),0);
     const addCat=async({label,emoji,color})=>{await guardar([...cats,{id:uid(),label,emoji,color,subs:[]}],null);setShowAddCat(false);showToast("✅ Categoría creada");};
-    const sortedCats=[...cats].sort((a,b)=>alpha(a,b));
+    const sortedCats=[...cats].sort((a,b)=>{
+      const ga=productos.filter(p=>p.catId===a.id).reduce((s,p)=>s+(gastoMensual(p)||0),0);
+      const gb=productos.filter(p=>p.catId===b.id).reduce((s,p)=>s+(gastoMensual(p)||0),0);
+      if(sortCats==="nombre-az")return alpha(a,b);
+      if(sortCats==="nombre-za")return alpha(b,a);
+      if(sortCats==="gasto-asc")return ga-gb;
+      if(sortCats==="gasto-desc")return gb-ga;
+      return 0;
+    });
     if(q){
       const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
       return (<div className="fade">
@@ -440,7 +448,15 @@ const ResponsiveContainer=({children})=>children||null;
           <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>⚙️</button>
         </div>
       </div>
-      <SearchBar value={q} onChange={setQ}/>
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0}}/>
+        <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0}}>
+          <option value="nombre-az">A→Z</option>
+          <option value="nombre-za">Z→A</option>
+          <option value="gasto-desc">Gasto ↓</option>
+          <option value="gasto-asc">Gasto ↑</option>
+        </select>
+      </div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {sortedCats.map(cat=>{
           const catProds=productos.filter(p=>p.catId===cat.id);
@@ -461,25 +477,48 @@ const ResponsiveContainer=({children})=>children||null;
   // ── SubsScreen ───────────────────────────────────────────────────────────────
   function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
+    const [sortBy,setSortBy]=useState("nombre-az");
     const cat=cats.find(c=>c.id===catId); if(!cat) return null;
     const catGasto=productos.filter(p=>p.catId===catId).reduce((s,p)=>s+(gastoMensual(p)||0),0);
-    const addSub=async({label})=>{await guardar(cats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c),null);setShowAddSub(false);showToast("✅ Subcategoría creada");};
+    const addSub=({label})=>{guardar(cats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c),null);setShowAddSub(false);showToast("✅ Subcategoría creada");};
+
+    const validSubIds=new Set(cat.subs.map(s=>s.id));
+    const orphans=cat.subs.length>0
+      ? productos.filter(p=>p.catId===catId&&(!p.subId||!validSubIds.has(p.subId)))
+      : [];
+    const orphanGasto=orphans.reduce((s,p)=>s+(gastoMensual(p)||0),0);
+
+    const SortSelect=()=>(
+      <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0}}>
+        <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
+        <option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
+        <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option>
+      </select>
+    );
+
     if(q){
       const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
       return (<div className="fade">
         <TopBar title={`${cat.emoji} ${cat.label}`} onBack={pop} right={<button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>}/>
-        <SearchBar value={q} onChange={setQ}/>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0}}/>
+          <SortSelect/>
+        </div>
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const pcat=cats.find(c=>c.id===p.catId);return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;})}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>{results.map(p=>{const pcat=cats.find(c=>c.id===p.catId);return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;})}</div>
       </div>);
     }
+
     return (<div className="fade">
       <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={catGasto>0?`${fmt(catGasto)}/mes`:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
           <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Ver todos</button>
         </div>}/>
-      <SearchBar value={q} onChange={setQ}/>
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0}}/>
+        <SortSelect/>
+      </div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
           const subProds=productos.filter(p=>p.catId===catId&&p.subId===sub.id);
@@ -489,13 +528,23 @@ const ResponsiveContainer=({children})=>children||null;
             <div style={{textAlign:"right"}}>{gasto>0&&<div className="mono" style={{fontWeight:600,fontSize:14,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550"}}>›</div></div>
           </div>);
         })}
+        {orphans.length>0&&(
+          <div className="card row" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderLeft:"3px solid #4a5568",opacity:0.85}} onClick={()=>push("lista",{catId,subId:"__sin_sub__"})}>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:600,fontSize:15,color:"#8b9ab0"}}>Sin subcategoría</div>
+              <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{orphans.length} producto{orphans.length!==1?"s":""} sin asignar · usá Selec. para moverlos</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              {orphanGasto>0&&<div className="mono" style={{fontWeight:600,fontSize:14,color:"#8b9ab0"}}>{fmt(orphanGasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}
+              <div style={{fontSize:18,color:"#2a3550"}}>›</div>
+            </div>
+          </div>
+        )}
       </div>
       <button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
-
-  // ── ListaScreen ───────────────────────────────────────────────────────────────
   function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast}) {
     const [q,setQ]=useState("");
     const [sortBy,setSortBy]=useState("nombre-az"); const [selected,setSelected]=useState(new Set());
