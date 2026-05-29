@@ -632,7 +632,7 @@ const ResponsiveContainer=({children})=>children||null;
   function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses}) {
     const [q,setQ]=useState("");
     const isStock=activeTab==="stock"; const isCompras=activeTab==="compras";
-    const defaultSort=isStock||isCompras?"meses-asc":"nombre-az";
+    const defaultSort="nombre-az";
     const [sortBy,setSortBy]=useState(defaultSort); const [selected,setSelected]=useState(new Set());
     const [selectMode,setSelectMode]=useState(false); const [moveModal,setMoveModal]=useState(false); const [moveDest,setMoveDest]=useState("");
     const cat=cats.find(c=>c.id===catId); const sub=cat?.subs?.find(s=>s.id===subId); if(!cat) return null;
@@ -729,51 +729,49 @@ const ResponsiveContainer=({children})=>children||null;
     const [showAddDim,setShowAddDim]=useState(false);
     const [newCantRef,setNewCantRef]=useState("");
 
-    const entradas=stock[p.id]||[];
+    const entradasGuardadas=stock[p.id]||[];
+    // Si no hay entradas y hay cantidadRef, mostrar la ref con stock 0 visualmente
+    const entradas=entradasGuardadas.length===0&&p.cantidadRef
+      ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,virtual:true}]
+      :entradasGuardadas;
+
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
     const mesesTxt=fmtMeses(meses);
     const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
 
-    // Si no hay entradas, inicializar con la dimensión de referencia al abrir
-    const handleOpen=()=>{
-      if(!open && entradas.length===0 && p.cantidadRef) {
-        // No auto-crear, solo abrir el panel vacío con la ref lista para usar
-      }
-      setOpen(o=>!o);
-      setShowAddDim(false);
-    };
+    const handleOpen=()=>{setOpen(o=>!o);setShowAddDim(false);};
 
     const cambiarStock=(idx,delta)=>{
-      const nuevas=entradas.map((e,i)=>i===idx?{...e,stock:Math.max(0,e.stock+delta)}:e);
+      const base=entradasGuardadas.length===0&&p.cantidadRef
+        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
+        :entradasGuardadas;
+      const nuevas=base.map((e,i)=>i===idx?{...e,stock:Math.max(0,e.stock+delta)}:e);
+      guardarStock(p.id,nuevas);
+    };
+
+    const eliminarEntrada=(idx)=>{
+      const nuevas=entradasGuardadas.filter((_,i)=>i!==idx);
       guardarStock(p.id,nuevas);
     };
 
     const agregarDimension=()=>{
       const cant=parseFloat(newCantRef.replace(",","."));
       if(!cant||cant<=0)return;
-      // Verificar que no exista ya esa dimensión
-      if(entradas.find(e=>e.cantRef===cant))return;
-      const nuevas=[...entradas,{cantRef:cant,unidad:p.unidad||"gr",stock:1}];
+      if(entradasGuardadas.find(e=>e.cantRef===cant))return;
+      const base=entradasGuardadas.length===0&&p.cantidadRef
+        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
+        :entradasGuardadas;
+      const nuevas=[...base,{cantRef:cant,unidad:p.unidad||"gr",stock:1}];
       guardarStock(p.id,nuevas);
       setNewCantRef("");
       setShowAddDim(false);
     };
 
-    // Si no hay entradas y hay cantidadRef, mostrar acceso directo a la ref
-    const handleAddRef=()=>{
-      const nuevas=[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:1}];
-      guardarStock(p.id,nuevas);
-    };
-
-    const fmtTotal=(t)=>{
-      const r=Math.round(t*100)/100;
-      return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");
-    };
+    const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
 
     return (
       <div className="card" style={{borderLeft:`3px solid ${cat?.color||"#444"}`,overflow:"hidden"}}>
-        {/* Fila principal — siempre visible */}
         <div style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={handleOpen}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div>
@@ -786,42 +784,32 @@ const ResponsiveContainer=({children})=>children||null;
           <div style={{color:"#2a3550",fontSize:14,marginLeft:4}}>{open?"▲":"▼"}</div>
         </div>
 
-        {/* Panel inline */}
         {open&&(
           <div style={{borderTop:"1px solid #1a2235",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
-
-            {/* Entradas existentes */}
-            {entradas.length===0&&(
-              <div style={{fontSize:13,color:"#4a5568",textAlign:"center",padding:"6px 0"}}>
-                Sin stock cargado.
-                {p.cantidadRef&&<button className="btn" onClick={handleAddRef} style={{display:"block",margin:"8px auto 0",background:"#1a2235",color:"#3b82f6",border:"1px solid #2a3550",padding:"6px 16px",fontSize:13}}>+ Agregar {p.cantidadRef}{p.unidad||""}</button>}
-              </div>
-            )}
             {entradas.map((e,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:10}}>
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
                 <div style={{flex:1,fontSize:14,fontWeight:600,color:"#c8cfe0"}}>{e.cantRef}{e.unidad||p.unidad||"gr"}</div>
-                <button onClick={()=>cambiarStock(i,-1)} disabled={e.stock<=0} style={{width:34,height:34,borderRadius:8,background:e.stock<=0?"#0d1321":"#1a2235",border:"1px solid #2a3550",color:e.stock<=0?"#2a3550":"#e8eaf0",fontSize:20,cursor:e.stock<=0?"default":"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                <button onClick={()=>cambiarStock(i,-1)} disabled={e.stock<=0} style={{width:34,height:34,borderRadius:8,background:e.stock<=0?"#0d1321":"#1a2235",border:"1px solid #2a3550",color:e.stock<=0?"#2a3570":"#e8eaf0",fontSize:20,cursor:e.stock<=0?"default":"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
                 <div style={{width:32,textAlign:"center",fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{e.stock}</div>
                 <button onClick={()=>cambiarStock(i,1)} style={{width:34,height:34,borderRadius:8,background:"#1a2235",border:"1px solid #2a3550",color:"#e8eaf0",fontSize:20,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                {!e.virtual&&entradasGuardadas.length>1&&<button onClick={()=>eliminarEntrada(i)} style={{width:28,height:28,borderRadius:6,background:"#1a0a0a",border:"1px solid #2d1212",color:"#ef4444",fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>}
               </div>
             ))}
 
-            {/* Total en unidades de referencia */}
-            {entradas.length>0&&p.cantidadRef&&(
-              <div style={{fontSize:12,color:"#4a5568",borderTop:"1px solid #1a2235",paddingTop:8,marginTop:2}}>
+            {entradasGuardadas.length>1&&p.cantidadRef&&(
+              <div style={{fontSize:12,color:"#4a5568",borderTop:"1px solid #1a2235",paddingTop:8}}>
                 Total: <span style={{color:"#e8eaf0",fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span> × {p.cantidadRef}{p.unidad||""}
               </div>
             )}
 
-            {/* Agregar nueva dimensión */}
             {!showAddDim&&(
-              <button className="btn" onClick={()=>setShowAddDim(true)} style={{background:"#0d1321",border:"1px dashed #2a3550",color:"#4a5568",padding:"7px 0",fontSize:13,marginTop:2}}>
+              <button className="btn" onClick={()=>setShowAddDim(true)} style={{background:"#0d1321",border:"1px dashed #2a3550",color:"#4a5568",padding:"7px 0",fontSize:13}}>
                 + Agregar otra medida
               </button>
             )}
             {showAddDim&&(
-              <div style={{display:"flex",gap:8,alignItems:"center",marginTop:2}}>
-                <input className="inp" placeholder={`ej. 1500`} value={newCantRef} onChange={e=>setNewCantRef(e.target.value)}
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <input className="inp" placeholder="ej. 1500" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)}
                   style={{flex:1,padding:"8px 12px",fontSize:14}} autoFocus
                   onKeyDown={e=>e.key==="Enter"&&agregarDimension()}/>
                 <span style={{fontSize:13,color:"#4a5568",whiteSpace:"nowrap"}}>{p.unidad||"gr"}</span>
