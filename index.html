@@ -95,6 +95,8 @@ const ResponsiveContainer=({children})=>children||null;
     const n = parseFloat(str.replace(",","."));
     return isNaN(n) ? null : n;
   };
+  // Muestra "3x40m" si hay display guardado, sino "120m"
+  const fmtCantRef=(p)=>{if(!p||!p.cantidadRef)return "";const disp=p.cantidadRefDisplay?`${p.cantidadRefDisplay}${p.unidad||""}`:null;return disp||`${p.cantidadRef}${p.unidad||""}`};
 
   const DEFAULT_CATS = [
     { id:"primario",   label:"Primario",   emoji:"🛒", color:"#60a5fa", subs:[] },
@@ -444,7 +446,7 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{fontSize:12,fontWeight:700,color:urgColor,flexShrink:0,textAlign:"right"}}>{mesesTxt}</div>
             </div>
             <div style={{fontSize:12,color:"#4a5568",marginTop:2,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{p.cantidadRef}{p.unidad||""}</span>}</span>
+              <span>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{fmtCantRef(p)}</span>}</span>
               <span style={{fontSize:12,color:"#4a5568"}}>Stock: <span className="mono" style={{fontWeight:700,color:"#e8eaf0",fontSize:13}}>{fmtTotal(total)}</span></span>
             </div>
             <div style={{marginTop:4,display:"flex",gap:10}}>
@@ -473,7 +475,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>
             {equivalente!=null&&(
               <div style={{background:"#080c14",borderRadius:8,padding:"7px 10px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                <span style={{fontSize:11,color:"#4a5568"}}>Equiv. {p.cantidadRef}{p.unidad}:</span>
+                <span style={{fontSize:11,color:"#4a5568"}}>Equiv. {fmtCantRef(p)}:</span>
                 <span className="mono" style={{fontWeight:700,color:cat?.color||"#3b82f6",fontSize:13}}>{fmt(equivalente)}</span>
                 {diff!=null&&<span style={{fontSize:12,fontWeight:600,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"} {Math.abs(diff).toFixed(1)}%</span>}
                 {totalPagado&&cantCompradaNum>1&&<span style={{fontSize:11,color:"#4a5568",marginLeft:4}}>· Total: <span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(totalPagado)}</span></span>}
@@ -535,7 +537,7 @@ const ResponsiveContainer=({children})=>children||null;
         {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#3b82f6":"#2a3550"}`,background:isSel?"#3b82f6":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div>
-          <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#3a4255"}}>{p.cantidadRef}{p.unidad||""}</span>}</div>
+          <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#3a4255"}}>{fmtCantRef(p)}</span>}</div>
         </div>
         <div style={{textAlign:"right",flexShrink:0}}>
           {p.precioRef
@@ -578,7 +580,7 @@ const ResponsiveContainer=({children})=>children||null;
             const validSubs = new Set(lc.flatMap(c=>c.subs.map(s=>s.id)));
             const lp = (prodRows||[]).map(r=>({
               id:r.id, nombre:r.nombre, marca:r.marca||"", catId:r.cat_id, subId:r.sub_id&&validSubs.has(r.sub_id)?r.sub_id:null,
-              precioRef:r.precio_ref, unidadesMes:r.unidades_mes, cantidadRef:r.cantidad_ref, unidad:r.unidad||"gr",
+              precioRef:r.precio_ref, unidadesMes:r.unidades_mes, cantidadRef:r.cantidad_ref, cantidadRefDisplay:r.cantidad_ref_display||null, unidad:r.unidad||"gr",
               historialCompra:r.historial_compra||[]
             }));
             setCats(lc); setProductos(lp);
@@ -621,7 +623,7 @@ const ResponsiveContainer=({children})=>children||null;
         if (nextProds) {
           await sb.from("productos").upsert(
             np.map(p=>({id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
-              precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:p.cantidadRef,
+              precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:p.cantidadRef,cantidad_ref_display:p.cantidadRefDisplay||null,
               unidad:p.unidad||"gr",historial_compra:p.historialCompra||[]}))
           );
           // Delete removed products
@@ -711,7 +713,7 @@ const ResponsiveContainer=({children})=>children||null;
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#3b82f6",fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,fmtCantRef};
 
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio"].includes(s);
 
@@ -778,7 +780,7 @@ const ResponsiveContainer=({children})=>children||null;
         <SearchBar value={q} onChange={setQ}/>
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);
-          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock}/>;
+          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} fmtCantRef={fmtCantRef}/>;
           if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
           return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
@@ -853,7 +855,7 @@ const ResponsiveContainer=({children})=>children||null;
         </div>
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{results.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
-          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock}/>;
+          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} fmtCantRef={fmtCantRef}/>;
           if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
           return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
@@ -976,13 +978,13 @@ const ResponsiveContainer=({children})=>children||null;
         :<div style={{display:"flex",flexDirection:"column",gap:8}}>
           {lista.map(p=>{
             const pcat=q?cats.find(c=>c.id===p.catId):cat;
-            if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock}/>;
+            if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} fmtCantRef={fmtCantRef}/>;
             if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
             const isSel=selected.has(p.id);
             return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
               onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
               {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#3b82f6":"#2a3550"}`,background:isSel?"#3b82f6":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
-              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#3a4255"}}>{p.cantidadRef}{p.unidad||""}</span>}</div></div>
+              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#3a4255"}}>{fmtCantRef(p)}</span>}</div></div>
               <div style={{textAlign:"right",flexShrink:0}}>{p.precioRef?<><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(p.precioRef)}</div>{gastoMensual(p)&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:pcat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gastoMensual(p))}</div>}</>:<div style={{fontSize:12,color:"#4a5568"}}>Sin precio</div>}</div>
             </div>);
           })}
@@ -992,7 +994,7 @@ const ResponsiveContainer=({children})=>children||null;
 
 
   // ── StockCard ─────────────────────────────────────────────────────────────────
-  function StockCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock}) {
+  function StockCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,askConfirm,fmtCantRef}) {
     const [open,setOpen]=useState(false);
     const [showAddDim,setShowAddDim]=useState(false);
     const [newCantRef,setNewCantRef]=useState("");
@@ -1050,7 +1052,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={handleOpen}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div>
-            <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#3a4255"}}>{p.cantidadRef}{p.unidad||""}</span>}</div>
+            <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#3a4255"}}>{fmtCantRef(p)}</span>}</div>
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
             <div style={{fontSize:12,color:"#4a5568"}}>Stock: <span className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmtTotal(total)}</span></div>
@@ -1067,13 +1069,13 @@ const ResponsiveContainer=({children})=>children||null;
                 <button onClick={()=>cambiarStock(i,-1)} disabled={e.stock<=0} style={{width:34,height:34,borderRadius:8,background:e.stock<=0?"#0d1321":"#1a2235",border:"1px solid #2a3550",color:e.stock<=0?"#2a3570":"#e8eaf0",fontSize:20,cursor:e.stock<=0?"default":"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
                 <div style={{width:32,textAlign:"center",fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{e.stock}</div>
                 <button onClick={()=>cambiarStock(i,1)} style={{width:34,height:34,borderRadius:8,background:"#1a2235",border:"1px solid #2a3550",color:"#e8eaf0",fontSize:20,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-                {!e.virtual&&entradasGuardadas.length>1&&<button onClick={()=>eliminarEntrada(i)} style={{width:28,height:28,borderRadius:6,background:"#1a0a0a",border:"1px solid #2d1212",color:"#ef4444",fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>}
+                {!e.virtual&&entradasGuardadas.length>1&&<button onClick={()=>askConfirm("¿Eliminar esta medida?",()=>eliminarEntrada(i),"Eliminar","#ef4444")} style={{width:28,height:28,borderRadius:6,background:"#1a0a0a",border:"1px solid #2d1212",color:"#ef4444",fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>}
               </div>
             ))}
 
             {entradasGuardadas.length>1&&p.cantidadRef&&(
               <div style={{fontSize:12,color:"#4a5568",borderTop:"1px solid #1a2235",paddingTop:8}}>
-                Total: <span style={{color:"#e8eaf0",fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span> × {p.cantidadRef}{p.unidad||""}
+                Total: <span style={{color:"#e8eaf0",fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span> × {fmtCantRef(p)}
               </div>
             )}
 
@@ -1124,7 +1126,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div>
-            <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{p.cantidadRef}{p.unidad||""}</span>}</div>
+            <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{fmtCantRef(p)}</span>}</div>
             <div style={{marginTop:6,display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
               <span style={{fontSize:12,fontWeight:600,color:urgColor}}>{mesesTxt}</span>
               <span style={{fontSize:11,color:"#4a5568"}}>· Stock: <span style={{color:"#e8eaf0",fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span></span>
@@ -1205,7 +1207,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{display:"flex",gap:14}}>
           <div style={{fontSize:34}}>{cat?.emoji}</div>
           <div style={{flex:1}}><div style={{fontWeight:700,fontSize:19,color:"#e8eaf0"}}>{p.nombre}</div><div style={{fontSize:13,color:"#4a5568",marginTop:2}}>{p.marca||"—"}</div><div style={{marginTop:8}}><span style={{background:clr+"22",color:clr,borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:600}}>{cat?.label}{sub?` › ${sub.label}`:""}</span></div></div>
-          {p.cantidadRef&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:700,color:"#e8eaf0"}}>{p.cantidadRef}</div><div style={{fontSize:12,color:"#4a5568"}}>{p.unidad||""}</div></div>}
+          {p.cantidadRef&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:700,color:"#e8eaf0"}}>{fmtCantRef(p)}</div></div>}
         </div>
         <div style={{marginTop:16,background:"#080c14",borderRadius:12,padding:"14px 16px"}}>
           <div style={{fontSize:11,color:"#4a5568",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Precio de referencia</div>
@@ -1234,7 +1236,7 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{display:"flex",alignItems:"baseline",gap:8}}><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(h.precio)}</div>{h.cantidad&&p.unidad&&<div style={{fontSize:12,color:"#4a5568"}}>{h.cantidad}{p.unidad}</div>}</div>
               <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3,flexWrap:"wrap"}}>
                 <div style={{fontSize:11,color:"#4a5568"}}>{fmtDate(h.fecha)}</div>
-                {h.equivalente!=null&&p.cantidadRef&&(<div style={{fontSize:11,color:clr}}>≈ {fmt(h.equivalente)} por {p.cantidadRef}{p.unidad}</div>)}
+                {h.equivalente!=null&&p.cantidadRef&&(<div style={{fontSize:11,color:clr}}>≈ {fmt(h.equivalente)} por {fmtCantRef(p)}</div>)}
               </div>
             </div>
             <button className="btn" onClick={()=>delH(h.id)} style={{background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"5px 10px",fontSize:12}}>✕</button>
@@ -1244,50 +1246,38 @@ const ResponsiveContainer=({children})=>children||null;
     </div>);
   }
 
-  // ── CantidadRefField — campo inteligente para cantidad de referencia ─────────
-  // Para unidad "m": muestra dos campos (rollos × metros/rollo) y calcula el total
-  // Para el resto: un solo campo numérico
-  function CantidadRefField({unidad, value, onChange}) {
-    // Detectar si el valor actual viene de un formato Nx (ej: 120 que era 3x40)
-    // Al editar un producto existente con unidad "m", mostramos los dos campos
-    const [rollos, setRollos] = useState("");
-    const [metrosPorRollo, setMetrosPorRollo] = useState("");
-    const [inicializado, setInicializado] = useState(false);
-
-    // Inicializar campos al montar o cuando cambia la unidad a "m"
-    React.useEffect(()=>{
-      if(unidad==="m" && !inicializado){
-        // Si hay un valor numérico, intentar descomponerlo (no siempre es posible)
-        // Lo dejamos vacío para que el usuario lo ingrese
-        if(value && !rollos && !metrosPorRollo){
-          // Si viene un número, ponemos ese número en metrosPorRollo con 1 rollo
-          setRollos("1");
-          setMetrosPorRollo(String(value));
-        }
-        setInicializado(true);
-      }
-    },[unidad]);
+  // ── CantidadRefField ──────────────────────────────────────────────────────────
+  // Para unidad "m": dos campos (rollos × metros). Llama onChange con {valor, display}
+  // Para el resto: un campo simple. Llama onChange con {valor, display:null}
+  function CantidadRefField({unidad, cantidadRef, cantidadRefDisplay, onChange}) {
+    // Pre-cargar rollos y metros desde el display guardado "3x40"
+    const initRollos = cantidadRefDisplay ? cantidadRefDisplay.split("x")[0]||"" : "";
+    const initMetros = cantidadRefDisplay ? cantidadRefDisplay.split("x")[1]||"" : 
+                       (cantidadRef&&unidad==="m"&&!cantidadRefDisplay ? String(cantidadRef) : "");
+    const [rollos, setRollos] = useState(initRollos);
+    const [metros, setMetros] = useState(initMetros);
 
     React.useEffect(()=>{
       if(unidad==="m"){
         const r=parseFloat(rollos)||0;
-        const m=parseFloat(metrosPorRollo)||0;
+        const m=parseFloat(metros)||0;
         const total=r*m;
-        onChange(total>0?String(total):"");
+        const display=r>0&&m>0?`${r}x${m}`:null;
+        onChange({valor: total>0?total:null, display});
       }
-    },[rollos,metrosPorRollo,unidad]);
+    },[rollos,metros]);
 
     if(unidad==="m"){
       const r=parseFloat(rollos)||0;
-      const m=parseFloat(metrosPorRollo)||0;
+      const m=parseFloat(metros)||0;
       const total=r*m;
       return (
         <div>
           <label style={{display:"block",fontSize:12,color:"#8b9ab0",marginBottom:6,fontWeight:600}}>Cantidad ref.</label>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <input className="inp" placeholder="3" value={rollos} onChange={e=>setRollos(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
-            <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>rollos ×</span>
-            <input className="inp" placeholder="40" value={metrosPorRollo} onChange={e=>setMetrosPorRollo(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
+            <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>×</span>
+            <input className="inp" placeholder="40" value={metros} onChange={e=>setMetros(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
             <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>m</span>
           </div>
           {total>0&&<div style={{fontSize:11,color:"#4a5568",marginTop:4}}>= <span style={{color:"#3b82f6",fontWeight:600}}>{total} m</span> en total</div>}
@@ -1297,7 +1287,7 @@ const ResponsiveContainer=({children})=>children||null;
     return (
       <div className="field">
         <label>Cantidad ref.</label>
-        <input className="inp" placeholder="ej. 300" value={value} onChange={e=>onChange(e.target.value)}/>
+        <input className="inp" placeholder="ej. 300" value={cantidadRef!=null?String(cantidadRef):""} onChange={e=>onChange({valor:e.target.value,display:null})}/>
       </div>
     );
   }
@@ -1305,16 +1295,15 @@ const ResponsiveContainer=({children})=>children||null;
   // ── EditarProdScreen ──────────────────────────────────────────────────────────
   function EditarProdScreen({prodId,cats,productos,guardar,pop,showToast,askConfirm}) {
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
-    const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef!=null?String(p.cantidadRef):"",unidad:p.unidad||"gr"});
+    const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef,cantidadRefDisplay:p.cantidadRefDisplay||null,unidad:p.unidad||"gr"});
     const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
     const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
     const submit=()=>askConfirm("¿Guardar los cambios?",async()=>{
       if(!form.nombre.trim())return showToast("El nombre es obligatorio","err");
-      const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;
+      const pr=form.precioRef?parseFloat(String(form.precioRef).replace(",",".")):null;
       const um=form.unidadesMes?parseFrac(form.unidadesMes):null;
-      // cantidadRef siempre como número, parseQty maneja "3x40" → 120
-      const cr=form.cantidadRef?parseQty(form.cantidadRef):null;
-      await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));
+      const cr=form.cantidadRef!=null?parseFloat(form.cantidadRef):null;
+      await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,cantidadRefDisplay:form.cantidadRefDisplay||null,subId:form.subId||null}:x));
       showToast("✅ Guardado");pop();
     },"Guardar cambios");
     return (<div className="fade"><TopBar title="Editar producto" subtitle={p.nombre} onBack={pop}/>
@@ -1331,8 +1320,8 @@ const ResponsiveContainer=({children})=>children||null;
           <div className="field"><label>Precio ref. ($)</label><input className="inp" placeholder="ej. 1200" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <CantidadRefField unidad={form.unidad} value={form.cantidadRef} onChange={v=>setForm(f=>({...f,cantidadRef:v}))}/>
-          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:""}))}>
+          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} cantidadRefDisplay={form.cantidadRefDisplay} onChange={({valor,display})=>setForm(f=>({...f,cantidadRef:valor,cantidadRefDisplay:display}))}/>
+          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:null,cantidadRefDisplay:null}))}>
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
@@ -1345,10 +1334,10 @@ const ResponsiveContainer=({children})=>children||null;
 
   // ── NuevoProdScreen ───────────────────────────────────────────────────────────
   function NuevoProdScreen({cats,initCatId,initSubId,productos,guardar,pop,showToast}) {
-    const [form,setForm]=useState({nombre:"",marca:"",catId:initCatId||cats[0]?.id,subId:initSubId&&initSubId!==UNASSIGNED_ID?initSubId:"",unidadesMes:"1",precioRef:"",cantidadRef:"",unidad:"gr"});
+    const [form,setForm]=useState({nombre:"",marca:"",catId:initCatId||cats[0]?.id,subId:initSubId&&initSubId!==UNASSIGNED_ID?initSubId:"",unidadesMes:"1",precioRef:"",cantidadRef:null,cantidadRefDisplay:null,unidad:"gr"});
     const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
     const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
-    const submit=async()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFrac(form.unidadesMes):null;const cr=form.cantidadRef?parseQty(form.cantidadRef):null;await guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
+    const submit=async()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(String(form.precioRef).replace(",",".")):null;const um=form.unidadesMes?parseFrac(form.unidadesMes):null;const cr=form.cantidadRef!=null?parseFloat(form.cantidadRef):null;await guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,cantidadRefDisplay:form.cantidadRefDisplay||null,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
     return (<div className="fade"><TopBar title="Nuevo producto" onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
@@ -1363,8 +1352,8 @@ const ResponsiveContainer=({children})=>children||null;
           <div className="field"><label>Precio ref. ($)</label><input className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <CantidadRefField unidad={form.unidad} value={form.cantidadRef} onChange={v=>setForm(f=>({...f,cantidadRef:v}))}/>
-          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:""}))}>
+          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} cantidadRefDisplay={form.cantidadRefDisplay} onChange={({valor,display})=>setForm(f=>({...f,cantidadRef:valor,cantidadRefDisplay:display}))}/>
+          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:null,cantidadRefDisplay:null}))}>
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
