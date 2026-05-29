@@ -649,13 +649,15 @@ const ResponsiveContainer=({children})=>children||null;
 
     // Calcula total en unidades de referencia del producto
     const stockTotal=(p)=>{
-      const entradas=stock[p.id]||[];
-      const cantRefNum=typeof p.cantidadRef==="string"?parseQty(p.cantidadRef):p.cantidadRef;
-      if(!cantRefNum||cantRefNum===0) return entradas.reduce((s,e)=>s+e.stock,0);
-      return entradas.reduce((s,e)=>{
-        const eCantRef=typeof e.cantRef==="string"?parseQty(String(e.cantRef)):e.cantRef;
-        return s+(e.stock*((eCantRef||cantRefNum)/cantRefNum));
-      },0);
+      try {
+        const entradas=stock[p.id]||[];
+        const cantRefNum=typeof p.cantidadRef==="string"?parseQty(p.cantidadRef):(p.cantidadRef||0);
+        if(!cantRefNum||cantRefNum===0) return entradas.reduce((s,e)=>s+(e.stock||0),0);
+        return entradas.reduce((s,e)=>{
+          const eCantRef=typeof e.cantRef==="string"?parseQty(String(e.cantRef)):(e.cantRef||cantRefNum);
+          return s+((e.stock||0)*((eCantRef||cantRefNum)/cantRefNum));
+        },0);
+      } catch(err){ return 0; }
     };
 
     const mesesRestantes=(p)=>{
@@ -713,7 +715,7 @@ const ResponsiveContainer=({children})=>children||null;
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#3b82f6",fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,fmtCantRef};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket};
 
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio"].includes(s);
 
@@ -780,7 +782,7 @@ const ResponsiveContainer=({children})=>children||null;
         <SearchBar value={q} onChange={setQ}/>
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);
-          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} fmtCantRef={fmtCantRef}/>;
+          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
           if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
           return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
@@ -855,7 +857,7 @@ const ResponsiveContainer=({children})=>children||null;
         </div>
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{results.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
-          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} fmtCantRef={fmtCantRef}/>;
+          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
           if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
           return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
@@ -978,7 +980,7 @@ const ResponsiveContainer=({children})=>children||null;
         :<div style={{display:"flex",flexDirection:"column",gap:8}}>
           {lista.map(p=>{
             const pcat=q?cats.find(c=>c.id===p.catId):cat;
-            if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} fmtCantRef={fmtCantRef}/>;
+            if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
             if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
             const isSel=selected.has(p.id);
             return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
@@ -994,7 +996,7 @@ const ResponsiveContainer=({children})=>children||null;
 
 
   // ── StockCard ─────────────────────────────────────────────────────────────────
-  function StockCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,askConfirm,fmtCantRef}) {
+  function StockCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,askConfirm}) {
     const [open,setOpen]=useState(false);
     const [showAddDim,setShowAddDim]=useState(false);
     const [newCantRef,setNewCantRef]=useState("");
@@ -1247,25 +1249,22 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── CantidadRefField ──────────────────────────────────────────────────────────
-  // Para unidad "m": dos campos (rollos × metros). Llama onChange con {valor, display}
-  // Para el resto: un campo simple. Llama onChange con {valor, display:null}
   function CantidadRefField({unidad, cantidadRef, cantidadRefDisplay, onChange}) {
-    // Pre-cargar rollos y metros desde el display guardado "3x40"
     const initRollos = cantidadRefDisplay ? cantidadRefDisplay.split("x")[0]||"" : "";
-    const initMetros = cantidadRefDisplay ? cantidadRefDisplay.split("x")[1]||"" : 
-                       (cantidadRef&&unidad==="m"&&!cantidadRefDisplay ? String(cantidadRef) : "");
+    const initMetros = cantidadRefDisplay ? cantidadRefDisplay.split("x")[1]||"" : "";
     const [rollos, setRollos] = useState(initRollos);
     const [metros, setMetros] = useState(initMetros);
 
-    React.useEffect(()=>{
-      if(unidad==="m"){
-        const r=parseFloat(rollos)||0;
-        const m=parseFloat(metros)||0;
-        const total=r*m;
-        const display=r>0&&m>0?`${r}x${m}`:null;
-        onChange({valor: total>0?total:null, display});
-      }
-    },[rollos,metros]);
+    const handleRollos=(v)=>{
+      setRollos(v);
+      const r=parseFloat(v)||0, m=parseFloat(metros)||0, total=r*m;
+      onChange({valor:total>0?total:null, display:r>0&&m>0?`${r}x${m}`:null});
+    };
+    const handleMetros=(v)=>{
+      setMetros(v);
+      const r=parseFloat(rollos)||0, m=parseFloat(v)||0, total=r*m;
+      onChange({valor:total>0?total:null, display:r>0&&m>0?`${r}x${m}`:null});
+    };
 
     if(unidad==="m"){
       const r=parseFloat(rollos)||0;
@@ -1275,9 +1274,9 @@ const ResponsiveContainer=({children})=>children||null;
         <div>
           <label style={{display:"block",fontSize:12,color:"#8b9ab0",marginBottom:6,fontWeight:600}}>Cantidad ref.</label>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <input className="inp" placeholder="3" value={rollos} onChange={e=>setRollos(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
+            <input className="inp" placeholder="3" value={rollos} onChange={e=>handleRollos(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
             <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>×</span>
-            <input className="inp" placeholder="40" value={metros} onChange={e=>setMetros(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
+            <input className="inp" placeholder="40" value={metros} onChange={e=>handleMetros(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
             <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>m</span>
           </div>
           {total>0&&<div style={{fontSize:11,color:"#4a5568",marginTop:4}}>= <span style={{color:"#3b82f6",fontWeight:600}}>{total} m</span> en total</div>}
