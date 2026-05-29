@@ -175,7 +175,9 @@ const ResponsiveContainer=({children})=>children||null;
         f.forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
       } else {
         const tSubs = filterSubId ? cat.subs.filter(s=>s.id===filterSubId) : [...cat.subs].sort((a,b)=>alpha(a,b));
-        const hasProds = tSubs.some(sub => cp.some(p=>p.subId===sub.id));
+        const validSubs=new Set(cat.subs.map(s=>s.id));
+        const orphans=cp.filter(p=>!p.subId||!validSubs.has(p.subId));
+        const hasProds = tSubs.some(sub => cp.some(p=>p.subId===sub.id)) || (!filterSubId&&orphans.length>0);
         if (!hasProds) return;
         lines.push(`=== ${cat.label.toUpperCase()} ===`);
         tSubs.forEach(sub => {
@@ -184,6 +186,11 @@ const ResponsiveContainer=({children})=>children||null;
           lines.push(`--- ${sub.label} ---`);
           sp.forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
         });
+        // Exportar huérfanos al final si no hay filtro de sub
+        if(!filterSubId&&orphans.length>0){
+          lines.push(`--- Sin subcategoría ---`);
+          [...orphans].sort((a,b)=>alpha(a,b,"nombre")).forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
+        }
       }
     });
     return lines.join("\n").trim();
@@ -641,8 +648,12 @@ const ResponsiveContainer=({children})=>children||null;
     // Calcula total en unidades de referencia del producto
     const stockTotal=(p)=>{
       const entradas=stock[p.id]||[];
-      if(!p.cantidadRef||p.cantidadRef===0) return entradas.reduce((s,e)=>s+e.stock,0);
-      return entradas.reduce((s,e)=>s+(e.stock*(e.cantRef/p.cantidadRef)),0);
+      const cantRefNum=typeof p.cantidadRef==="string"?parseQty(p.cantidadRef):p.cantidadRef;
+      if(!cantRefNum||cantRefNum===0) return entradas.reduce((s,e)=>s+e.stock,0);
+      return entradas.reduce((s,e)=>{
+        const eCantRef=typeof e.cantRef==="string"?parseQty(String(e.cantRef)):e.cantRef;
+        return s+(e.stock*((eCantRef||cantRefNum)/cantRefNum));
+      },0);
     };
 
     const mesesRestantes=(p)=>{
@@ -1220,7 +1231,15 @@ const ResponsiveContainer=({children})=>children||null;
     const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef!=null?String(p.cantidadRef):"",unidad:p.unidad||"gr"});
     const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
     const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
-    const submit=()=>askConfirm("¿Guardar los cambios?",async()=>{if(!form.nombre.trim())return showToast("El nombre es obligatorio","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFrac(form.unidadesMes):null;const cr=form.cantidadRef?(["m","un"].includes(form.unidad)?form.cantidadRef.trim():parseFloat(form.cantidadRef.replace(",","."))||null):null;await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));showToast("✅ Guardado");pop();},"Guardar cambios");
+    const submit=()=>askConfirm("¿Guardar los cambios?",async()=>{
+      if(!form.nombre.trim())return showToast("El nombre es obligatorio","err");
+      const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;
+      const um=form.unidadesMes?parseFrac(form.unidadesMes):null;
+      // cantidadRef siempre como número, parseQty maneja "3x40" → 120
+      const cr=form.cantidadRef?parseQty(form.cantidadRef):null;
+      await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,subId:form.subId||null}:x));
+      showToast("✅ Guardado");pop();
+    },"Guardar cambios");
     return (<div className="fade"><TopBar title="Editar producto" subtitle={p.nombre} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input className="inp" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
@@ -1252,7 +1271,7 @@ const ResponsiveContainer=({children})=>children||null;
     const [form,setForm]=useState({nombre:"",marca:"",catId:initCatId||cats[0]?.id,subId:initSubId&&initSubId!==UNASSIGNED_ID?initSubId:"",unidadesMes:"1",precioRef:"",cantidadRef:"",unidad:"gr"});
     const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
     const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
-    const submit=async()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFrac(form.unidadesMes):null;const cr=form.cantidadRef?(["m","un"].includes(form.unidad)?form.cantidadRef.trim():parseFloat(form.cantidadRef.replace(",","."))||null):null;await guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
+    const submit=async()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(form.precioRef.replace(",",".")):null;const um=form.unidadesMes?parseFrac(form.unidadesMes):null;const cr=form.cantidadRef?parseQty(form.cantidadRef):null;await guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
     return (<div className="fade"><TopBar title="Nuevo producto" onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
