@@ -996,9 +996,9 @@ const ResponsiveContainer=({children})=>children||null;
     const [open,setOpen]=useState(false);
     const [showAddDim,setShowAddDim]=useState(false);
     const [newCantRef,setNewCantRef]=useState("");
+    const [newMetros,setNewMetros]=useState("");
 
     const entradasGuardadas=stock[p.id]||[];
-    // Si no hay entradas y hay cantidadRef, mostrar la ref con stock 0 visualmente
     const entradas=entradasGuardadas.length===0&&p.cantidadRef
       ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,virtual:true}]
       :entradasGuardadas;
@@ -1024,15 +1024,22 @@ const ResponsiveContainer=({children})=>children||null;
     };
 
     const agregarDimension=()=>{
-      const cant=parseFloat(newCantRef.replace(",","."));
+      let cant;
+      if(p.unidad==="m"){
+        const r=parseFloat(newCantRef)||0;
+        const m=parseFloat(newMetros)||0;
+        cant=r*m;
+      } else {
+        cant=parseFloat(newCantRef.replace(",","."));
+      }
       if(!cant||cant<=0)return;
       if(entradasGuardadas.find(e=>e.cantRef===cant))return;
       const base=entradasGuardadas.length===0&&p.cantidadRef
         ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
         :entradasGuardadas;
-      const nuevas=[...base,{cantRef:cant,unidad:p.unidad||"gr",stock:1}];
+      const nuevas=[...base,{cantRef:cant,unidad:p.unidad||"gr",stock:0}];
       guardarStock(p.id,nuevas);
-      setNewCantRef("");
+      setNewCantRef("");setNewMetros("");setShowAddDim(false);
       setShowAddDim(false);
     };
 
@@ -1075,7 +1082,19 @@ const ResponsiveContainer=({children})=>children||null;
                 + Agregar otra medida
               </button>
             )}
-            {showAddDim&&(
+            {showAddDim&&(p.unidad==="m"?(
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <input className="inp" placeholder="3" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}} autoFocus/>
+                  <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>rollos ×</span>
+                  <input className="inp" placeholder="40" value={newMetros} onChange={e=>setNewMetros(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>m</span>
+                  <button className="btn" onClick={agregarDimension} style={{background:"#3b82f6",color:"#fff",padding:"8px 12px",fontSize:14}}>+</button>
+                  <button className="btn" onClick={()=>{setShowAddDim(false);setNewCantRef("");setNewMetros("");}} style={{background:"#1a2235",color:"#8b9ab0",padding:"8px 10px",fontSize:14}}>✕</button>
+                </div>
+                {parseFloat(newCantRef)>0&&parseFloat(newMetros)>0&&<div style={{fontSize:11,color:"#4a5568"}}>= <span style={{color:"#3b82f6",fontWeight:600}}>{parseFloat(newCantRef)*parseFloat(newMetros)} m</span> en total</div>}
+              </div>
+            ):(
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <input className="inp" placeholder="ej. 1500" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)}
                   style={{flex:1,padding:"8px 12px",fontSize:14}} autoFocus
@@ -1084,7 +1103,7 @@ const ResponsiveContainer=({children})=>children||null;
                 <button className="btn" onClick={agregarDimension} style={{background:"#3b82f6",color:"#fff",padding:"8px 14px",fontSize:14}}>+</button>
                 <button className="btn" onClick={()=>{setShowAddDim(false);setNewCantRef("");}} style={{background:"#1a2235",color:"#8b9ab0",padding:"8px 10px",fontSize:14}}>✕</button>
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>
@@ -1225,6 +1244,64 @@ const ResponsiveContainer=({children})=>children||null;
     </div>);
   }
 
+  // ── CantidadRefField — campo inteligente para cantidad de referencia ─────────
+  // Para unidad "m": muestra dos campos (rollos × metros/rollo) y calcula el total
+  // Para el resto: un solo campo numérico
+  function CantidadRefField({unidad, value, onChange}) {
+    // Detectar si el valor actual viene de un formato Nx (ej: 120 que era 3x40)
+    // Al editar un producto existente con unidad "m", mostramos los dos campos
+    const [rollos, setRollos] = useState("");
+    const [metrosPorRollo, setMetrosPorRollo] = useState("");
+    const [inicializado, setInicializado] = useState(false);
+
+    // Inicializar campos al montar o cuando cambia la unidad a "m"
+    React.useEffect(()=>{
+      if(unidad==="m" && !inicializado){
+        // Si hay un valor numérico, intentar descomponerlo (no siempre es posible)
+        // Lo dejamos vacío para que el usuario lo ingrese
+        if(value && !rollos && !metrosPorRollo){
+          // Si viene un número, ponemos ese número en metrosPorRollo con 1 rollo
+          setRollos("1");
+          setMetrosPorRollo(String(value));
+        }
+        setInicializado(true);
+      }
+    },[unidad]);
+
+    React.useEffect(()=>{
+      if(unidad==="m"){
+        const r=parseFloat(rollos)||0;
+        const m=parseFloat(metrosPorRollo)||0;
+        const total=r*m;
+        onChange(total>0?String(total):"");
+      }
+    },[rollos,metrosPorRollo,unidad]);
+
+    if(unidad==="m"){
+      const r=parseFloat(rollos)||0;
+      const m=parseFloat(metrosPorRollo)||0;
+      const total=r*m;
+      return (
+        <div>
+          <label style={{display:"block",fontSize:12,color:"#8b9ab0",marginBottom:6,fontWeight:600}}>Cantidad ref.</label>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <input className="inp" placeholder="3" value={rollos} onChange={e=>setRollos(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
+            <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>rollos ×</span>
+            <input className="inp" placeholder="40" value={metrosPorRollo} onChange={e=>setMetrosPorRollo(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
+            <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>m</span>
+          </div>
+          {total>0&&<div style={{fontSize:11,color:"#4a5568",marginTop:4}}>= <span style={{color:"#3b82f6",fontWeight:600}}>{total} m</span> en total</div>}
+        </div>
+      );
+    }
+    return (
+      <div className="field">
+        <label>Cantidad ref.</label>
+        <input className="inp" placeholder="ej. 300" value={value} onChange={e=>onChange(e.target.value)}/>
+      </div>
+    );
+  }
+
   // ── EditarProdScreen ──────────────────────────────────────────────────────────
   function EditarProdScreen({prodId,cats,productos,guardar,pop,showToast,askConfirm}) {
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
@@ -1254,8 +1331,8 @@ const ResponsiveContainer=({children})=>children||null;
           <div className="field"><label>Precio ref. ($)</label><input className="inp" placeholder="ej. 1200" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div className="field"><label>Cantidad ref.</label><input className="inp" placeholder="ej. 300" value={form.cantidadRef} onChange={e=>setForm(f=>({...f,cantidadRef:e.target.value}))}/></div>
-          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value}))}>
+          <CantidadRefField unidad={form.unidad} value={form.cantidadRef} onChange={v=>setForm(f=>({...f,cantidadRef:v}))}/>
+          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:""}))}>
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
@@ -1286,8 +1363,8 @@ const ResponsiveContainer=({children})=>children||null;
           <div className="field"><label>Precio ref. ($)</label><input className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div className="field"><label>Cantidad ref.</label><input className="inp" placeholder="ej. 300" value={form.cantidadRef} onChange={e=>setForm(f=>({...f,cantidadRef:e.target.value}))}/></div>
-          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value}))}>
+          <CantidadRefField unidad={form.unidad} value={form.cantidadRef} onChange={v=>setForm(f=>({...f,cantidadRef:v}))}/>
+          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:""}))}>
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
