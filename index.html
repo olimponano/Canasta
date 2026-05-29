@@ -276,11 +276,193 @@ const ResponsiveContainer=({children})=>children||null;
     return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:"#3b82f6",color:"#fff",fontSize:28,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 24px #3b82f655",zIndex:100,lineHeight:1}}>+</button>;
   }
 
+  function FloatingCompras({onClick}) {
+    return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:"#10b981",color:"#fff",fontSize:26,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 24px #10b98155",zIndex:100,lineHeight:1}}>🛒</button>;
+  }
+
+  function TicketDrawer({ticket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar}) {
+    const total=ticket.reduce((s,i)=>s+(i.equivalente??i.precio??0),0);
+    const totalRef=ticket.reduce((s,i)=>{
+      const p=productos.find(x=>x.id===i.prodId);
+      return s+(p?.precioRef||i.equivalente||i.precio||0);
+    },0);
+    const diff=total-totalRef;
+    const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
+
+    return (
+      <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008"}}>
+        {/* Header siempre visible */}
+        <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setTicketOpen(o=>!o)}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#10b981"}}>🛒 Modo compras {ticket.length>0&&`· ${ticket.length} producto${ticket.length>1?"s":""}`}</div>
+            {ticket.length>0&&(
+              <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>
+                <span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(total)}</span>
+                {diffPct!==null&&<span style={{marginLeft:8,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</span>}
+              </div>
+            )}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            {ticket.length>0&&<button className="btn" onClick={e=>{e.stopPropagation();onFinalizar();}} style={{background:"#10b981",color:"#fff",padding:"7px 14px",fontSize:13}}>Finalizar</button>}
+            <button className="btn" onClick={e=>{e.stopPropagation();onCancelar();}} style={{background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"7px 12px",fontSize:13}}>✕</button>
+            <span style={{color:"#4a5568",fontSize:16,alignSelf:"center"}}>{ticketOpen?"▼":"▲"}</span>
+          </div>
+        </div>
+
+        {/* Detalle expandible */}
+        {ticketOpen&&ticket.length>0&&(
+          <div style={{maxHeight:240,overflowY:"auto",borderTop:"1px solid #1a2235"}}>
+            {ticket.map((item,i)=>{
+              const p=productos.find(x=>x.id===item.prodId);
+              const cat=cats.find(c=>c.id===p?.catId);
+              const diff2=item.equivalente!=null&&p?.precioRef?item.equivalente-p.precioRef:null;
+              return (
+                <div key={i} style={{padding:"10px 16px",borderBottom:"1px solid #1a2235",display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:cat?.color||"#444",flexShrink:0}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
+                    <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantRef&&` · ${item.cantRef}${item.unidad||""}`}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.equivalente??item.precio)}</div>
+                    {diff2!=null&&<div style={{fontSize:11,fontWeight:600,color:diff2<=0?"#10b981":"#ef4444"}}>{diff2<=0?"▼":"▲"} {fmt(Math.abs(diff2))}</div>}
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",background:"#080c14"}}>
+              <span style={{fontSize:13,color:"#4a5568",fontWeight:600}}>Total</span>
+              <div style={{textAlign:"right"}}>
+                <span className="mono" style={{fontSize:15,fontWeight:700,color:"#e8eaf0"}}>{fmt(total)}</span>
+                {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {fmt(Math.abs(diff))} vs ref ({diffPct}%)</div>}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── ComprasCardInline ─────────────────────────────────────────────────────────
+  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket}) {
+    const [open,setOpen]=useState(false);
+    const [precio,setPrecio]=useState("");
+    const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
+    const [fecha,setFecha]=useState(todayISO());
+    const [saving,setSaving]=useState(false);
+
+    // Stock inline igual que StockCard
+    const entradasGuardadas=stock[p.id]||[];
+    const entradas=entradasGuardadas.length===0&&p.cantidadRef
+      ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,virtual:true}]
+      :entradasGuardadas;
+
+    const total=stockTotal(p);
+    const meses=mesesRestantes(p);
+    const mesesTxt=fmtMeses(meses);
+    const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
+    const hist=p.historialCompra||[];
+    const ultimoPrecio=hist.length>0?hist[hist.length-1].precio:null;
+    const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
+
+    const precioNum=parseFloat((precio||"").replace(",","."));
+    const cantNum=parseFloat((cantidad||"").replace(",","."));
+    const cantRefNum=p.cantidadRef;
+    const equivalente=(precioNum>0&&cantNum>0&&cantRefNum)?(precioNum/cantNum)*cantRefNum:null;
+    const diff=equivalente!=null&&p.precioRef?((equivalente-p.precioRef)/p.precioRef*100):null;
+
+    const cambiarStock=(idx,delta)=>{
+      const base=entradasGuardadas.length===0&&p.cantidadRef
+        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
+        :entradasGuardadas;
+      const nuevas=base.map((e,i)=>i===idx?{...e,stock:Math.max(0,e.stock+delta)}:e);
+      guardarStock(p.id,nuevas);
+    };
+
+    const registrar=async()=>{
+      if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
+      setSaving(true);
+      try {
+        const entrada={id:uid(),precio:precioNum,cantidad:cantidad||null,equivalente,fecha};
+        await guardar(null,productos.map(x=>x.id===p.id?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));
+        agregarAlTicket({prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha});
+        showToast("✅ Registrado");
+        setOpen(false);
+      } catch(e){showToast("Error al guardar","err");}
+      finally{setSaving(false);}
+    };
+
+    return (
+      <div className="card" style={{borderLeft:`3px solid ${cat?.color||"#444"}`,overflow:"hidden"}}>
+        {/* Fila principal */}
+        <div style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div>
+            <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{p.cantidadRef}{p.unidad||""}</span>}</div>
+            <div style={{marginTop:4,display:"flex",gap:10,flexWrap:"wrap"}}>
+              <span style={{fontSize:12,fontWeight:600,color:urgColor}}>{mesesTxt}</span>
+              <span style={{fontSize:11,color:"#4a5568"}}>· stock: <span style={{color:"#e8eaf0",fontFamily:"'DM Mono',monospace",fontWeight:600}}>{fmtTotal(total)}</span></span>
+            </div>
+            <div style={{marginTop:3,display:"flex",gap:10}}>
+              {p.precioRef&&<span style={{fontSize:12,color:"#4a5568"}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
+              {ultimoPrecio&&<span style={{fontSize:12,color:"#4a5568"}}>Último: <span style={{color:"#e8eaf0",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
+            </div>
+          </div>
+          <div style={{color:"#2a3550",fontSize:14,flexShrink:0}}>{open?"▲":"▼"}</div>
+        </div>
+
+        {/* Panel inline */}
+        {open&&(
+          <div style={{borderTop:"1px solid #1a2235",padding:"14px 16px",display:"flex",flexDirection:"column",gap:12}}>
+            {/* Registro de precio */}
+            <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em"}}>Registrar precio</div>
+            <div style={{display:"flex",gap:8}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:"#4a5568",marginBottom:4}}>Precio ($)</div>
+                <input className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 12px",fontSize:14}} autoFocus/>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:"#4a5568",marginBottom:4}}>Cantidad ({p.unidad||"gr"})</div>
+                <input className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"ej. 500"} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 12px",fontSize:14}}/>
+              </div>
+            </div>
+            {equivalente!=null&&(
+              <div style={{background:"#080c14",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:11,color:"#4a5568"}}>Equiv. {p.cantidadRef}{p.unidad}:</span>
+                <span className="mono" style={{fontWeight:700,color:cat?.color||"#3b82f6"}}>{fmt(equivalente)}</span>
+                {diff!=null&&<span style={{fontSize:12,fontWeight:600,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"} {Math.abs(diff).toFixed(1)}%</span>}
+              </div>
+            )}
+            <div>
+              <div style={{fontSize:11,color:"#4a5568",marginBottom:4}}>Fecha</div>
+              <input className="inp" type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{padding:"8px 12px",fontSize:14}}/>
+            </div>
+            <button className="btn" onClick={registrar} disabled={saving} style={{background:saving?"#1a2235":"#10b981",color:saving?"#4a5568":"#fff",padding:"10px 0",fontSize:14}}>
+              {saving?"Guardando…":"Registrar y agregar al ticket"}
+            </button>
+
+            {/* Separador */}
+            <div style={{borderTop:"1px solid #1a2235",paddingTop:10}}>
+              <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Stock</div>
+              {entradas.map((e,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <div style={{flex:1,fontSize:13,fontWeight:600,color:"#c8cfe0"}}>{e.cantRef}{e.unidad||p.unidad||"gr"}</div>
+                  <button onClick={()=>cambiarStock(i,-1)} disabled={e.stock<=0} style={{width:32,height:32,borderRadius:8,background:e.stock<=0?"#0d1321":"#1a2235",border:"1px solid #2a3550",color:e.stock<=0?"#2a3550":"#e8eaf0",fontSize:18,cursor:e.stock<=0?"default":"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                  <div style={{width:30,textAlign:"center",fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{e.stock}</div>
+                  <button onClick={()=>cambiarStock(i,1)} style={{width:32,height:32,borderRadius:8,background:"#1a2235",border:"1px solid #2a3550",color:"#e8eaf0",fontSize:18,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function BottomTabs({activeTab,setActiveTab}) {
     const tabs=[
       {id:"productos",label:"Productos",icon:"🧺"},
       {id:"stock",label:"Stock",icon:"📦"},
-      {id:"compras",label:"Compras",icon:"🛒"},
     ];
     return (
       <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0d1321",borderTop:"1px solid #1a2235",display:"flex",zIndex:200,maxWidth:500,margin:"0 auto"}}>
@@ -335,13 +517,16 @@ const ResponsiveContainer=({children})=>children||null;
   function App() {
     const [cats,setCats]=useState(DEFAULT_CATS);
     const [productos,setProductos]=useState([]);
-    const [stock,setStock]=useState({}); // { productoId: cantidad }
+    const [stock,setStock]=useState({});
     const [loaded,setLoaded]=useState(false);
     const [activeTab,setActiveTab]=useState("productos");
-    // Stacks independientes por tab, pero sincronizados en contexto de navegación
     const [stack,setStack]=useState([{screen:"home"}]);
     const [toast,setToast]=useState(null);
     const [confirm,setConfirm]=useState(null);
+    const [modoCompras,setModoCompras]=useState(false);
+    const [ticket,setTicket]=useState([]); // [{prodId, nombre, marca, cantRef, unidad, precio, equivalente, precioRef, fecha}]
+    const [ticketOpen,setTicketOpen]=useState(false);
+    const [tickets,setTickets]=useState([]); // últimos 5 tickets guardados
 
     const current=stack[stack.length-1];
     const push=(screen,params={})=>setStack(s=>[...s,{screen,...params}]);
@@ -370,6 +555,9 @@ const ResponsiveContainer=({children})=>children||null;
               stockRows.forEach(r=>{ sm[r.producto_id]=r.entradas||[]; });
               setStock(sm);
             }
+            // Cargar tickets
+            const { data: ticketRows } = await sb.from("tickets").select("*").order("fecha",{ascending:false}).limit(5);
+            if (ticketRows) setTickets(ticketRows);
           } else {
             // First time: seed default cats
             const inserts = DEFAULT_CATS.map(c=>({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs}));
@@ -447,10 +635,44 @@ const ResponsiveContainer=({children})=>children||null;
       showToast(ok?"📋 Copiado al portapapeles":"No se pudo copiar");
     };
 
+    const agregarAlTicket=(item)=>{
+      setTicket(t=>{
+        const idx=t.findIndex(x=>x.prodId===item.prodId);
+        if(idx>=0){const n=[...t];n[idx]=item;return n;}
+        return [...t,item];
+      });
+      setTicketOpen(true);
+    };
+
+    const finalizarCompra=async()=>{
+      if(ticket.length===0)return;
+      const nuevoTicket={id:uid(),fecha:new Date().toISOString(),items:ticket};
+      const nuevos=[nuevoTicket,...tickets].slice(0,5);
+      setTickets(nuevos);
+      try {
+        await sb.from("tickets").upsert({id:nuevoTicket.id,fecha:nuevoTicket.fecha,items:nuevoTicket.items});
+        // Mantener solo 5 — borrar los más viejos
+        if(tickets.length>=5){
+          const aEliminar=tickets.slice(4).map(t=>t.id);
+          if(aEliminar.length) await sb.from("tickets").delete().in("id",aEliminar);
+        }
+      } catch(e){console.error("Ticket save error:",e);}
+      setTicket([]);
+      setTicketOpen(false);
+      setModoCompras(false);
+      showToast("✅ Compra finalizada");
+    };
+
+    const cancelarCompra=()=>{
+      setTicket([]);
+      setTicketOpen(false);
+      setModoCompras(false);
+    };
+
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#3b82f6",fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket};
 
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio"].includes(s);
 
@@ -458,7 +680,7 @@ const ResponsiveContainer=({children})=>children||null;
       <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",minHeight:"100vh",background:"#080c14",color:"#e8eaf0"}}>
         {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:3000,background:toast.tipo==="err"?"#ef4444":"#10b981",color:"#fff",padding:"9px 20px",borderRadius:10,fontWeight:600,fontSize:13,boxShadow:"0 8px 32px #0008",whiteSpace:"nowrap",maxWidth:"90vw",textAlign:"center"}}>{toast.msg}</div>}
         {confirm&&<Confirm msg={confirm.msg} onOk={()=>{confirm.onOk();setConfirm(null);}} onCancel={()=>setConfirm(null)} okLabel={confirm.okLabel} okColor={confirm.okColor}/>}
-        <div style={{maxWidth:500,margin:"0 auto",padding:"0 16px 100px"}}>
+        <div style={{maxWidth:500,margin:"0 auto",padding:`0 16px ${modoCompras?"180px":"100px"}`}}>
           {s==="home"        &&<HomeScreen {...shared} activeTab={activeTab}/>}
           {s==="subs"        &&<SubsScreen {...shared} catId={current.catId} activeTab={activeTab}/>}
           {s==="lista"       &&<ListaScreen {...shared} catId={current.catId} subId={current.subId} activeTab={activeTab}/>}
@@ -470,18 +692,24 @@ const ResponsiveContainer=({children})=>children||null;
           {s==="export"      &&<ExportScreen {...shared}/>}
           {s==="import"      &&<ImportScreen {...shared}/>}
         </div>
-        {!isFormScreen&&activeTab==="productos"&&(
+        {!isFormScreen&&activeTab==="productos"&&!modoCompras&&(
           <FloatingAdd onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
         )}
-        {!isFormScreen&&<BottomTabs activeTab={activeTab} setActiveTab={setActiveTab}/>}
+        {!isFormScreen&&activeTab==="stock"&&!modoCompras&&(
+          <FloatingCompras onClick={()=>setModoCompras(true)}/>
+        )}
+        {modoCompras&&(
+          <TicketDrawer ticket={ticket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra}/>
+        )}
+        {!isFormScreen&&!modoCompras&&<BottomTabs activeTab={activeTab} setActiveTab={setActiveTab}/>}
       </div>
     );
   }
 
   // ── HomeScreen ───────────────────────────────────────────────────────────────
-  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses}) {
+  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket}) {
     const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false); const [sortCats,setSortCats]=useState("nombre-az");
-    const isStock=activeTab==="stock"; const isCompras=activeTab==="compras";
+    const isStock=activeTab==="stock"; 
     const total=productos.reduce((s,p)=>s+(gastoMensual(p)||0),0);
     const addCat=async({label,emoji,color})=>{await guardar([...cats,{id:uid(),label,emoji,color,subs:[]}],null);setShowAddCat(false);showToast("✅ Categoría creada");};
     const sortedCats=[...cats].sort((a,b)=>{
@@ -493,15 +721,15 @@ const ResponsiveContainer=({children})=>children||null;
       if(sortCats==="gasto-desc")return gb-ga;
       return 0;
     });
-    const tabTitle=isStock?"📦 Stock":isCompras?"🛒 Compras":"🧺 Canasta";
-    const tabSubtitle=isStock?`${productos.length} productos`:isCompras?`${productos.length} productos`:`${productos.length} productos · `;
+    const tabTitle=isStock?"📦 Stock":modoCompras?"🛒 Compras":"🧺 Canasta";
+    const tabSubtitle=isStock?`${productos.length} productos`:modoCompras?`${productos.length} productos`:`${productos.length} productos · `;
 
     if(q){
       const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
       return (<div className="fade">
         <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>{tabTitle}</div><div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{!isStock&&!isCompras&&<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span>}</div></div>
-          {!isStock&&!isCompras&&<div style={{display:"flex",gap:8}}>
+          <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>{tabTitle}</div><div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{!isStock&&!modoCompras&&<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span>}</div></div>
+          {!isStock&&!modoCompras&&<div style={{display:"flex",gap:8}}>
             <button className="btn" onClick={()=>push("import")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📥</button>
             <button className="btn" onClick={()=>push("export")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📋</button>
             <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>⚙️</button>
@@ -511,7 +739,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);
           if(isStock)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock}/>;
-          if(isCompras)return <ComprasCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} push={push}/>;
+          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
           return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
       </div>);
@@ -519,9 +747,9 @@ const ResponsiveContainer=({children})=>children||null;
     return (<div className="fade">
       <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>{tabTitle}</div>
-          <div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{productos.length} productos{!isStock&&!isCompras&&<> · <span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
+          <div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{productos.length} productos{!isStock&&!modoCompras&&<> · <span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
         </div>
-        {!isStock&&!isCompras&&<div style={{display:"flex",gap:8}}>
+        {!isStock&&!modoCompras&&<div style={{display:"flex",gap:8}}>
           <button className="btn" onClick={()=>push("import")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📥</button>
           <button className="btn" onClick={()=>push("export")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📋</button>
           <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>⚙️</button>
@@ -532,7 +760,7 @@ const ResponsiveContainer=({children})=>children||null;
         <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
-          {!isStock&&!isCompras&&<><option value="gasto-desc">Gasto ↓</option><option value="gasto-asc">Gasto ↑</option></>}
+          {!isStock&&!modoCompras&&<><option value="gasto-desc">Gasto ↓</option><option value="gasto-asc">Gasto ↑</option></>}
         </select>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -543,20 +771,20 @@ const ResponsiveContainer=({children})=>children||null;
             onClick={()=>cat.subs?.length?push("subs",{catId:cat.id}):push("lista",{catId:cat.id,subId:null})}>
             <div style={{fontSize:28}}>{cat.emoji}</div>
             <div style={{flex:1}}><div style={{fontWeight:600,fontSize:16,color:"#e8eaf0"}}>{cat.label}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{cat.subs?.length?`${cat.subs.length} subcategorías · `:""}{catProds.length} productos</div></div>
-            <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!isCompras&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550",marginTop:2}}>›</div></div>
+            <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550",marginTop:2}}>›</div></div>
           </div>);
         })}
-        {!isStock&&!isCompras&&<button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#3b82f611",border:"1px solid #3b82f6",color:"#3b82f6",padding:"13px",fontSize:14,marginTop:4,width:"100%",fontWeight:600}}>+ Agregar categoría</button>}
+        {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#3b82f611",border:"1px solid #3b82f6",color:"#3b82f6",padding:"13px",fontSize:14,marginTop:4,width:"100%",fontWeight:600}}>+ Agregar categoría</button>}
       </div>
       {showAddCat&&<AddModal title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={addCat} showColor={true}/>}
     </div>);
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
-    const isStock=activeTab==="stock"; const isCompras=activeTab==="compras";
+    const isStock=activeTab==="stock"; 
     const cat=cats.find(c=>c.id===catId); if(!cat) return null;
     const catGasto=productos.filter(p=>p.catId===catId).reduce((s,p)=>s+(gastoMensual(p)||0),0);
     const addSub=({label})=>{guardar(cats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c),null);setShowAddSub(false);showToast("✅ Subcategoría creada");};
@@ -570,7 +798,7 @@ const ResponsiveContainer=({children})=>children||null;
     const SortSelect=()=>(
       <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0}}>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
-        {!isStock&&!isCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
+        {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
         <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
       </select>
     );
@@ -578,7 +806,7 @@ const ResponsiveContainer=({children})=>children||null;
     if(q){
       const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
       return (<div className="fade">
-        <TopBar title={`${cat.emoji} ${cat.label}`} onBack={pop} right={!isStock&&!isCompras&&<button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>}/>
+        <TopBar title={`${cat.emoji} ${cat.label}`} onBack={pop} right={!isStock&&!modoCompras&&<button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>}/>
         <div style={{display:"flex",gap:8,marginBottom:14}}>
           <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0}}/>
           <SortSelect/>
@@ -586,17 +814,17 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{results.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
           if(isStock)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock}/>;
-          if(isCompras)return <ComprasCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} push={push}/>;
+          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
           return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
       </div>);
     }
 
     return (<div className="fade">
-      <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!isCompras&&catGasto>0?`${fmt(catGasto)}/mes`:undefined} onBack={pop}
+      <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?`${fmt(catGasto)}/mes`:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
-          {!isStock&&!isCompras&&<button className="btn" onClick={()=>handleExport(catId)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"8px 11px",fontSize:14}}>📋</button>}
-          {!isStock&&!isCompras&&<button className="btn" onClick={()=>push("config",{openCatId:catId})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>}
+          {!isStock&&!modoCompras&&<button className="btn" onClick={()=>handleExport(catId)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"8px 11px",fontSize:14}}>📋</button>}
+          {!isStock&&!modoCompras&&<button className="btn" onClick={()=>push("config",{openCatId:catId})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>}
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Ver todos</button>
         </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
@@ -609,7 +837,7 @@ const ResponsiveContainer=({children})=>children||null;
           const gasto=subProds.reduce((s,p)=>s+(gastoMensual(p)||0),0);
           return (<div key={sub.id} className="card row" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${cat.color}`}} onClick={()=>push("lista",{catId,subId:sub.id})}>
             <div style={{flex:1}}><div style={{fontWeight:600,fontSize:15,color:"#e8eaf0"}}>{sub.label}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{subProds.length} productos</div></div>
-            <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!isCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550"}}>›</div></div>
+            <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550"}}>›</div></div>
           </div>);
         })}
         {orphans.length>0&&(
@@ -619,19 +847,19 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{orphans.length} producto{orphans.length!==1?"s":""} sin asignar · usá Selec. para moverlos</div>
             </div>
             <div style={{textAlign:"right"}}>
-              {orphanGasto>0&&!isStock&&!isCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:"#8b9ab0"}}>{fmt(orphanGasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}
+              {orphanGasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:"#8b9ab0"}}>{fmt(orphanGasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}
               <div style={{fontSize:18,color:"#2a3550"}}>›</div>
             </div>
           </div>
         )}
       </div>
-      {!isStock&&!isCompras&&<button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>}
+      {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>}
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
-  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses}) {
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket}) {
     const [q,setQ]=useState("");
-    const isStock=activeTab==="stock"; const isCompras=activeTab==="compras";
+    const isStock=activeTab==="stock"; 
     const defaultSort="nombre-az";
     const [sortBy,setSortBy]=useState(defaultSort); const [selected,setSelected]=useState(new Set());
     const [selectMode,setSelectMode]=useState(false); const [moveModal,setMoveModal]=useState(false); const [moveDest,setMoveDest]=useState("");
@@ -664,7 +892,7 @@ const ResponsiveContainer=({children})=>children||null;
     };
     const catGasto=productos.filter(p=>p.catId===catId).reduce((s,p)=>s+(gastoMensual(p)||0),0);
     const title=isUnassignedView?`${cat.emoji} Sin subcategoría`:sub?`${cat.emoji} ${sub.label}`:`${cat.emoji} ${cat.label}`;
-    const listSubtitle=sub?cat.label:isUnassignedView?cat.label:(!isStock&&!isCompras&&catGasto>0)?`${fmt(catGasto)}/mes`:undefined;
+    const listSubtitle=sub?cat.label:isUnassignedView?cat.label:(!isStock&&!modoCompras&&catGasto>0)?`${fmt(catGasto)}/mes`:undefined;
     return (<div className="fade">
       {moveModal&&(<div style={{position:"fixed",inset:0,background:"#000b",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
         <div style={{background:"#0d1321",border:"1px solid #2a3550",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
@@ -684,23 +912,23 @@ const ResponsiveContainer=({children})=>children||null;
         </div>
       </div>)}
       <TopBar title={title} subtitle={listSubtitle} onBack={()=>{cancelSelect();pop();}}
-        right={selectMode&&!isStock&&!isCompras
+        right={selectMode&&!isStock&&!modoCompras
           ?<div style={{display:"flex",gap:8,alignItems:"center"}}>
               <div style={{fontSize:13,color:"#3b82f6",fontWeight:600}}>{selected.size} sel.</div>
               {selected.size>0&&<button className="btn" onClick={()=>setMoveModal(true)} style={{background:"#3b82f6",color:"#fff",padding:"8px 12px",fontSize:13}}>Mover</button>}
               <button className="btn" onClick={cancelSelect} style={{background:"#1a2235",color:"#8b9ab0",padding:"8px 12px",fontSize:13}}>✕</button>
             </div>
           :<div style={{display:"flex",gap:8}}>
-              {!isStock&&!isCompras&&<button className="btn" onClick={()=>handleExport(catId,isUnassignedView?UNASSIGNED_ID:subId)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"8px 11px",fontSize:14}}>📋</button>}
-              {!isStock&&!isCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>}
+              {!isStock&&!modoCompras&&<button className="btn" onClick={()=>handleExport(catId,isUnassignedView?UNASSIGNED_ID:subId)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"8px 11px",fontSize:14}}>📋</button>}
+              {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>}
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0}}/>
         <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
-          {(isStock||isCompras)&&<><option value="meses-asc">Meses ↑</option><option value="meses-desc">Meses ↓</option></>}
-          {!isStock&&!isCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option><option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
+          {(isStock||modoCompras)&&<><option value="meses-asc">Meses ↑</option><option value="meses-desc">Meses ↓</option></>}
+          {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option><option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
         </select>
       </div>
       {q&&<div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{lista.length} resultado{lista.length!==1?"s":""} en toda la canasta</div>}
@@ -709,7 +937,7 @@ const ResponsiveContainer=({children})=>children||null;
           {lista.map(p=>{
             const pcat=q?cats.find(c=>c.id===p.catId):cat;
             if(isStock) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock}/>;
-            if(isCompras) return <ComprasCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} push={push}/>;
+            if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
             const isSel=selected.has(p.id);
             return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
               onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
