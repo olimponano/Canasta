@@ -348,15 +348,11 @@ const ResponsiveContainer=({children})=>children||null;
     const [open,setOpen]=useState(false);
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
+    const [stockComprado,setStockComprado]=useState("1");
     const [fecha,setFecha]=useState(todayISO());
     const [saving,setSaving]=useState(false);
 
-    // Stock inline igual que StockCard
     const entradasGuardadas=stock[p.id]||[];
-    const entradas=entradasGuardadas.length===0&&p.cantidadRef
-      ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,virtual:true}]
-      :entradasGuardadas;
-
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
     const mesesTxt=fmtMeses(meses);
@@ -371,20 +367,26 @@ const ResponsiveContainer=({children})=>children||null;
     const equivalente=(precioNum>0&&cantNum>0&&cantRefNum)?(precioNum/cantNum)*cantRefNum:null;
     const diff=equivalente!=null&&p.precioRef?((equivalente-p.precioRef)/p.precioRef*100):null;
 
-    const cambiarStock=(idx,delta)=>{
-      const base=entradasGuardadas.length===0&&p.cantidadRef
-        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
-        :entradasGuardadas;
-      const nuevas=base.map((e,i)=>i===idx?{...e,stock:Math.max(0,e.stock+delta)}:e);
-      guardarStock(p.id,nuevas);
-    };
-
     const registrar=async()=>{
       if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
       setSaving(true);
       try {
         const entrada={id:uid(),precio:precioNum,cantidad:cantidad||null,equivalente,fecha};
-        await guardar(null,productos.map(x=>x.id===p.id?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));
+        // Actualizar historial de precios
+        const nuevosProds=productos.map(x=>x.id===p.id?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x);
+        await guardar(null,nuevosProds);
+        // Actualizar stock sumando lo comprado
+        const stockCant=parseInt(stockComprado)||0;
+        if(stockCant>0){
+          const base=entradasGuardadas.length===0&&p.cantidadRef
+            ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
+            :[...entradasGuardadas];
+          // Sumar a la entrada de cantidadRef si existe, sino a la primera
+          const idx=base.findIndex(e=>e.cantRef===cantRefNum);
+          const target=idx>=0?idx:0;
+          const nuevas=base.map((e,i)=>i===target?{...e,stock:e.stock+stockCant}:e);
+          guardarStock(p.id,nuevas);
+        }
         agregarAlTicket({prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha});
         showToast("✅ Registrado");
         setOpen(false);
@@ -395,64 +397,60 @@ const ResponsiveContainer=({children})=>children||null;
     return (
       <div className="card" style={{borderLeft:`3px solid ${cat?.color||"#444"}`,overflow:"hidden"}}>
         {/* Fila principal */}
-        <div style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{p.nombre}</div>
-            <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{p.cantidadRef}{p.unidad||""}</span>}</div>
-            <div style={{marginTop:4,display:"flex",gap:10,flexWrap:"wrap"}}>
-              <span style={{fontSize:12,fontWeight:600,color:urgColor}}>{mesesTxt}</span>
-              <span style={{fontSize:11,color:"#4a5568"}}>· stock: <span style={{color:"#e8eaf0",fontFamily:"'DM Mono',monospace",fontWeight:600}}>{fmtTotal(total)}</span></span>
+        <div style={{padding:"12px 14px",display:"flex",alignItems:"stretch",gap:10}}>
+          {/* Info izquierda */}
+          <div style={{flex:1,minWidth:0}} onClick={()=>setOpen(o=>!o)} >
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div style={{fontWeight:600,fontSize:15,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,marginRight:8}}>{p.nombre}</div>
+              <div style={{fontSize:12,fontWeight:700,color:urgColor,flexShrink:0,textAlign:"right"}}>{mesesTxt.replace("Queda para ","").replace("Sin stock","Sin stock").replace("Sin consumo definido","—")}</div>
             </div>
-            <div style={{marginTop:3,display:"flex",gap:10}}>
+            <div style={{fontSize:12,color:"#4a5568",marginTop:2,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{p.cantidadRef}{p.unidad||""}</span>}</span>
+              <span className="mono" style={{fontWeight:700,color:"#e8eaf0",fontSize:13}}>{fmtTotal(total)}</span>
+            </div>
+            <div style={{marginTop:4,display:"flex",gap:10}}>
               {p.precioRef&&<span style={{fontSize:12,color:"#4a5568"}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
               {ultimoPrecio&&<span style={{fontSize:12,color:"#4a5568"}}>Último: <span style={{color:"#e8eaf0",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
             </div>
           </div>
-          <div style={{color:"#2a3550",fontSize:14,flexShrink:0}}>{open?"▲":"▼"}</div>
+          {/* Botón + */}
+          <button onClick={()=>setOpen(o=>!o)} style={{width:38,alignSelf:"center",height:38,borderRadius:10,background:open?"#1a2235":"#3b82f6",border:"none",color:"#fff",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,flexShrink:0,transition:"background .15s"}}>{open?"▲":"+"}</button>
         </div>
 
         {/* Panel inline */}
         {open&&(
-          <div style={{borderTop:"1px solid #1a2235",padding:"14px 16px",display:"flex",flexDirection:"column",gap:12}}>
-            {/* Registro de precio */}
-            <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em"}}>Registrar precio</div>
-            <div style={{display:"flex",gap:8}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:11,color:"#4a5568",marginBottom:4}}>Precio ($)</div>
-                <input className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 12px",fontSize:14}} autoFocus/>
+          <div style={{borderTop:"1px solid #1a2235",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+            {/* Fila 1: precio y cantidad */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+              <div>
+                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
+                <input className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
               </div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:11,color:"#4a5568",marginBottom:4}}>Cantidad ({p.unidad||"gr"})</div>
-                <input className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"ej. 500"} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 12px",fontSize:14}}/>
+              <div>
+                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>{p.unidad||"gr"}</div>
+                <input className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
+                <input className="inp" placeholder="1" value={stockComprado} onChange={e=>setStockComprado(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
               </div>
             </div>
+            {/* Equivalente */}
             {equivalente!=null&&(
-              <div style={{background:"#080c14",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:10}}>
+              <div style={{background:"#080c14",borderRadius:8,padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
                 <span style={{fontSize:11,color:"#4a5568"}}>Equiv. {p.cantidadRef}{p.unidad}:</span>
-                <span className="mono" style={{fontWeight:700,color:cat?.color||"#3b82f6"}}>{fmt(equivalente)}</span>
+                <span className="mono" style={{fontWeight:700,color:cat?.color||"#3b82f6",fontSize:13}}>{fmt(equivalente)}</span>
                 {diff!=null&&<span style={{fontSize:12,fontWeight:600,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"} {Math.abs(diff).toFixed(1)}%</span>}
               </div>
             )}
+            {/* Fecha */}
             <div>
-              <div style={{fontSize:11,color:"#4a5568",marginBottom:4}}>Fecha</div>
-              <input className="inp" type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{padding:"8px 12px",fontSize:14}}/>
+              <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Fecha</div>
+              <input className="inp" type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
             </div>
-            <button className="btn" onClick={registrar} disabled={saving} style={{background:saving?"#1a2235":"#10b981",color:saving?"#4a5568":"#fff",padding:"10px 0",fontSize:14}}>
+            <button className="btn" onClick={registrar} disabled={saving} style={{background:saving?"#1a2235":"#10b981",color:saving?"#4a5568":"#fff",padding:"10px 0",fontSize:14,fontWeight:700}}>
               {saving?"Guardando…":"Registrar y agregar al ticket"}
             </button>
-
-            {/* Separador */}
-            <div style={{borderTop:"1px solid #1a2235",paddingTop:10}}>
-              <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Stock</div>
-              {entradas.map((e,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                  <div style={{flex:1,fontSize:13,fontWeight:600,color:"#c8cfe0"}}>{e.cantRef}{e.unidad||p.unidad||"gr"}</div>
-                  <button onClick={()=>cambiarStock(i,-1)} disabled={e.stock<=0} style={{width:32,height:32,borderRadius:8,background:e.stock<=0?"#0d1321":"#1a2235",border:"1px solid #2a3550",color:e.stock<=0?"#2a3550":"#e8eaf0",fontSize:18,cursor:e.stock<=0?"default":"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                  <div style={{width:30,textAlign:"center",fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{e.stock}</div>
-                  <button onClick={()=>cambiarStock(i,1)} style={{width:32,height:32,borderRadius:8,background:"#1a2235",border:"1px solid #2a3550",color:"#e8eaf0",fontSize:18,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </div>
