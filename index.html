@@ -280,52 +280,49 @@ const ResponsiveContainer=({children})=>children||null;
     return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:"#10b981",color:"#fff",fontSize:26,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 24px #10b98155",zIndex:100,lineHeight:1}}>🛒</button>;
   }
 
-  function TicketDrawer({ticket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar}) {
-    const total=ticket.reduce((s,i)=>s+(i.equivalente??i.precio??0),0);
-    const totalRef=ticket.reduce((s,i)=>{
-      const p=productos.find(x=>x.id===i.prodId);
-      return s+(p?.precioRef||i.equivalente||i.precio||0);
-    },0);
-    const diff=total-totalRef;
+  function TicketDrawer({ticket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,onVerHistorial}) {
+    // Cada item tiene: precio (por unidad), cantComprada, equivalente (por unidad ref), precioRef
+    const totalPagado=ticket.reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
+    const totalRef=ticket.reduce((s,i)=>s+(i.totalRef??i.precioRef??0),0);
+    const diff=totalPagado-totalRef;
     const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
 
     return (
       <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008"}}>
-        {/* Header siempre visible */}
         <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setTicketOpen(o=>!o)}>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#10b981"}}>🛒 Modo compras {ticket.length>0&&`· ${ticket.length} producto${ticket.length>1?"s":""}`}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#10b981"}}>🛒 Modo compras{ticket.length>0&&` · ${ticket.length} producto${ticket.length>1?"s":""}`}</div>
             {ticket.length>0&&(
               <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>
-                <span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(total)}</span>
+                <span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(totalPagado)}</span>
                 {diffPct!==null&&<span style={{marginLeft:8,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</span>}
               </div>
             )}
           </div>
-          <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <button className="btn" onClick={e=>{e.stopPropagation();onVerHistorial();}} style={{background:"#1a2235",color:"#8b9ab0",border:"1px solid #2a3550",padding:"7px 12px",fontSize:13}}>📋</button>
             {ticket.length>0&&<button className="btn" onClick={e=>{e.stopPropagation();onFinalizar();}} style={{background:"#10b981",color:"#fff",padding:"7px 14px",fontSize:13}}>Finalizar</button>}
             <button className="btn" onClick={e=>{e.stopPropagation();onCancelar();}} style={{background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"7px 12px",fontSize:13}}>✕</button>
-            <span style={{color:"#4a5568",fontSize:16,alignSelf:"center"}}>{ticketOpen?"▼":"▲"}</span>
+            <span style={{color:"#4a5568",fontSize:16}}>{ticketOpen?"▼":"▲"}</span>
           </div>
         </div>
 
-        {/* Detalle expandible */}
         {ticketOpen&&ticket.length>0&&(
           <div style={{maxHeight:240,overflowY:"auto",borderTop:"1px solid #1a2235"}}>
             {ticket.map((item,i)=>{
               const p=productos.find(x=>x.id===item.prodId);
               const cat=cats.find(c=>c.id===p?.catId);
-              const diff2=item.equivalente!=null&&p?.precioRef?item.equivalente-p.precioRef:null;
+              const diffItem=item.totalRef>0?item.totalPagado-item.totalRef:null;
               return (
                 <div key={i} style={{padding:"10px 16px",borderBottom:"1px solid #1a2235",display:"flex",alignItems:"center",gap:10}}>
                   <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:cat?.color||"#444",flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
-                    <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantRef&&` · ${item.cantRef}${item.unidad||""}`}</div>
+                    <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantRef}${item.unidad||""}`}</div>
                   </div>
                   <div style={{textAlign:"right",flexShrink:0}}>
-                    <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.equivalente??item.precio)}</div>
-                    {diff2!=null&&<div style={{fontSize:11,fontWeight:600,color:diff2<=0?"#10b981":"#ef4444"}}>{diff2<=0?"▼":"▲"} {fmt(Math.abs(diff2))}</div>}
+                    <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
+                    {diffItem!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {fmt(Math.abs(diffItem))}</div>}
                   </div>
                 </div>
               );
@@ -333,7 +330,7 @@ const ResponsiveContainer=({children})=>children||null;
             <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",background:"#080c14"}}>
               <span style={{fontSize:13,color:"#4a5568",fontWeight:600}}>Total</span>
               <div style={{textAlign:"right"}}>
-                <span className="mono" style={{fontSize:15,fontWeight:700,color:"#e8eaf0"}}>{fmt(total)}</span>
+                <span className="mono" style={{fontSize:15,fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
                 {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {fmt(Math.abs(diff))} vs ref ({diffPct}%)</div>}
               </div>
             </div>
@@ -343,12 +340,49 @@ const ResponsiveContainer=({children})=>children||null;
     );
   }
 
+  function HistorialTickets({tickets,onClose}) {
+    const fmtFecha=(f)=>new Date(f).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+    return (
+      <div style={{position:"fixed",inset:0,background:"#000c",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{background:"#0d1321",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:500,border:"1px solid #1a2235",borderBottom:"none",maxHeight:"80vh",overflowY:"auto"}}>
+          <div style={{width:40,height:4,background:"#2a3550",borderRadius:2,margin:"0 auto 20px"}}/>
+          <div style={{fontWeight:700,fontSize:18,marginBottom:16,color:"#e8eaf0"}}>📋 Últimas compras</div>
+          {tickets.length===0&&<div style={{color:"#4a5568",fontSize:14,textAlign:"center",padding:"40px 0"}}>Sin compras registradas aún.</div>}
+          {tickets.map((t,i)=>{
+            const totalPagado=t.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
+            const totalRef=t.items.reduce((s,x)=>s+(x.totalRef??x.precioRef??0),0);
+            const diff=totalPagado-totalRef;
+            const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
+            return (
+              <div key={t.id} className="card" style={{padding:14,marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <div style={{fontSize:12,color:"#4a5568"}}>{fmtFecha(t.fecha)}</div>
+                  <div style={{textAlign:"right"}}>
+                    <span className="mono" style={{fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
+                    {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+                  </div>
+                </div>
+                {t.items.map((item,j)=>(
+                  <div key={j} style={{fontSize:12,color:"#8b9ab0",display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:"1px solid #1a2235"}}>
+                    <span>{item.nombre}{item.cantComprada>1?` ×${item.cantComprada}`:""}</span>
+                    <span className="mono" style={{color:"#e8eaf0"}}>{fmt(item.totalPagado??item.precio)}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+          <button className="btn" onClick={onClose} style={{width:"100%",background:"#1a2235",color:"#e8eaf0",padding:13,fontSize:14,marginTop:4}}>Cerrar</button>
+        </div>
+      </div>
+    );
+  }
+
   // ── ComprasCardInline ─────────────────────────────────────────────────────────
   function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket}) {
     const [open,setOpen]=useState(false);
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
-    const [stockComprado,setStockComprado]=useState("1");
+    const [cantComprada,setCantComprada]=useState("1");
     const [fecha,setFecha]=useState(todayISO());
     const [saving,setSaving]=useState(false);
 
@@ -364,30 +398,30 @@ const ResponsiveContainer=({children})=>children||null;
     const precioNum=parseFloat((precio||"").replace(",","."));
     const cantNum=parseFloat((cantidad||"").replace(",","."));
     const cantRefNum=p.cantidadRef;
+    const cantCompradaNum=parseInt(cantComprada)||1;
+    // equivalente = precio normalizado a unidad de referencia (por 1 unidad)
     const equivalente=(precioNum>0&&cantNum>0&&cantRefNum)?(precioNum/cantNum)*cantRefNum:null;
     const diff=equivalente!=null&&p.precioRef?((equivalente-p.precioRef)/p.precioRef*100):null;
+    // totales para el ticket
+    const totalPagado=precioNum>0?precioNum*cantCompradaNum:null;
+    const totalRef=p.precioRef?p.precioRef*cantCompradaNum:null;
 
     const registrar=async()=>{
       if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
       setSaving(true);
       try {
         const entrada={id:uid(),precio:precioNum,cantidad:cantidad||null,equivalente,fecha};
-        // Actualizar historial de precios
-        const nuevosProds=productos.map(x=>x.id===p.id?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x);
-        await guardar(null,nuevosProds);
-        // Actualizar stock sumando lo comprado
-        const stockCant=parseInt(stockComprado)||0;
-        if(stockCant>0){
+        await guardar(null,productos.map(x=>x.id===p.id?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));
+        // Sumar al stock
+        if(cantCompradaNum>0){
           const base=entradasGuardadas.length===0&&p.cantidadRef
             ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
             :[...entradasGuardadas];
-          // Sumar a la entrada de cantidadRef si existe, sino a la primera
           const idx=base.findIndex(e=>e.cantRef===cantRefNum);
           const target=idx>=0?idx:0;
-          const nuevas=base.map((e,i)=>i===target?{...e,stock:e.stock+stockCant}:e);
-          guardarStock(p.id,nuevas);
+          guardarStock(p.id,base.map((e,i)=>i===target?{...e,stock:e.stock+cantCompradaNum}:e));
         }
-        agregarAlTicket({prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha});
+        agregarAlTicket({prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha,cantComprada:cantCompradaNum,totalPagado,totalRef});
         showToast("✅ Registrado");
         setOpen(false);
       } catch(e){showToast("Error al guardar","err");}
@@ -396,31 +430,26 @@ const ResponsiveContainer=({children})=>children||null;
 
     return (
       <div className="card" style={{borderLeft:`3px solid ${cat?.color||"#444"}`,overflow:"hidden"}}>
-        {/* Fila principal */}
         <div style={{padding:"12px 14px",display:"flex",alignItems:"stretch",gap:10}}>
-          {/* Info izquierda */}
-          <div style={{flex:1,minWidth:0}} onClick={()=>setOpen(o=>!o)} >
+          <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{fontWeight:600,fontSize:15,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,marginRight:8}}>{p.nombre}</div>
-              <div style={{fontSize:12,fontWeight:700,color:urgColor,flexShrink:0,textAlign:"right"}}>{mesesTxt.replace("Queda para ","").replace("Sin stock","Sin stock").replace("Sin consumo definido","—")}</div>
+              <div style={{fontSize:12,fontWeight:700,color:urgColor,flexShrink:0,textAlign:"right"}}>{mesesTxt}</div>
             </div>
             <div style={{fontSize:12,color:"#4a5568",marginTop:2,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{p.cantidadRef}{p.unidad||""}</span>}</span>
-              <span className="mono" style={{fontWeight:700,color:"#e8eaf0",fontSize:13}}>{fmtTotal(total)}</span>
+              <span style={{fontSize:12,color:"#4a5568"}}>Stock: <span className="mono" style={{fontWeight:700,color:"#e8eaf0",fontSize:13}}>{fmtTotal(total)}</span></span>
             </div>
             <div style={{marginTop:4,display:"flex",gap:10}}>
               {p.precioRef&&<span style={{fontSize:12,color:"#4a5568"}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
               {ultimoPrecio&&<span style={{fontSize:12,color:"#4a5568"}}>Último: <span style={{color:"#e8eaf0",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
             </div>
           </div>
-          {/* Botón + */}
           <button onClick={()=>setOpen(o=>!o)} style={{width:38,alignSelf:"center",height:38,borderRadius:10,background:open?"#1a2235":"#3b82f6",border:"none",color:"#fff",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,flexShrink:0,transition:"background .15s"}}>{open?"▲":"+"}</button>
         </div>
 
-        {/* Panel inline */}
         {open&&(
           <div style={{borderTop:"1px solid #1a2235",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
-            {/* Fila 1: precio y cantidad */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
               <div>
                 <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
@@ -432,18 +461,17 @@ const ResponsiveContainer=({children})=>children||null;
               </div>
               <div>
                 <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
-                <input className="inp" placeholder="1" value={stockComprado} onChange={e=>setStockComprado(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+                <input className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
               </div>
             </div>
-            {/* Equivalente */}
             {equivalente!=null&&(
-              <div style={{background:"#080c14",borderRadius:8,padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
+              <div style={{background:"#080c14",borderRadius:8,padding:"7px 10px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                 <span style={{fontSize:11,color:"#4a5568"}}>Equiv. {p.cantidadRef}{p.unidad}:</span>
                 <span className="mono" style={{fontWeight:700,color:cat?.color||"#3b82f6",fontSize:13}}>{fmt(equivalente)}</span>
                 {diff!=null&&<span style={{fontSize:12,fontWeight:600,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"} {Math.abs(diff).toFixed(1)}%</span>}
+                {totalPagado&&cantCompradaNum>1&&<span style={{fontSize:11,color:"#4a5568",marginLeft:4}}>· Total: <span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(totalPagado)}</span></span>}
               </div>
             )}
-            {/* Fecha */}
             <div>
               <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Fecha</div>
               <input className="inp" type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
@@ -522,9 +550,10 @@ const ResponsiveContainer=({children})=>children||null;
     const [toast,setToast]=useState(null);
     const [confirm,setConfirm]=useState(null);
     const [modoCompras,setModoCompras]=useState(false);
-    const [ticket,setTicket]=useState([]); // [{prodId, nombre, marca, cantRef, unidad, precio, equivalente, precioRef, fecha}]
+    const [ticket,setTicket]=useState([]);
     const [ticketOpen,setTicketOpen]=useState(false);
-    const [tickets,setTickets]=useState([]); // últimos 5 tickets guardados
+    const [tickets,setTickets]=useState([]);
+    const [showHistorial,setShowHistorial]=useState(false);
 
     const current=stack[stack.length-1];
     const push=(screen,params={})=>setStack(s=>[...s,{screen,...params}]);
@@ -698,8 +727,9 @@ const ResponsiveContainer=({children})=>children||null;
           <FloatingCompras onClick={()=>setModoCompras(true)}/>
         )}
         {modoCompras&&(
-          <TicketDrawer ticket={ticket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra}/>
+          <TicketDrawer ticket={ticket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} onVerHistorial={()=>setShowHistorial(true)}/>
         )}
+        {showHistorial&&<HistorialTickets tickets={tickets} onClose={()=>setShowHistorial(false)}/>}
         {!isFormScreen&&!modoCompras&&<BottomTabs activeTab={activeTab} setActiveTab={setActiveTab}/>}
       </div>
     );
@@ -1005,7 +1035,7 @@ const ResponsiveContainer=({children})=>children||null;
             <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#3a4255"}}>{p.cantidadRef}{p.unidad||""}</span>}</div>
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
-            <div className="mono" style={{fontWeight:700,fontSize:20,color:"#e8eaf0"}}>{fmtTotal(total)}</div>
+            <div style={{fontSize:12,color:"#4a5568"}}>Stock: <span className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmtTotal(total)}</span></div>
             <div style={{fontSize:12,fontWeight:600,color:urgColor,marginTop:2}}>{mesesTxt}</div>
           </div>
           <div style={{color:"#2a3550",fontSize:14,marginLeft:4}}>{open?"▲":"▼"}</div>
@@ -1067,7 +1097,7 @@ const ResponsiveContainer=({children})=>children||null;
             <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{p.cantidadRef}{p.unidad||""}</span>}</div>
             <div style={{marginTop:6,display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
               <span style={{fontSize:12,fontWeight:600,color:urgColor}}>{mesesTxt}</span>
-              <span style={{fontSize:11,color:"#4a5568"}}>· stock: <span style={{color:"#e8eaf0",fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span></span>
+              <span style={{fontSize:11,color:"#4a5568"}}>· Stock: <span style={{color:"#e8eaf0",fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span></span>
             </div>
             <div style={{marginTop:4,display:"flex",gap:10,alignItems:"center"}}>
               {p.precioRef&&<span style={{fontSize:12,color:"#4a5568"}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
