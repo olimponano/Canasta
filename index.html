@@ -350,7 +350,7 @@ const ResponsiveContainer=({children})=>children||null;
                     <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:cat?.color||"#444",flexShrink:0}}/>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
-                      <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantRef}${item.unidad||""}`}</div>
+                      <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantDisplay?`${item.cantDisplay}${item.unidad||""}`:item.cantRefDisplay?`${item.cantRefDisplay}${item.unidad||""}`:item.cantRef+""+(item.unidad||"")}`}</div>
                     </div>
                     <div style={{textAlign:"right",flexShrink:0}}>
                       <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
@@ -417,9 +417,12 @@ const ResponsiveContainer=({children})=>children||null;
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
     const [cantComprada,setCantComprada]=useState("1");
+    const [cantRollos,setCantRollos]=useState(""); // para unidad m
+    const [cantMetros,setCantMetros]=useState(""); // para unidad m
     const [fecha,setFecha]=useState(todayISO());
     const [saving,setSaving]=useState(false);
 
+    const esM=p.unidad==="m";
     const entradasGuardadas=stock[p.id]||[];
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
@@ -430,25 +433,28 @@ const ResponsiveContainer=({children})=>children||null;
     const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
 
     const precioNum=parseFloat((precio||"").replace(",","."));
-    const cantNum=parseFloat((cantidad||"").replace(",","."));
+    // Para m: cantNum = rollos × metros/rollo; cantCompradaNum = rollos
+    const cantRollosNum=esM?(parseInt(cantRollos)||0):0;
+    const cantMetrosNum=esM?(parseFloat(cantMetros)||0):0;
+    const cantNum=esM?cantRollosNum*cantMetrosNum:parseFloat((cantidad||"").replace(",","."));
+    const cantCompradaNum=esM?cantRollosNum:(parseInt(cantComprada)||1);
+    const cantDisplay=esM&&cantRollosNum>0&&cantMetrosNum>0?`${cantRollosNum}x${cantMetrosNum}`:null;
     const cantRefNum=p.cantidadRef;
-    const cantCompradaNum=parseInt(cantComprada)||1;
     const equivalente=(precioNum>0&&cantNum>0&&cantRefNum)?(precioNum/cantNum)*cantRefNum:null;
     const diff=equivalente!=null&&p.precioRef?((equivalente-p.precioRef)/p.precioRef*100):null;
-    const totalPagado=precioNum>0?precioNum*cantCompradaNum:null;
-    const totalRef=p.precioRef?p.precioRef*cantCompradaNum:null;
+    const totalPagado=precioNum>0&&cantCompradaNum>0?precioNum*cantCompradaNum:null;
+    const totalRef=p.precioRef&&cantCompradaNum>0?p.precioRef*cantCompradaNum:null;
 
     const doRegistrar=async()=>{
       setSaving(true);
       try {
-        const entrada={id:uid(),precio:precioNum,cantidad:cantidad||null,equivalente,fecha};
+        const cantGuardada=esM?String(cantNum):cantidad||null;
+        const entrada={id:uid(),precio:precioNum,cantidad:cantGuardada,equivalente,fecha};
         await guardar(null,productos.map(x=>x.id===p.id?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));
-        // Stock NO se aplica acá — se aplica al finalizar la compra
         agregarAlTicket({
-          prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,unidad:p.unidad,
-          precio:precioNum,equivalente,precioRef:p.precioRef,fecha,
+          prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,cantRefDisplay:p.cantidadRefDisplay||null,
+          cantDisplay,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha,
           cantComprada:cantCompradaNum,totalPagado,totalRef,
-          // Guardar info de stock para aplicar al finalizar
           stockDelta:{cantRef:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,display:p.cantidadRefDisplay||null}
         });
         showToast("✅ Agregado al ticket");
@@ -488,20 +494,39 @@ const ResponsiveContainer=({children})=>children||null;
 
         {open&&(
           <div style={{borderTop:"1px solid #1a2235",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-              <div>
-                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
-                <input className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
+            {esM?(
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto auto auto 1fr",gap:6,alignItems:"end"}}>
+                <div>
+                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
+                  <input className="inp" placeholder="ej. 1000" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
+                </div>
+                <div style={{display:"flex",flexDirection:"column"}}>
+                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Rollos</div>
+                  <input className="inp" placeholder="5" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{padding:"8px 8px",fontSize:14,width:52,textAlign:"center"}}/>
+                </div>
+                <span style={{fontSize:12,color:"#4a5568",paddingBottom:10}}>×</span>
+                <div style={{display:"flex",flexDirection:"column"}}>
+                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>m/rollo</div>
+                  <input className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{padding:"8px 8px",fontSize:14,width:52,textAlign:"center"}}/>
+                </div>
+                <div style={{paddingBottom:2,fontSize:11,color:"#4a5568",alignSelf:"flex-end"}}>{cantNum>0&&<span style={{color:"#3b82f6",fontWeight:600}}>{cantNum}m</span>}</div>
               </div>
-              <div>
-                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>{p.unidad||"gr"}</div>
-                <input className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+            ):(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                <div>
+                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
+                  <input className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>{p.unidad||"gr"}</div>
+                  <input className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
+                  <input className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+                </div>
               </div>
-              <div>
-                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
-                <input className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
-              </div>
-            </div>
+            )}
             {equivalente!=null&&(
               <div style={{background:"#080c14",borderRadius:8,padding:"7px 10px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                 <span style={{fontSize:11,color:"#4a5568"}}>Equiv. {fmtCantRef(p)}:</span>
