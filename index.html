@@ -1004,7 +1004,7 @@ const ResponsiveContainer=({children})=>children||null;
 
     const entradasGuardadas=stock[p.id]||[];
     const entradas=entradasGuardadas.length===0&&p.cantidadRef
-      ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,virtual:true}]
+      ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,virtual:true,display:p.cantidadRefDisplay||null}]
       :entradasGuardadas;
 
     const total=stockTotal(p);
@@ -1014,9 +1014,15 @@ const ResponsiveContainer=({children})=>children||null;
 
     const handleOpen=()=>{setOpen(o=>!o);setShowAddDim(false);};
 
+    const fmtEntrada=(e)=>{
+      if(e.display) return `${e.display}${e.unidad||p.unidad||""}`;
+      if(e.cantRef===p.cantidadRef) return fmtCantRef(p);
+      return `${e.cantRef}${e.unidad||p.unidad||"gr"}`;
+    };
+
     const cambiarStock=(idx,delta)=>{
       const base=entradasGuardadas.length===0&&p.cantidadRef
-        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
+        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,display:p.cantidadRefDisplay||null}]
         :entradasGuardadas;
       const nuevas=base.map((e,i)=>i===idx?{...e,stock:Math.max(0,e.stock+delta)}:e);
       guardarStock(p.id,nuevas);
@@ -1028,20 +1034,21 @@ const ResponsiveContainer=({children})=>children||null;
     };
 
     const agregarDimension=()=>{
-      let cant;
+      let cant, display=null;
       if(p.unidad==="m"){
         const r=parseFloat(newCantRef)||0;
         const m=parseFloat(newMetros)||0;
         cant=r*m;
+        if(r>0&&m>0) display=`${r}x${m}`;
       } else {
         cant=parseFloat(newCantRef.replace(",","."));
       }
       if(!cant||cant<=0)return;
       if(entradasGuardadas.find(e=>e.cantRef===cant))return;
       const base=entradasGuardadas.length===0&&p.cantidadRef
-        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
+        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,display:p.cantidadRefDisplay||null}]
         :entradasGuardadas;
-      const nuevas=[...base,{cantRef:cant,unidad:p.unidad||"gr",stock:0}];
+      const nuevas=[...base,{cantRef:cant,unidad:p.unidad||"gr",stock:0,display}];
       guardarStock(p.id,nuevas);
       setNewCantRef("");setNewMetros("");setShowAddDim(false);
       setShowAddDim(false);
@@ -1067,7 +1074,7 @@ const ResponsiveContainer=({children})=>children||null;
           <div style={{borderTop:"1px solid #1a2235",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
             {entradas.map((e,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{flex:1,fontSize:14,fontWeight:600,color:"#c8cfe0"}}>{e.cantRef}{e.unidad||p.unidad||"gr"}</div>
+                <div style={{flex:1,fontSize:14,fontWeight:600,color:"#c8cfe0"}}>{fmtEntrada(e)}</div>
                 <button onClick={()=>cambiarStock(i,-1)} disabled={e.stock<=0} style={{width:34,height:34,borderRadius:8,background:e.stock<=0?"#0d1321":"#1a2235",border:"1px solid #2a3550",color:e.stock<=0?"#2a3570":"#e8eaf0",fontSize:20,cursor:e.stock<=0?"default":"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
                 <div style={{width:32,textAlign:"center",fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{e.stock}</div>
                 <button onClick={()=>cambiarStock(i,1)} style={{width:34,height:34,borderRadius:8,background:"#1a2235",border:"1px solid #2a3550",color:"#e8eaf0",fontSize:20,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
