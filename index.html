@@ -286,27 +286,37 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   function FloatingCompras({onClick}) {
-    return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:"#10b981",color:"#fff",fontSize:26,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 24px #10b98155",zIndex:100,lineHeight:1}}>🛒</button>;
+    return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:"#10b981",color:"#fff",fontSize:26,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 24px #10b98155",zIndex:100,lineHeight:1,filter:"brightness(1.3)"}}>🛒</button>;
   }
 
-  function TicketDrawer({ticket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,onVerHistorial}) {
-    // Cada item tiene: precio (por unidad), cantComprada, equivalente (por unidad ref), precioRef
+  function TicketDrawer({ticket,setTicket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,onVerHistorial,askConfirm}) {
+    const [editIdx,setEditIdx]=useState(null);
+    const [editCant,setEditCant]=useState("");
+    const [editPrecio,setEditPrecio]=useState("");
     const totalPagado=ticket.reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
     const totalRef=ticket.reduce((s,i)=>s+(i.totalRef??i.precioRef??0),0);
     const diff=totalPagado-totalRef;
     const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
-
+    const eliminarItem=(idx)=>askConfirm("¿Eliminar este producto del ticket?",()=>setTicket(t=>t.filter((_,i)=>i!==idx)),"Eliminar","#ef4444");
+    const iniciarEdicion=(idx)=>{const item=ticket[idx];setEditCant(String(item.cantComprada||1));setEditPrecio(String(item.precio||""));setEditIdx(idx);};
+    const guardarEdicion=()=>{
+      const item=ticket[editIdx];
+      const nuevoPrecio=parseFloat(String(editPrecio).replace(",","."))||item.precio;
+      const nuevaCant=parseInt(editCant)||item.cantComprada||1;
+      const cantRefNum=item.cantRef;
+      const cantNum=parseFloat(String(item.cantidad||cantRefNum))||cantRefNum;
+      const equivalente=(nuevoPrecio>0&&cantNum>0&&cantRefNum)?(nuevoPrecio/cantNum)*cantRefNum:item.equivalente;
+      const totalPagado=nuevoPrecio*nuevaCant;
+      const totalRef=item.precioRef?item.precioRef*nuevaCant:null;
+      setTicket(t=>t.map((x,i)=>i===editIdx?{...x,precio:nuevoPrecio,cantComprada:nuevaCant,totalPagado,totalRef,equivalente,stockDelta:x.stockDelta?{...x.stockDelta,cantidad:nuevaCant}:x.stockDelta}:x));
+      setEditIdx(null);
+    };
     return (
       <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008"}}>
         <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setTicketOpen(o=>!o)}>
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:700,color:"#10b981"}}>🛒 Modo compras{ticket.length>0&&` · ${ticket.length} producto${ticket.length>1?"s":""}`}</div>
-            {ticket.length>0&&(
-              <div style={{fontSize:12,color:"#4a5568",marginTop:2}}>
-                <span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(totalPagado)}</span>
-                {diffPct!==null&&<span style={{marginLeft:8,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</span>}
-              </div>
-            )}
+            {ticket.length>0&&(<div style={{fontSize:12,color:"#4a5568",marginTop:2}}><span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(totalPagado)}</span>{diffPct!==null&&<span style={{marginLeft:8,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</span>}</div>)}
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             <button className="btn" onClick={e=>{e.stopPropagation();onVerHistorial();}} style={{background:"#1a2235",color:"#8b9ab0",border:"1px solid #2a3550",padding:"7px 12px",fontSize:13}}>📋</button>
@@ -315,33 +325,48 @@ const ResponsiveContainer=({children})=>children||null;
             <span style={{color:"#4a5568",fontSize:16}}>{ticketOpen?"▼":"▲"}</span>
           </div>
         </div>
-
         {ticketOpen&&ticket.length>0&&(
-          <div style={{maxHeight:240,overflowY:"auto",borderTop:"1px solid #1a2235"}}>
+          <div style={{maxHeight:280,overflowY:"auto",borderTop:"1px solid #1a2235"}}>
             {ticket.map((item,i)=>{
               const p=productos.find(x=>x.id===item.prodId);
               const cat=cats.find(c=>c.id===p?.catId);
               const diffItem=item.totalRef>0?item.totalPagado-item.totalRef:null;
-              return (
-                <div key={i} style={{padding:"10px 16px",borderBottom:"1px solid #1a2235",display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:cat?.color||"#444",flexShrink:0}}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
-                    <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantRef}${item.unidad||""}`}</div>
+              const isEditing=editIdx===i;
+              return (<div key={i} style={{padding:"10px 16px",borderBottom:"1px solid #1a2235"}}>
+                {isEditing?(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>{item.nombre}</div>
+                    <div style={{display:"flex",gap:8}}>
+                      <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input className="inp" value={editPrecio} onChange={e=>setEditPrecio(e.target.value)} style={{padding:"7px 10px",fontSize:14}} autoFocus/></div>
+                      <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input className="inp" value={editCant} onChange={e=>setEditCant(e.target.value)} style={{padding:"7px 10px",fontSize:14}}/></div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button className="btn" onClick={()=>setEditIdx(null)} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:"7px 0",fontSize:13}}>Cancelar</button>
+                      <button className="btn" onClick={guardarEdicion} style={{flex:2,background:"#3b82f6",color:"#fff",padding:"7px 0",fontSize:13}}>Guardar</button>
+                    </div>
                   </div>
-                  <div style={{textAlign:"right",flexShrink:0}}>
-                    <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
-                    {diffItem!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {fmt(Math.abs(diffItem))}</div>}
+                ):(
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:cat?.color||"#444",flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
+                      <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantRef}${item.unidad||""}`}</div>
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
+                      {diffItem!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {fmt(Math.abs(diffItem))}</div>}
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
+                      <button onClick={()=>iniciarEdicion(i)} style={{width:26,height:26,borderRadius:6,background:"#1a2235",border:"1px solid #2a3550",color:"#8b9ab0",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✏️</button>
+                      <button onClick={()=>eliminarItem(i)} style={{width:26,height:26,borderRadius:6,background:"#1a0a0a",border:"1px solid #2d1212",color:"#ef4444",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                    </div>
                   </div>
-                </div>
-              );
+                )}
+              </div>);
             })}
             <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",background:"#080c14"}}>
               <span style={{fontSize:13,color:"#4a5568",fontWeight:600}}>Total</span>
-              <div style={{textAlign:"right"}}>
-                <span className="mono" style={{fontSize:15,fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
-                {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {fmt(Math.abs(diff))} vs ref ({diffPct}%)</div>}
-              </div>
+              <div style={{textAlign:"right"}}><span className="mono" style={{fontSize:15,fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>{diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {fmt(Math.abs(diff))} vs ref ({diffPct}%)</div>}</div>
             </div>
           </div>
         )}
@@ -387,7 +412,7 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── ComprasCardInline ─────────────────────────────────────────────────────────
-  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket}) {
+  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket,askConfirm}) {
     const [open,setOpen]=useState(false);
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
@@ -408,33 +433,37 @@ const ResponsiveContainer=({children})=>children||null;
     const cantNum=parseFloat((cantidad||"").replace(",","."));
     const cantRefNum=p.cantidadRef;
     const cantCompradaNum=parseInt(cantComprada)||1;
-    // equivalente = precio normalizado a unidad de referencia (por 1 unidad)
     const equivalente=(precioNum>0&&cantNum>0&&cantRefNum)?(precioNum/cantNum)*cantRefNum:null;
     const diff=equivalente!=null&&p.precioRef?((equivalente-p.precioRef)/p.precioRef*100):null;
-    // totales para el ticket
     const totalPagado=precioNum>0?precioNum*cantCompradaNum:null;
     const totalRef=p.precioRef?p.precioRef*cantCompradaNum:null;
 
-    const registrar=async()=>{
-      if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
+    const doRegistrar=async()=>{
       setSaving(true);
       try {
         const entrada={id:uid(),precio:precioNum,cantidad:cantidad||null,equivalente,fecha};
         await guardar(null,productos.map(x=>x.id===p.id?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));
-        // Sumar al stock
-        if(cantCompradaNum>0){
-          const base=entradasGuardadas.length===0&&p.cantidadRef
-            ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0}]
-            :[...entradasGuardadas];
-          const idx=base.findIndex(e=>e.cantRef===cantRefNum);
-          const target=idx>=0?idx:0;
-          guardarStock(p.id,base.map((e,i)=>i===target?{...e,stock:e.stock+cantCompradaNum}:e));
-        }
-        agregarAlTicket({prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha,cantComprada:cantCompradaNum,totalPagado,totalRef});
-        showToast("✅ Registrado");
+        // Stock NO se aplica acá — se aplica al finalizar la compra
+        agregarAlTicket({
+          prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,unidad:p.unidad,
+          precio:precioNum,equivalente,precioRef:p.precioRef,fecha,
+          cantComprada:cantCompradaNum,totalPagado,totalRef,
+          // Guardar info de stock para aplicar al finalizar
+          stockDelta:{cantRef:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,display:p.cantidadRefDisplay||null}
+        });
+        showToast("✅ Agregado al ticket");
         setOpen(false);
       } catch(e){showToast("Error al guardar","err");}
       finally{setSaving(false);}
+    };
+
+    const registrar=()=>{
+      if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
+      askConfirm(
+        `¿Registrar ${p.nombre} a ${fmt(precioNum)}?`,
+        doRegistrar,
+        "Confirmar"
+      );
     };
 
     return (
@@ -690,20 +719,34 @@ const ResponsiveContainer=({children})=>children||null;
 
     const finalizarCompra=async()=>{
       if(ticket.length===0)return;
-      const nuevoTicket={id:uid(),fecha:new Date().toISOString(),items:ticket};
-      const nuevos=[nuevoTicket,...tickets].slice(0,5);
-      setTickets(nuevos);
-      try {
-        await sb.from("tickets").upsert({id:nuevoTicket.id,fecha:nuevoTicket.fecha,items:nuevoTicket.items});
-        if(tickets.length>=5){
-          const aEliminar=tickets.slice(4).map(t=>t.id);
-          if(aEliminar.length) await sb.from("tickets").delete().in("id",aEliminar);
+      askConfirm(`¿Finalizar compra con ${ticket.length} producto${ticket.length>1?"s":""}?`,async()=>{
+        const nuevoTicket={id:uid(),fecha:new Date().toISOString(),items:ticket};
+        const nuevos=[nuevoTicket,...tickets].slice(0,5);
+        setTickets(nuevos);
+        // Aplicar stock de todos los items
+        for(const item of ticket){
+          if(!item.stockDelta||item.stockDelta.cantidad<=0) continue;
+          const {cantRef,cantidad,entradasBase,display}=item.stockDelta;
+          const base=entradasBase.length===0&&cantRef
+            ?[{cantRef,unidad:item.unidad||"gr",stock:0,display:display||null}]
+            :[...entradasBase];
+          const idx=base.findIndex(e=>e.cantRef===cantRef);
+          const target=idx>=0?idx:0;
+          const nuevas=base.map((e,i)=>i===target?{...e,stock:e.stock+cantidad}:e);
+          guardarStock(item.prodId,nuevas);
         }
-      } catch(e){console.warn("Ticket save error:",e);}
-      setTicket([]);
-      setTicketOpen(false);
-      setModoCompras(false);
-      showToast("✅ Compra finalizada");
+        try {
+          await sb.from("tickets").upsert({id:nuevoTicket.id,fecha:nuevoTicket.fecha,items:nuevoTicket.items});
+          if(tickets.length>=5){
+            const aEliminar=tickets.slice(4).map(t=>t.id);
+            if(aEliminar.length) await sb.from("tickets").delete().in("id",aEliminar);
+          }
+        } catch(e){console.warn("Ticket save error:",e);}
+        setTicket([]);
+        setTicketOpen(false);
+        setModoCompras(false);
+        showToast("✅ Compra finalizada");
+      },"Finalizar","#10b981");
     };
 
     const cancelarCompra=()=>{
@@ -742,7 +785,7 @@ const ResponsiveContainer=({children})=>children||null;
           <FloatingCompras onClick={()=>setModoCompras(true)}/>
         )}
         {modoCompras&&(
-          <TicketDrawer ticket={ticket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} onVerHistorial={()=>setShowHistorial(true)}/>
+          <TicketDrawer ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} onVerHistorial={()=>setShowHistorial(true)} askConfirm={askConfirm}/>
         )}
         {showHistorial&&<HistorialTickets tickets={tickets} onClose={()=>setShowHistorial(false)}/>}
         {!isFormScreen&&!modoCompras&&<BottomTabs activeTab={activeTab} setActiveTab={setActiveTab}/>}
@@ -783,7 +826,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);
           if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
-          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
+          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm}/>;
           return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
       </div>);
@@ -858,7 +901,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{results.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
           if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
-          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
+          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm}/>;
           return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
       </div>);
@@ -981,7 +1024,7 @@ const ResponsiveContainer=({children})=>children||null;
           {lista.map(p=>{
             const pcat=q?cats.find(c=>c.id===p.catId):cat;
             if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
-            if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket}/>;
+            if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm}/>;
             const isSel=selected.has(p.id);
             return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
               onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
