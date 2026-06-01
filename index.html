@@ -416,9 +416,9 @@ const ResponsiveContainer=({children})=>children||null;
     const [open,setOpen]=useState(false);
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
-    const [cantComprada,setCantComprada]=useState("1");
-    const [cantRollos,setCantRollos]=useState(""); // para unidad m
-    const [cantMetros,setCantMetros]=useState(""); // para unidad m
+    const [cantRollos,setCantRollos]=useState(""); // rollos por paquete
+    const [cantMetros,setCantMetros]=useState(""); // metros por rollo
+    const [cantComprada,setCantComprada]=useState("1"); // paquetes comprados
     const [fecha,setFecha]=useState(todayISO());
     const [saving,setSaving]=useState(false);
 
@@ -433,14 +433,16 @@ const ResponsiveContainer=({children})=>children||null;
     const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
 
     const precioNum=parseFloat((precio||"").replace(",","."));
-    // Para m: cantNum = rollos × metros/rollo; cantCompradaNum = rollos
     const cantRollosNum=esM?(parseInt(cantRollos)||0):0;
     const cantMetrosNum=esM?(parseFloat(cantMetros)||0):0;
-    const cantNum=esM?cantRollosNum*cantMetrosNum:parseFloat((cantidad||"").replace(",","."));
-    const cantCompradaNum=esM?cantRollosNum:(parseInt(cantComprada)||1);
+    const cantCompradaNum=parseInt(cantComprada)||1;
+    // Para m: un paquete = rollos × metros; total metros = paquetes × rollos × metros
+    const metrosPorPaq=cantRollosNum*cantMetrosNum;
+    const cantNum=esM?metrosPorPaq*cantCompradaNum:parseFloat((cantidad||"").replace(",","."));
     const cantDisplay=esM&&cantRollosNum>0&&cantMetrosNum>0?`${cantRollosNum}x${cantMetrosNum}`:null;
     const cantRefNum=p.cantidadRef;
-    const equivalente=(precioNum>0&&cantNum>0&&cantRefNum)?(precioNum/cantNum)*cantRefNum:null;
+    // equivalente = precio por paquete normalizado a unidad de referencia
+    const equivalente=(precioNum>0&&metrosPorPaq>0&&cantRefNum)?(precioNum/metrosPorPaq)*cantRefNum:null;
     const diff=equivalente!=null&&p.precioRef?((equivalente-p.precioRef)/p.precioRef*100):null;
     const totalPagado=precioNum>0&&cantCompradaNum>0?precioNum*cantCompradaNum:null;
     const totalRef=p.precioRef&&cantCompradaNum>0?p.precioRef*cantCompradaNum:null;
@@ -501,8 +503,8 @@ const ResponsiveContainer=({children})=>children||null;
                   <input className="inp" placeholder="ej. 1000" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
                 </div>
                 <div>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Rollos</div>
-                  <input className="inp" placeholder="5" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Rollos x Paq</div>
+                  <input className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Metros</div>
@@ -510,7 +512,7 @@ const ResponsiveContainer=({children})=>children||null;
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
-                  <input className="inp" placeholder="1" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <input className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                 </div>
               </div>
             ):(
