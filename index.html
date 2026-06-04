@@ -637,7 +637,9 @@ const ResponsiveContainer=({children})=>children||null;
             const validSubs = new Set(lc.flatMap(c=>c.subs.map(s=>s.id)));
             const lp = (prodRows||[]).map(r=>({
               id:r.id, nombre:r.nombre, marca:r.marca||"", catId:r.cat_id, subId:r.sub_id&&validSubs.has(r.sub_id)?r.sub_id:null,
-              precioRef:r.precio_ref, unidadesMes:r.unidades_mes, cantidadRef:r.cantidad_ref, cantidadRefDisplay:r.cantidad_ref_display||null, unidad:r.unidad||"gr",
+              precioRef:r.precio_ref, unidadesMes:r.unidades_mes,
+              cantidadRef:r.cantidad_ref!=null?(typeof r.cantidad_ref==="string"?parseQty(r.cantidad_ref):r.cantidad_ref):null,
+              cantidadRefDisplay:r.cantidad_ref_display||null, unidad:r.unidad||"gr",
               historialCompra:r.historial_compra||[]
             }));
             setCats(lc); setProductos(lp);
@@ -684,9 +686,13 @@ const ResponsiveContainer=({children})=>children||null;
           for(let i=0;i<np.length;i+=CHUNK){
             const chunk=np.slice(i,i+CHUNK);
             const res=await sb.from("productos").upsert(
-              chunk.map(p=>({id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
-                precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:p.cantidadRef,cantidad_ref_display:p.cantidadRefDisplay||null,
-                unidad:p.unidad||"gr",historial_compra:p.historialCompra||[]}))
+              chunk.map(p=>{
+                // Asegurar que cantidad_ref sea siempre numérico
+                const cr=p.cantidadRef!=null?(typeof p.cantidadRef==="string"?parseQty(p.cantidadRef):p.cantidadRef):null;
+                return {id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
+                  precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:cr||null,cantidad_ref_display:p.cantidadRefDisplay||null,
+                  unidad:p.unidad||"gr",historial_compra:p.historialCompra||[]};
+              })
             );
             if(res.error){ console.error(`Error en chunk ${i}-${i+CHUNK}:`,res.error); showToast("Error guardando productos","err"); return; }
           }
