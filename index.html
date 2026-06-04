@@ -669,27 +669,35 @@ const ResponsiveContainer=({children})=>children||null;
       setCats(nc); setProductos(np);
       try {
         if (nextCats) {
-          await sb.from("categorias").upsert(
+          const catRes=await sb.from("categorias").upsert(
             nc.map(c=>({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs}))
           );
+          if(catRes.error) { console.error("Error guardando cats:",catRes.error); showToast("Error guardando categorías","err"); return; }
           const ncIds = nc.map(c=>c.id);
           const oldIds = cats.map(c=>c.id).filter(id=>!ncIds.includes(id));
           if (oldIds.length) await sb.from("categorias").delete().in("id", oldIds);
         }
         if (nextProds) {
-          await sb.from("productos").upsert(
-            np.map(p=>({id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
-              precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:p.cantidadRef,cantidad_ref_display:p.cantidadRefDisplay||null,
-              unidad:p.unidad||"gr",historial_compra:p.historialCompra||[]}))
-          );
-          // Solo borrar si se pasó explícitamente la opción (ej: al eliminar un producto)
+          console.log("Guardando",np.length,"productos en Supabase...");
+          // Supabase tiene límite de ~1000 filas por upsert — dividir en chunks
+          const CHUNK=100;
+          for(let i=0;i<np.length;i+=CHUNK){
+            const chunk=np.slice(i,i+CHUNK);
+            const res=await sb.from("productos").upsert(
+              chunk.map(p=>({id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
+                precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:p.cantidadRef,cantidad_ref_display:p.cantidadRefDisplay||null,
+                unidad:p.unidad||"gr",historial_compra:p.historialCompra||[]}))
+            );
+            if(res.error){ console.error(`Error en chunk ${i}-${i+CHUNK}:`,res.error); showToast("Error guardando productos","err"); return; }
+          }
+          console.log("Guardado exitoso:",np.length,"productos");
           if (opts.deleteRemoved) {
             const npIds = np.map(p=>p.id);
             const oldPIds = productos.map(p=>p.id).filter(id=>!npIds.includes(id));
             if (oldPIds.length) await sb.from("productos").delete().in("id", oldPIds);
           }
         }
-      } catch(e) { console.error("Supabase error:", e); showToast("Error al guardar en servidor","err"); }
+      } catch(e) { console.error("Supabase error:", e); showToast("Error al guardar: "+e.message,"err"); }
     };
 
     const showToast=(msg,tipo="ok")=>{setToast({msg,tipo});setTimeout(()=>setToast(null),2400);};
