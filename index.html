@@ -653,7 +653,6 @@ const ResponsiveContainer=({children})=>children||null;
                 historialCompra:r.historial_compra||[]
               };
             });
-            }));
             setCats(lc); setProductos(lp);
             // Cargar stock
             const { data: stockRows } = await sb.from("stock").select("*");
