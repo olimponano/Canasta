@@ -312,11 +312,8 @@ const ResponsiveContainer=({children})=>children||null;
     };
     return (
       <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008"}}>
-        <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setTicketOpen(o=>!o)}>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#10b981"}}>🛒 Modo compras{ticket.length>0&&` · ${ticket.length} producto${ticket.length>1?"s":""}`}</div>
-            {ticket.length>0&&(<div style={{fontSize:12,color:"#4a5568",marginTop:2}}><span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(totalPagado)}</span>{diffPct!==null&&<span style={{marginLeft:8,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</span>}</div>)}
-          </div>
+        <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>setTicketOpen(o=>!o)}>
+          <div style={{fontSize:13,fontWeight:700,color:"#10b981",flex:1}}>🛒 Modo compras</div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             <button className="btn" onClick={e=>{e.stopPropagation();onVerHistorial();}} style={{background:"#1a2235",color:"#8b9ab0",border:"1px solid #2a3550",padding:"7px 12px",fontSize:13}}>📋</button>
             {ticket.length>0&&<button className="btn" onClick={e=>{e.stopPropagation();onFinalizar();}} style={{background:"#10b981",color:"#fff",padding:"7px 14px",fontSize:13}}>Finalizar</button>}
@@ -324,6 +321,13 @@ const ResponsiveContainer=({children})=>children||null;
             <span style={{color:"#4a5568",fontSize:16}}>{ticketOpen?"▼":"▲"}</span>
           </div>
         </div>
+        {ticket.length>0&&(
+          <div style={{padding:"4px 16px 10px",display:"flex",justifyContent:"flex-end",alignItems:"center",gap:12,marginTop:-4}}>
+            <span style={{fontSize:12,color:"#4a5568"}}>{ticket.length} producto{ticket.length>1?"s":""}</span>
+            <span className="mono" style={{fontWeight:700,color:"#e8eaf0",fontSize:14}}>{fmt(totalPagado)}</span>
+            {diffPct!==null&&<span style={{fontWeight:700,fontSize:12,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</span>}
+          </div>
+        )}
         {ticketOpen&&ticket.length>0&&(
           <div style={{maxHeight:280,overflowY:"auto",borderTop:"1px solid #1a2235"}}>
             {ticket.map((item,i)=>{
@@ -486,7 +490,7 @@ const ResponsiveContainer=({children})=>children||null;
               <span style={{fontSize:12,color:"#4a5568"}}>Stock: <span className="mono" style={{fontWeight:700,color:"#e8eaf0",fontSize:13}}>{fmtTotal(total)}</span></span>
             </div>
             <div style={{marginTop:4,display:"flex",gap:10}}>
-              {p.precioRef&&<span style={{fontSize:12,color:"#4a5568"}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
+              {p.precioRef&&<span style={{fontSize:12,color:"#4a5568"}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span>{diff!=null&&<span style={{marginLeft:6,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}</span>}
               {ultimoPrecio&&<span style={{fontSize:12,color:"#4a5568"}}>Último: <span style={{color:"#e8eaf0",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
             </div>
           </div>
@@ -635,12 +639,20 @@ const ResponsiveContainer=({children})=>children||null;
           if (catRows && catRows.length) {
             const lc = catRows.map(r=>({id:r.id,label:r.label,emoji:r.emoji,color:r.color,subs:r.subs||[]}));
             const validSubs = new Set(lc.flatMap(c=>c.subs.map(s=>s.id)));
-            const lp = (prodRows||[]).map(r=>({
-              id:r.id, nombre:r.nombre, marca:r.marca||"", catId:r.cat_id, subId:r.sub_id&&validSubs.has(r.sub_id)?r.sub_id:null,
-              precioRef:r.precio_ref, unidadesMes:r.unidades_mes,
-              cantidadRef:r.cantidad_ref!=null?(typeof r.cantidad_ref==="string"?parseQty(r.cantidad_ref):r.cantidad_ref):null,
-              cantidadRefDisplay:r.cantidad_ref_display||null, unidad:r.unidad||"gr",
-              historialCompra:r.historial_compra||[]
+            const lp = (prodRows||[]).map(r=>{
+              let cr=r.cantidad_ref, crd=r.cantidad_ref_display||null;
+              if(cr!=null&&typeof cr==="string"){
+                // Si viene como "4x30" guardar display y calcular número
+                if(/^\d+x\d+$/.test(cr.trim())){crd=crd||cr.trim();} 
+                cr=parseQty(cr);
+              }
+              return {
+                id:r.id, nombre:r.nombre, marca:r.marca||"", catId:r.cat_id, subId:r.sub_id&&validSubs.has(r.sub_id)?r.sub_id:null,
+                precioRef:r.precio_ref, unidadesMes:r.unidades_mes,
+                cantidadRef:cr, cantidadRefDisplay:crd, unidad:r.unidad||"gr",
+                historialCompra:r.historial_compra||[]
+              };
+            });
             }));
             setCats(lc); setProductos(lp);
             // Cargar stock
@@ -687,10 +699,13 @@ const ResponsiveContainer=({children})=>children||null;
             const chunk=np.slice(i,i+CHUNK);
             const res=await sb.from("productos").upsert(
               chunk.map(p=>{
-                // Asegurar que cantidad_ref sea siempre numérico
-                const cr=p.cantidadRef!=null?(typeof p.cantidadRef==="string"?parseQty(p.cantidadRef):p.cantidadRef):null;
+                let cr=p.cantidadRef, crd=p.cantidadRefDisplay||null;
+                if(cr!=null&&typeof cr==="string"){
+                  if(/^\d+x\d+$/.test(cr.trim())){crd=crd||cr.trim();}
+                  cr=parseQty(cr);
+                }
                 return {id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
-                  precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:cr||null,cantidad_ref_display:p.cantidadRefDisplay||null,
+                  precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:cr||null,cantidad_ref_display:crd,
                   unidad:p.unidad||"gr",historial_compra:p.historialCompra||[]};
               })
             );
@@ -990,10 +1005,12 @@ const ResponsiveContainer=({children})=>children||null;
   }
   function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm}) {
     const [q,setQ]=useState("");
-    const isStock=activeTab==="stock"; 
+    const isStock=activeTab==="stock";
     const defaultSort="nombre-az";
     const [sortBy,setSortBy]=useState(defaultSort); const [selected,setSelected]=useState(new Set());
     const [selectMode,setSelectMode]=useState(false); const [moveModal,setMoveModal]=useState(false); const [moveDest,setMoveDest]=useState("");
+    const [openStockId,setOpenStockId]=useState(null); // ID del StockCard abierto
+    const [frozenOrder,setFrozenOrder]=useState(null); // orden congelado mientras hay panel abierto
     const cat=cats.find(c=>c.id===catId); const sub=cat?.subs?.find(s=>s.id===subId); if(!cat) return null;
     const isUnassignedView=subId===UNASSIGNED_ID;
     const sortFn = (a,b) => {
@@ -1010,7 +1027,17 @@ const ResponsiveContainer=({children})=>children||null;
       return 0;
     };
     const baseLista=productos.filter(p=>{if(p.catId!==catId)return false;if(isUnassignedView)return isUnassignedProd(p,cat);if(subId)return p.subId===subId;return true;});
-    const lista=[...(q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())):baseLista)].sort(sortFn);
+    const listaOrdenada=[...(q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())):baseLista)].sort(sortFn);
+    // En stock, congelar el orden mientras hay un panel abierto
+    const lista=isStock&&frozenOrder?frozenOrder.filter(p=>listaOrdenada.find(x=>x.id===p.id)):listaOrdenada;
+    const handleStockOpen=(id)=>{
+      if(!openStockId) setFrozenOrder(listaOrdenada);
+      setOpenStockId(id);
+    };
+    const handleStockClose=()=>{
+      setOpenStockId(null);
+      setFrozenOrder(null);
+    };
     const toggleSelect=(id)=>{setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});};
     const cancelSelect=()=>{setSelectMode(false);setSelected(new Set());};
     const doMove=async()=>{
@@ -1067,7 +1094,7 @@ const ResponsiveContainer=({children})=>children||null;
         :<div style={{display:"flex",flexDirection:"column",gap:8}}>
           {lista.map(p=>{
             const pcat=q?cats.find(c=>c.id===p.catId):cat;
-            if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
+            if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} onOpen={()=>handleStockOpen(p.id)} onClose={handleStockClose}/>;
             if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm}/>;
             const isSel=selected.has(p.id);
             return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
@@ -1083,7 +1110,7 @@ const ResponsiveContainer=({children})=>children||null;
 
 
   // ── StockCard ─────────────────────────────────────────────────────────────────
-  function StockCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,askConfirm}) {
+  function StockCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,askConfirm,onOpen,onClose}) {
     const [open,setOpen]=useState(false);
     const [showAddDim,setShowAddDim]=useState(false);
     const [newCantRef,setNewCantRef]=useState("");
@@ -1099,7 +1126,7 @@ const ResponsiveContainer=({children})=>children||null;
     const mesesTxt=fmtMeses(meses);
     const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
 
-    const handleOpen=()=>{setOpen(o=>!o);setShowAddDim(false);};
+    const handleOpen=()=>{const abriendo=!open;setOpen(abriendo);setShowAddDim(false);if(abriendo&&onOpen)onOpen();if(!abriendo&&onClose)onClose();};
 
     const fmtEntrada=(e)=>{
       if(e.display) return `${e.display}${e.unidad||p.unidad||""}`;
