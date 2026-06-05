@@ -439,13 +439,13 @@ const ResponsiveContainer=({children})=>children||null;
     const cantRollosNum=esM?(parseInt(cantRollos)||0):0;
     const cantMetrosNum=esM?(parseFloat(cantMetros)||0):0;
     const cantCompradaNum=parseInt(cantComprada)||1;
-    // Para m: un paquete = rollos × metros; total metros = paquetes × rollos × metros
     const metrosPorPaq=cantRollosNum*cantMetrosNum;
     const cantNum=esM?metrosPorPaq*cantCompradaNum:parseFloat((cantidad||"").replace(",","."));
     const cantDisplay=esM&&cantRollosNum>0&&cantMetrosNum>0?`${cantRollosNum}x${cantMetrosNum}`:null;
     const cantRefNum=p.cantidadRef;
-    // equivalente = precio por paquete normalizado a unidad de referencia
-    const equivalente=(precioNum>0&&metrosPorPaq>0&&cantRefNum)?(precioNum/metrosPorPaq)*cantRefNum:null;
+    const equivalente=esM
+      ?(precioNum>0&&metrosPorPaq>0&&cantRefNum?(precioNum/metrosPorPaq)*cantRefNum:null)
+      :(precioNum>0&&cantNum>0&&cantRefNum?(precioNum/cantNum)*cantRefNum:null);
     const diff=equivalente!=null&&p.precioRef?((equivalente-p.precioRef)/p.precioRef*100):null;
     const totalPagado=precioNum>0&&cantCompradaNum>0?precioNum*cantCompradaNum:null;
     const totalRef=p.precioRef&&cantCompradaNum>0?p.precioRef*cantCompradaNum:null;
