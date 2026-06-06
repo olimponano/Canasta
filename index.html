@@ -319,6 +319,7 @@ const ResponsiveContainer=({children})=>children||null;
             {ticket.length>0&&<div style={{fontSize:11,color:"#8b9ab0",marginTop:2}}>{ticket.length} producto{ticket.length>1?"s":""}</div>}
           </div>
           {ticket.length>0&&<div style={{textAlign:"right"}}>
+            <div style={{fontSize:10,color:"#4a5568",fontWeight:600,textTransform:"uppercase",letterSpacing:".06em",marginBottom:1}}>Total</div>
             <div className="mono" style={{fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
             {diffPct!==null&&<div style={{fontSize:11,fontWeight:700,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
           </div>}
@@ -356,6 +357,7 @@ const ResponsiveContainer=({children})=>children||null;
                         <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantDisplay?`${item.cantDisplay}${item.unidad||""}`:item.cantRefDisplay?`${item.cantRefDisplay}${item.unidad||""}`:item.cantRef+""+(item.unidad||"")}`}</div>
                       </div>
                       <div style={{textAlign:"right",flexShrink:0}}>
+                        {item.cantComprada>1&&<div style={{fontSize:10,color:"#4a5568",marginBottom:1}}>{fmt(item.precio)} × {item.cantComprada}</div>}
                         <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
                         {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
                       </div>
@@ -474,8 +476,11 @@ const ResponsiveContainer=({children})=>children||null;
 
     const registrar=()=>{
       if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
+      const cantDesc=esM&&cantRollosNum>0&&cantMetrosNum>0?`${cantRollosNum}×${cantMetrosNum}m`:cantidad?`${cantidad}${p.unidad||""}`:fmtCantRef(p);
+      const marcaDesc=p.marca?` · ${p.marca}`:"";
+      const cantCompDesc=cantCompradaNum>1?` × ${cantCompradaNum} = ${fmt(totalPagado)}`:"";
       askConfirm(
-        `¿Registrar ${p.nombre} a ${fmt(precioNum)}?`,
+        `${p.nombre}${marcaDesc} · ${cantDesc}${cantCompDesc}\n¿Registrar a ${fmt(precioNum)}?`,
         doRegistrar,
         "Confirmar"
       );
@@ -600,6 +605,15 @@ const ResponsiveContainer=({children})=>children||null;
       </div>
     );
   }
+
+  const SearchRow=({q,onChange,sortValue,onSort,sortOptions})=>(
+    <div style={{display:"flex",gap:8,marginBottom:14}}>
+      <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>onChange(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
+      <select value={sortValue} onChange={e=>onSort(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
+        {sortOptions}
+      </select>
+    </div>
+  );
 
   function SearchBar({value,onChange,placeholder="🔍 Buscar en toda la canasta…"}) {
     return <input className="inp" placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)} style={{marginBottom:14}}/>;
@@ -939,7 +953,7 @@ const ResponsiveContainer=({children})=>children||null;
         <HeaderRight/>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0}}/>
+        <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
         <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
@@ -990,9 +1004,9 @@ const ResponsiveContainer=({children})=>children||null;
     if(q){
       const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
       return (<div className="fade">
-        <TopBar title={`${cat.emoji} ${cat.label}`} onBack={pop} right={!isStock&&!modoCompras&&<button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>}/>
+        <TopBar title={`${cat.emoji} ${cat.label}`} onBack={pop} right={!isStock&&!modoCompras&&<button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>📂</button>}/>
         <div style={{display:"flex",gap:8,marginBottom:14}}>
-          <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0}}/>
+          <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
           <SortSelect/>
         </div>
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
@@ -1005,16 +1019,17 @@ const ResponsiveContainer=({children})=>children||null;
     }
 
     return (<div className="fade">
-      <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?`${fmt(catGasto)}/mes`:undefined} onBack={pop}
+      <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
           {!isStock&&!modoCompras&&<button className="btn" onClick={()=>handleExport(catId)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"8px 11px",fontSize:14}}>📋</button>}
-          {!isStock&&!modoCompras&&<button className="btn" onClick={()=>push("config",{openCatId:catId})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>⚙️</button>}
+          {!isStock&&!modoCompras&&<button className="btn" onClick={()=>push("config",{openCatId:catId})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>📂</button>}
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Ver todos</button>
         </div>}/>
-      <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0}}/>
-        <SortSelect/>
-      </div>
+      <SearchRow q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
+        <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
+        {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
+        <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
+      </>}/>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
           const subProds=productos.filter(p=>p.catId===catId&&p.subId===sub.id);
@@ -1088,7 +1103,7 @@ const ResponsiveContainer=({children})=>children||null;
     };
     const catGasto=productos.filter(p=>p.catId===catId).reduce((s,p)=>s+(gastoMensual(p)||0),0);
     const title=isUnassignedView?`${cat.emoji} Sin subcategoría`:sub?`${cat.emoji} ${sub.label}`:`${cat.emoji} ${cat.label}`;
-    const listSubtitle=sub?cat.label:isUnassignedView?cat.label:(!isStock&&!modoCompras&&catGasto>0)?`${fmt(catGasto)}/mes`:undefined;
+    const listSubtitle=sub?cat.label:isUnassignedView?cat.label:(!isStock&&!modoCompras&&catGasto>0)?<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined;
     return (<div className="fade">
       {moveModal&&(<div style={{position:"fixed",inset:0,background:"#000b",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
         <div style={{background:"#0d1321",border:"1px solid #2a3550",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
@@ -1119,7 +1134,7 @@ const ResponsiveContainer=({children})=>children||null;
               {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>}
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <input className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0}}/>
+        <input className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
         <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
@@ -1724,7 +1739,7 @@ const ResponsiveContainer=({children})=>children||null;
     const addSub=(catId)=>askConfirm(`¿Crear subcategoría "${(newSubInputs[catId]||"").trim()}"?`,async()=>{const label=(newSubInputs[catId]||"").trim();if(!label)return;save(localCats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c));setNewSubInputs(f=>({...f,[catId]:""}));showToast("✅ Subcategoría creada");},"Crear");
     const deleteSub=(catId,subId)=>askConfirm("¿Eliminar esta subcategoría?",async()=>{if(productos.some(p=>p.catId===catId&&p.subId===subId))return showToast("Eliminá los productos primero","err");save(localCats.map(c=>c.id===catId?{...c,subs:c.subs.filter(s=>s.id!==subId)}:c));},"Eliminar","#ef4444");
     const doMoveSub=async()=>{if(!moveTarget||!movingSub)return;const sub=localCats.find(c=>c.id===movingSub.catId)?.subs?.find(s=>s.id===movingSub.subId);if(!sub)return;const nc=localCats.map(c=>{if(c.id===movingSub.catId)return{...c,subs:c.subs.filter(s=>s.id!==movingSub.subId)};if(c.id===moveTarget)return{...c,subs:[...c.subs,sub]};return c;});const np=productos.map(p=>p.catId===movingSub.catId&&p.subId===movingSub.subId?{...p,catId:moveTarget}:p);await guardar(nc,np);setMovingSub(null);setMoveTarget("");showToast("✅ Subcategoría movida");};
-    return (<div className="fade"><TopBar title="⚙️ Configuración" subtitle="Categorías y subcategorías" onBack={pop}/>
+    return (<div className="fade"><TopBar title="📂 Configuración" subtitle="Categorías y subcategorías" onBack={pop}/>
       {movingSub&&(<div style={{position:"fixed",inset:0,background:"#000b",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
         <div style={{background:"#0d1321",border:"1px solid #2a3550",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
           <div style={{fontWeight:600,marginBottom:4,color:"#e8eaf0"}}>Mover "{movingSub.label}"</div>
