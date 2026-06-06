@@ -312,67 +312,69 @@ const ResponsiveContainer=({children})=>children||null;
     };
     return (
       <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008"}}>
-        {/* Header: total e info arriba, clickeable para expandir */}
-        <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setTicketOpen(o=>!o)}>
+        {/* Header: siempre visible, clickeable */}
+        <div style={{padding:"10px 16px",display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer"}} onClick={()=>setTicketOpen(o=>!o)}>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#10b981"}}>🛒 Modo compras{ticket.length>0&&` · ${ticket.length} producto${ticket.length>1?"s":""}`}</div>
-            {ticket.length>0&&<div style={{display:"flex",alignItems:"center",gap:10,marginTop:3}}>
-              <span className="mono" style={{fontWeight:700,fontSize:14,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
-              {diffPct!==null&&<span style={{fontSize:12,fontWeight:700,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</span>}
-            </div>}
+            <div style={{fontSize:13,fontWeight:700,color:"#10b981"}}>🛒 Modo compras</div>
+            {ticket.length>0&&<div style={{fontSize:11,color:"#8b9ab0",marginTop:2}}>{ticket.length} producto{ticket.length>1?"s":""}</div>}
           </div>
-          <span style={{color:"#4a5568",fontSize:16}}>{ticketOpen?"▼":"▲"}</span>
+          {ticket.length>0&&<div style={{textAlign:"right"}}>
+            <div className="mono" style={{fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
+            {diffPct!==null&&<div style={{fontSize:11,fontWeight:700,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+          </div>}
+          <span style={{color:"#4a5568",fontSize:16,marginTop:2}}>{ticketOpen?"▼":"▲"}</span>
         </div>
 
-        {/* Lista de items expandible */}
-        {ticketOpen&&ticket.length>0&&(
-          <div style={{maxHeight:260,overflowY:"auto",borderTop:"1px solid #1a2235"}}>
-            {ticket.map((item,i)=>{
-              const p=productos.find(x=>x.id===item.prodId);
-              const cat=cats.find(c=>c.id===p?.catId);
-              const diffItem=item.totalRef>0?item.totalPagado-item.totalRef:null;
-              const diffItemPct=item.totalRef>0?((item.totalPagado-item.totalRef)/item.totalRef*100).toFixed(1):null;
-              const isEditing=editIdx===i;
-              return (<div key={i} style={{padding:"10px 16px",borderBottom:"1px solid #1a2235"}}>
-                {isEditing?(
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>{item.nombre}</div>
-                    <div style={{display:"flex",gap:8}}>
-                      <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input className="inp" value={editPrecio} onChange={e=>setEditPrecio(e.target.value)} style={{padding:"7px 10px",fontSize:14}} autoFocus/></div>
-                      <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input className="inp" value={editCant} onChange={e=>setEditCant(e.target.value)} style={{padding:"7px 10px",fontSize:14}}/></div>
+        {/* Panel expandible: items + botones */}
+        {ticketOpen&&(
+          <div style={{borderTop:"1px solid #1a2235"}}>
+            {ticket.length>0&&<div style={{maxHeight:240,overflowY:"auto"}}>
+              {ticket.map((item,i)=>{
+                const p=productos.find(x=>x.id===item.prodId);
+                const cat=cats.find(c=>c.id===p?.catId);
+                const diffItem=item.totalRef>0?item.totalPagado-item.totalRef:null;
+                const diffItemPct=item.totalRef>0?((item.totalPagado-item.totalRef)/item.totalRef*100).toFixed(1):null;
+                const isEditing=editIdx===i;
+                return (<div key={i} style={{padding:"10px 16px",borderBottom:"1px solid #1a2235"}}>
+                  {isEditing?(
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>{item.nombre}</div>
+                      <div style={{display:"flex",gap:8}}>
+                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input className="inp" value={editPrecio} onChange={e=>setEditPrecio(e.target.value)} style={{padding:"7px 10px",fontSize:14}} autoFocus/></div>
+                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input className="inp" value={editCant} onChange={e=>setEditCant(e.target.value)} style={{padding:"7px 10px",fontSize:14}}/></div>
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button className="btn" onClick={()=>setEditIdx(null)} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:"7px 0",fontSize:13}}>Cancelar</button>
+                        <button className="btn" onClick={guardarEdicion} style={{flex:2,background:"#3b82f6",color:"#fff",padding:"7px 0",fontSize:13}}>Guardar</button>
+                      </div>
                     </div>
-                    <div style={{display:"flex",gap:8}}>
-                      <button className="btn" onClick={()=>setEditIdx(null)} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:"7px 0",fontSize:13}}>Cancelar</button>
-                      <button className="btn" onClick={guardarEdicion} style={{flex:2,background:"#3b82f6",color:"#fff",padding:"7px 0",fontSize:13}}>Guardar</button>
+                  ):(
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:cat?.color||"#444",flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
+                        <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantDisplay?`${item.cantDisplay}${item.unidad||""}`:item.cantRefDisplay?`${item.cantRefDisplay}${item.unidad||""}`:item.cantRef+""+(item.unidad||"")}`}</div>
+                      </div>
+                      <div style={{textAlign:"right",flexShrink:0}}>
+                        <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
+                        {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
+                        <button onClick={()=>iniciarEdicion(i)} style={{width:26,height:26,borderRadius:6,background:"#1a2235",border:"1px solid #2a3550",color:"#8b9ab0",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✏️</button>
+                        <button onClick={()=>eliminarItem(i)} style={{width:26,height:26,borderRadius:6,background:"#1a0a0a",border:"1px solid #2d1212",color:"#ef4444",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                      </div>
                     </div>
-                  </div>
-                ):(
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:cat?.color||"#444",flexShrink:0}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
-                      <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantDisplay?`${item.cantDisplay}${item.unidad||""}`:item.cantRefDisplay?`${item.cantRefDisplay}${item.unidad||""}`:item.cantRef+""+(item.unidad||"")}`}</div>
-                    </div>
-                    <div style={{textAlign:"right",flexShrink:0}}>
-                      <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
-                      {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
-                      <button onClick={()=>iniciarEdicion(i)} style={{width:26,height:26,borderRadius:6,background:"#1a2235",border:"1px solid #2a3550",color:"#8b9ab0",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✏️</button>
-                      <button onClick={()=>eliminarItem(i)} style={{width:26,height:26,borderRadius:6,background:"#1a0a0a",border:"1px solid #2d1212",color:"#ef4444",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-                    </div>
-                  </div>
-                )}
-              </div>);
-            })}
+                  )}
+                </div>);
+              })}
+            </div>}
+            {/* Botones siempre dentro del panel expandido */}
+            <div style={{padding:"10px 16px",display:"flex",gap:8}}>
+              <button className="btn" onClick={onCancelar} style={{flex:1,background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"11px 0",fontSize:14,fontWeight:600}}>Cancelar</button>
+              <button className="btn" onClick={onFinalizar} style={{flex:1,background:"#10b981",color:"#fff",padding:"11px 0",fontSize:14,fontWeight:700}}>Finalizar</button>
+            </div>
           </div>
         )}
-
-        {/* Footer: finalizar y cancelar siempre visibles */}
-        <div style={{padding:"10px 16px",display:"flex",gap:8,borderTop:"1px solid #1a2235"}}>
-          <button className="btn" onClick={onCancelar} style={{flex:1,background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"11px 0",fontSize:14,fontWeight:600}}>Cancelar compra</button>
-          {ticket.length>0&&<button className="btn" onClick={onFinalizar} style={{flex:2,background:"#10b981",color:"#fff",padding:"11px 0",fontSize:14,fontWeight:700}}>Finalizar compra</button>}
-        </div>
       </div>
     );
   }
