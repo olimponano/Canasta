@@ -497,11 +497,12 @@ const ResponsiveContainer=({children})=>children||null;
       try {
         const cantGuardada=esM?String(cantNum):cantidad||null;
         const entrada={id:uid(),precio:precioNum,cantidad:cantGuardada,equivalente,fecha};
-        await guardar(null,productos.map(x=>x.id===p.id?{...x,historialCompra:[...(x.historialCompra||[]),entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:x));
+        // NO guardar en Supabase todavía — se guarda al finalizar la compra
         agregarAlTicket({
           prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,cantRefDisplay:p.cantidadRefDisplay||null,
           cantDisplay,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha,
           cantComprada:cantCompradaNum,totalPagado,totalRef,
+          entrada, // guardamos la entrada para aplicarla al finalizar
           stockDelta:{cantRef:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,display:p.cantidadRefDisplay||null}
         });
         showToast("✅ Agregado al ticket");
@@ -862,6 +863,16 @@ const ResponsiveContainer=({children})=>children||null;
         const nuevoTicket={id:uid(),fecha:new Date().toISOString(),items:ticket};
         const nuevos=[nuevoTicket,...tickets].slice(0,5);
         setTickets(nuevos);
+        // Aplicar historial de precios y stock de todos los items
+        let prodActualizados=[...productos];
+        for(const item of ticket){
+          // Aplicar entrada de precio
+          if(item.entrada){
+            prodActualizados=prodActualizados.map(p=>p.id===item.prodId?{...p,historialCompra:[...(p.historialCompra||[]),item.entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:p);
+          }
+        }
+        await guardar(null,prodActualizados);
+
         // Aplicar stock de todos los items
         for(const item of ticket){
           if(!item.stockDelta||item.stockDelta.cantidad<=0) continue;
