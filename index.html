@@ -984,7 +984,7 @@ const ResponsiveContainer=({children})=>children||null;
     );
 
     if(q){
-      const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
+      const ticketIdsQ=new Set((ticket||[]).map(i=>i.prodId)); const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())).filter(p=>!modoCompras||!ticketIdsQ.has(p.id));
       return (<div className="fade">
         <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div><div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{!isStock&&!modoCompras&&<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span>}</div></div>
@@ -1056,7 +1056,7 @@ const ResponsiveContainer=({children})=>children||null;
     );
 
     if(q){
-      const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
+      const ticketIdsQ=new Set((ticket||[]).map(i=>i.prodId)); const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())).filter(p=>!modoCompras||!ticketIdsQ.has(p.id));
       return (<div className="fade">
         <TopBar title={`${cat.emoji} ${cat.label}`} onBack={pop} right={!isStock&&!modoCompras&&<button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>📂</button>}/>
         <div style={{display:"flex",gap:8,marginBottom:14}}>
@@ -1133,7 +1133,8 @@ const ResponsiveContainer=({children})=>children||null;
       if(sortBy==="meses-desc") return (mb??Infinity)-(ma??Infinity);
       return 0;
     };
-    const baseLista=productos.filter(p=>{if(p.catId!==catId)return false;if(isUnassignedView)return isUnassignedProd(p,cat);if(subId)return p.subId===subId;return true;});
+    const ticketIds=new Set((ticket||[]).map(i=>i.prodId));
+    const baseLista=productos.filter(p=>{if(p.catId!==catId)return false;if(isUnassignedView)return isUnassignedProd(p,cat);if(subId)return p.subId===subId;return true;}).filter(p=>!modoCompras||!ticketIds.has(p.id));
     const listaOrdenada=[...(q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())):baseLista)].sort(sortFn);
     // En stock, congelar el orden mientras hay un panel abierto
     const lista=isStock&&frozenOrder?frozenOrder.filter(p=>listaOrdenada.find(x=>x.id===p.id)):listaOrdenada;
