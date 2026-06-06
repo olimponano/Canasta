@@ -548,13 +548,24 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{background:"#080c14",borderRadius:8,padding:"7px 10px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                 <span style={{fontSize:11,color:"#4a5568"}}>Equiv. {fmtCantRef(p)}:</span>
                 <span className="mono" style={{fontWeight:700,color:cat?.color||"#3b82f6",fontSize:13}}>{fmt(equivalente)}</span>
-                {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}% vs ref</span>}
+                {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}></span>}
                 {totalPagado&&cantCompradaNum>1&&<span style={{fontSize:11,color:"#4a5568",marginLeft:4}}>· Total: <span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(totalPagado)}</span></span>}
               </div>
             )}
-            <div>
-              <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Fecha</div>
-              <input className="inp" type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div>
+                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Fecha</div>
+                <input className="inp" type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Total</div>
+                <div style={{background:"#080c14",border:"1px solid #1a2235",borderRadius:10,padding:"8px 12px",minHeight:40,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                  {totalPagado?<>
+                    <div className="mono" style={{fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
+                    {diff!=null&&<div style={{fontSize:12,fontWeight:700,color:diff>0?"#ef4444":"#10b981",marginTop:2}}>{diff>0?"▲":"▼"} {Math.abs(diff).toFixed(1)}% vs ref</div>}
+                  </>:<div style={{fontSize:12,color:"#2a3550"}}>—</div>}
+                </div>
+              </div>
             </div>
             <button className="btn" onClick={registrar} disabled={saving} style={{background:saving?"#1a2235":"#10b981",color:saving?"#4a5568":"#fff",padding:"10px 0",fontSize:14,fontWeight:700}}>
               {saving?"Guardando…":"Registrar y agregar al ticket"}
@@ -877,6 +888,7 @@ const ResponsiveContainer=({children})=>children||null;
   // ── HomeScreen ───────────────────────────────────────────────────────────────
   function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm}) {
     const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false); const [sortCats,setSortCats]=useState("nombre-az");
+    const [menuOpen,setMenuOpen]=useState(false);
     const isStock=activeTab==="stock"; 
     const total=productos.reduce((s,p)=>s+(gastoMensual(p)||0),0);
     const addCat=async({label,emoji,color})=>{await guardar([...cats,{id:uid(),label,emoji,color,subs:[]}],null);setShowAddCat(false);showToast("✅ Categoría creada");};
@@ -890,18 +902,34 @@ const ResponsiveContainer=({children})=>children||null;
       return 0;
     });
     const tabTitle=isStock?"📦 Stock":modoCompras?"🛒 Compras":"🧺 Canasta";
-    const tabSubtitle=isStock?`${productos.length} productos`:modoCompras?`${productos.length} productos`:`${productos.length} productos · `;
+
+    const HeaderRight=()=>(
+      <div style={{position:"relative"}}>
+        {!isStock&&!modoCompras&&<div style={{display:"flex",gap:8}}>
+          <button className="btn" onClick={()=>push("import")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📥</button>
+          <button className="btn" onClick={()=>push("export")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📋</button>
+          <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>⚙️</button>
+        </div>}
+        {isStock&&<>
+          <button className="btn" onClick={()=>setMenuOpen(o=>!o)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:18,lineHeight:1}}>☰</button>
+          {menuOpen&&<>
+            <div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setMenuOpen(false)}/>
+            <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:"#0d1321",border:"1px solid #1a2235",borderRadius:12,padding:8,zIndex:300,minWidth:160,boxShadow:"0 8px 32px #0006"}}>
+              <button className="btn" onClick={()=>{setMenuOpen(false);push("import");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📥 Importar</button>
+              <button className="btn" onClick={()=>{setMenuOpen(false);push("export");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📋 Exportar</button>
+              <button className="btn" onClick={()=>{setMenuOpen(false);push("config");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>⚙️ Ajustes</button>
+            </div>
+          </>}
+        </>}
+      </div>
+    );
 
     if(q){
       const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
       return (<div className="fade">
         <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>{tabTitle}</div><div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{!isStock&&!modoCompras&&<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span>}</div></div>
-          {!isStock&&!modoCompras&&<div style={{display:"flex",gap:8}}>
-            <button className="btn" onClick={()=>push("import")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📥</button>
-            <button className="btn" onClick={()=>push("export")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📋</button>
-            <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>⚙️</button>
-          </div>}
+          <HeaderRight/>
         </div>
         <SearchBar value={q} onChange={setQ}/>
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
@@ -917,11 +945,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>{tabTitle}</div>
           <div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{productos.length} productos{!isStock&&!modoCompras&&<> · <span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
         </div>
-        {!isStock&&!modoCompras&&<div style={{display:"flex",gap:8}}>
-          <button className="btn" onClick={()=>push("import")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📥</button>
-          <button className="btn" onClick={()=>push("export")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📋</button>
-          <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>⚙️</button>
-        </div>}
+        <HeaderRight/>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0}}/>
