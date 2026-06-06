@@ -253,6 +253,40 @@ const ResponsiveContainer=({children})=>children||null;
     );
   }
 
+  function ConfirmCompra({data,onOk,onCancel}) {
+    // data: {nombre, marca, cantDesc, precio, cantComprada, totalPagado, catColor}
+    return (
+      <div style={{position:"fixed",inset:0,background:"#000b",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"#0d1321",border:"1px solid #2a3550",borderRadius:16,maxWidth:320,width:"100%",overflow:"hidden"}}>
+          {/* Producto */}
+          <div style={{padding:"16px 20px",borderLeft:`4px solid ${data.catColor||"#3b82f6"}`}}>
+            <div style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{data.nombre}</div>
+            <div style={{fontSize:13,color:"#4a5568",marginTop:3}}>{[data.marca,data.cantDesc].filter(Boolean).join(" · ")}</div>
+          </div>
+          {/* Precio */}
+          <div style={{padding:"12px 20px",background:"#080c14",display:"flex",alignItems:"center",justifyContent:"space-between",borderTop:"1px solid #1a2235"}}>
+            <div style={{fontSize:13,color:"#4a5568"}}>
+              <span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(data.precio)}</span>
+              {data.cantComprada>1&&<span style={{color:"#4a5568"}}> × {data.cantComprada}</span>}
+            </div>
+            {data.cantComprada>1&&<div style={{textAlign:"right"}}>
+              <div style={{fontSize:11,color:"#4a5568",marginBottom:1}}>Total</div>
+              <div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(data.totalPagado)}</div>
+            </div>}
+          </div>
+          {/* Pregunta */}
+          <div style={{padding:"12px 20px",borderTop:"1px solid #1a2235"}}>
+            <div style={{fontSize:13,color:"#8b9ab0",marginBottom:14}}>¿Confirmar registro?</div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn" onClick={onCancel} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:12}}>Cancelar</button>
+              <button className="btn" onClick={onOk} style={{flex:1,background:"#10b981",color:"#fff",padding:12,fontWeight:700}}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function AddModal({title,namePlaceholder,onClose,onSave,showColor=true,accentColor="#3b82f6"}) {
     const [label,setLabel]=useState(""); const [emoji,setEmoji]=useState("📦"); const [color,setColor]=useState(accentColor);
     const submit=()=>{if(!label.trim())return; onSave({label:label.trim(),emoji,color});};
@@ -319,8 +353,10 @@ const ResponsiveContainer=({children})=>children||null;
             {ticket.length>0&&<div style={{fontSize:11,color:"#8b9ab0",marginTop:2}}>{ticket.length} producto{ticket.length>1?"s":""}</div>}
           </div>
           {ticket.length>0&&<div style={{textAlign:"right"}}>
-            <div style={{fontSize:10,color:"#4a5568",fontWeight:600,textTransform:"uppercase",letterSpacing:".06em",marginBottom:1}}>Total</div>
-            <div className="mono" style={{fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
+            <div style={{display:"flex",alignItems:"baseline",gap:6,justifyContent:"flex-end"}}>
+              <span style={{fontSize:11,color:"#4a5568",fontWeight:600}}>Total</span>
+              <span className="mono" style={{fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
+            </div>
             {diffPct!==null&&<div style={{fontSize:11,fontWeight:700,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
           </div>}
           <span style={{color:"#4a5568",fontSize:16,marginTop:2}}>{ticketOpen?"▼":"▲"}</span>
@@ -356,10 +392,15 @@ const ResponsiveContainer=({children})=>children||null;
                         <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
                         <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantDisplay?`${item.cantDisplay}${item.unidad||""}`:item.cantRefDisplay?`${item.cantRefDisplay}${item.unidad||""}`:item.cantRef+""+(item.unidad||"")}`}</div>
                       </div>
-                      <div style={{textAlign:"right",flexShrink:0}}>
-                        {item.cantComprada>1&&<div style={{fontSize:10,color:"#4a5568",marginBottom:1}}>{fmt(item.precio)} × {item.cantComprada}</div>}
-                        <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
-                        {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        {item.cantComprada>1&&<div style={{textAlign:"right"}}>
+                          <div style={{fontSize:11,color:"#4a5568"}}>{fmt(item.precio)}</div>
+                          <div style={{fontSize:11,color:"#4a5568"}}>× {item.cantComprada} =</div>
+                        </div>}
+                        <div style={{textAlign:"right"}}>
+                          <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
+                          {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
+                        </div>
                       </div>
                       <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
                         <button onClick={()=>iniciarEdicion(i)} style={{width:26,height:26,borderRadius:6,background:"#1a2235",border:"1px solid #2a3550",color:"#8b9ab0",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✏️</button>
@@ -419,7 +460,7 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── ComprasCardInline ─────────────────────────────────────────────────────────
-  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket,askConfirm}) {
+  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket,askConfirm,setConfirmCompra}) {
     const [open,setOpen]=useState(false);
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
@@ -477,13 +518,16 @@ const ResponsiveContainer=({children})=>children||null;
     const registrar=()=>{
       if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
       const cantDesc=esM&&cantRollosNum>0&&cantMetrosNum>0?`${cantRollosNum}×${cantMetrosNum}m`:cantidad?`${cantidad}${p.unidad||""}`:fmtCantRef(p);
-      const marcaDesc=p.marca?` · ${p.marca}`:"";
-      const cantCompDesc=cantCompradaNum>1?` × ${cantCompradaNum} = ${fmt(totalPagado)}`:"";
-      askConfirm(
-        `${p.nombre}${marcaDesc} · ${cantDesc}${cantCompDesc}\n¿Registrar a ${fmt(precioNum)}?`,
-        doRegistrar,
-        "Confirmar"
-      );
+      setConfirmCompra({
+        nombre:p.nombre,
+        marca:p.marca||"",
+        cantDesc,
+        precio:precioNum,
+        cantComprada:cantCompradaNum,
+        totalPagado,
+        catColor:cat?.color||"#3b82f6",
+        onOk:doRegistrar
+      });
     };
 
     return (
@@ -595,11 +639,11 @@ const ResponsiveContainer=({children})=>children||null;
 
   function TopBar({title,subtitle,onBack,right}) {
     return (
-      <div style={{padding:"28px 0 12px",display:"flex",alignItems:"center",gap:12}}>
+      <div style={{padding:"28px 0 12px",display:"flex",alignItems:"center",gap:12,minHeight:90}}>
         {onBack&&<button className="btn" onClick={onBack} style={{background:"#0d1321",color:"#e8eaf0",border:"1px solid #1a2235",padding:"8px 12px",fontSize:14,flexShrink:0}}>←</button>}
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:22,letterSpacing:"-.03em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{title}</div>
-          {subtitle&&<div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{subtitle}</div>}
+          <div style={{fontSize:12,color:"#4a5568",marginTop:3,minHeight:18}}>{subtitle||""}</div>
         </div>
         {right}
       </div>
@@ -648,6 +692,7 @@ const ResponsiveContainer=({children})=>children||null;
     const [stack,setStack]=useState([{screen:"home"}]);
     const [toast,setToast]=useState(null);
     const [confirm,setConfirm]=useState(null);
+    const [confirmCompra,setConfirmCompra]=useState(null);
     const TICKET_KEY="canasta_ticket_draft";
     const ticketGuardado=()=>{try{const t=localStorage.getItem(TICKET_KEY);return t?JSON.parse(t):null;}catch{return null;}};
     const draft=ticketGuardado();
@@ -858,7 +903,7 @@ const ResponsiveContainer=({children})=>children||null;
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#3b82f6",fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra};
 
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio"].includes(s);
 
@@ -866,6 +911,7 @@ const ResponsiveContainer=({children})=>children||null;
       <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",minHeight:"100vh",background:"#080c14",color:"#e8eaf0"}}>
         {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:3000,background:toast.tipo==="err"?"#ef4444":"#10b981",color:"#fff",padding:"9px 20px",borderRadius:10,fontWeight:600,fontSize:13,boxShadow:"0 8px 32px #0008",whiteSpace:"nowrap",maxWidth:"90vw",textAlign:"center"}}>{toast.msg}</div>}
         {confirm&&<Confirm msg={confirm.msg} onOk={()=>{confirm.onOk();setConfirm(null);}} onCancel={()=>setConfirm(null)} okLabel={confirm.okLabel} okColor={confirm.okColor}/>}
+        {confirmCompra&&<ConfirmCompra data={confirmCompra} onOk={()=>{confirmCompra.onOk();setConfirmCompra(null);}} onCancel={()=>setConfirmCompra(null)}/>}
         <div style={{maxWidth:500,margin:"0 auto",padding:`0 16px ${modoCompras?"180px":"100px"}`}}>
           {s==="home"        &&<HomeScreen {...shared} activeTab={activeTab}/>}
           {s==="subs"        &&<SubsScreen {...shared} catId={current.catId} activeTab={activeTab}/>}
@@ -940,7 +986,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);
           if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
-          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm}/>;
+          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
           return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
       </div>);
@@ -1012,7 +1058,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{results.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
           if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
-          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm}/>;
+          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
           return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
       </div>);
@@ -1148,7 +1194,7 @@ const ResponsiveContainer=({children})=>children||null;
           {lista.map(p=>{
             const pcat=q?cats.find(c=>c.id===p.catId):cat;
             if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} onOpen={()=>handleStockOpen(p.id)} onClose={handleStockClose}/>;
-            if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm}/>;
+            if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
             const isSel=selected.has(p.id);
             return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
               onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
