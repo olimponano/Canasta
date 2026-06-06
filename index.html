@@ -544,14 +544,6 @@ const ResponsiveContainer=({children})=>children||null;
                 </div>
               </div>
             )}
-            {equivalente!=null&&(
-              <div style={{background:"#080c14",borderRadius:8,padding:"7px 10px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                <span style={{fontSize:11,color:"#4a5568"}}>Equiv. {fmtCantRef(p)}:</span>
-                <span className="mono" style={{fontWeight:700,color:cat?.color||"#3b82f6",fontSize:13}}>{fmt(equivalente)}</span>
-                {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}></span>}
-                {totalPagado&&cantCompradaNum>1&&<span style={{fontSize:11,color:"#4a5568",marginLeft:4}}>· Total: <span className="mono" style={{color:"#e8eaf0",fontWeight:700}}>{fmt(totalPagado)}</span></span>}
-              </div>
-            )}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <div>
                 <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Fecha</div>
@@ -559,11 +551,11 @@ const ResponsiveContainer=({children})=>children||null;
               </div>
               <div>
                 <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Total</div>
-                <div style={{background:"#080c14",border:"1px solid #1a2235",borderRadius:10,padding:"8px 12px",minHeight:40,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                <div style={{background:"#080c14",border:"1px solid #1a2235",borderRadius:10,padding:"8px 12px",minHeight:40,display:"flex",alignItems:"center",gap:8}}>
                   {totalPagado?<>
-                    <div className="mono" style={{fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
-                    {diff!=null&&<div style={{fontSize:12,fontWeight:700,color:diff>0?"#ef4444":"#10b981",marginTop:2}}>{diff>0?"▲":"▼"} {Math.abs(diff).toFixed(1)}% vs ref</div>}
-                  </>:<div style={{fontSize:12,color:"#2a3550"}}>—</div>}
+                    <span className="mono" style={{fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
+                    {diff!=null&&<span style={{fontSize:12,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
+                  </>:<span style={{fontSize:12,color:"#2a3550"}}>—</span>}
                 </div>
               </div>
             </div>
@@ -850,7 +842,7 @@ const ResponsiveContainer=({children})=>children||null;
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#3b82f6",fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial};
 
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio"].includes(s);
 
@@ -868,6 +860,7 @@ const ResponsiveContainer=({children})=>children||null;
           {s==="nuevo-precio"&&<NuevoPrecioScreen {...shared} prodId={current.prodId}/>}
           {s==="config"      &&<ConfigScreen {...shared} openCatId={current.openCatId||null}/>}
           {s==="export"      &&<ExportScreen {...shared}/>}
+          {s==="backup"      &&<BackupScreen {...shared}/>}
           {s==="import"      &&<ImportScreen {...shared}/>}
         </div>
         {!isFormScreen&&activeTab==="productos"&&!modoCompras&&(
@@ -886,7 +879,7 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── HomeScreen ───────────────────────────────────────────────────────────────
-  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm}) {
+  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial}) {
     const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false); const [sortCats,setSortCats]=useState("nombre-az");
     const [menuOpen,setMenuOpen]=useState(false);
     const isStock=activeTab==="stock"; 
@@ -901,25 +894,21 @@ const ResponsiveContainer=({children})=>children||null;
       if(sortCats==="gasto-desc")return gb-ga;
       return 0;
     });
-    const tabTitle=isStock?"📦 Stock":modoCompras?"🛒 Compras":"🧺 Canasta";
-
     const HeaderRight=()=>(
       <div style={{position:"relative"}}>
-        {!isStock&&!modoCompras&&<div style={{display:"flex",gap:8}}>
-          <button className="btn" onClick={()=>push("import")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📥</button>
-          <button className="btn" onClick={()=>push("export")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>📋</button>
-          <button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:15}}>⚙️</button>
-        </div>}
-        {isStock&&<>
-          <button className="btn" onClick={()=>setMenuOpen(o=>!o)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:18,lineHeight:1}}>☰</button>
-          {menuOpen&&<>
-            <div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setMenuOpen(false)}/>
-            <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:"#0d1321",border:"1px solid #1a2235",borderRadius:12,padding:8,zIndex:300,minWidth:160,boxShadow:"0 8px 32px #0006"}}>
-              <button className="btn" onClick={()=>{setMenuOpen(false);push("import");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📥 Importar</button>
-              <button className="btn" onClick={()=>{setMenuOpen(false);push("export");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📋 Exportar</button>
-              <button className="btn" onClick={()=>{setMenuOpen(false);push("config");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>⚙️ Ajustes</button>
-            </div>
-          </>}
+        <button className="btn" onClick={()=>setMenuOpen(o=>!o)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:18,lineHeight:1}}>☰</button>
+        {menuOpen&&<>
+          <div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setMenuOpen(false)}/>
+          <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:"#0d1321",border:"1px solid #1a2235",borderRadius:12,padding:8,zIndex:300,minWidth:180,boxShadow:"0 8px 32px #0006"}}>
+            <button className="btn" onClick={()=>{setMenuOpen(false);push("import");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📥 Importar</button>
+            <button className="btn" onClick={()=>{setMenuOpen(false);push("export");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📋 Exportar</button>
+            <button className="btn" onClick={()=>{setMenuOpen(false);push("backup");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>💾 Backup</button>
+            <div style={{borderTop:"1px solid #1a2235",margin:"4px 0"}}/>
+            <button className="btn" onClick={()=>{setMenuOpen(false);setShowHistorial(true);}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>🧾 Historial de compras</button>
+            <div style={{borderTop:"1px solid #1a2235",margin:"4px 0"}}/>
+            <button className="btn" onClick={()=>{setMenuOpen(false);push("config");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📂 Editar categorías</button>
+            {!isStock&&!modoCompras&&<button className="btn" onClick={()=>{setMenuOpen(false);setShowAddCat(true);}} style={{width:"100%",background:"none",color:"#3b82f6",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>＋ Nueva categoría</button>}
+          </div>
         </>}
       </div>
     );
@@ -928,7 +917,7 @@ const ResponsiveContainer=({children})=>children||null;
       const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase()));
       return (<div className="fade">
         <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>{tabTitle}</div><div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{!isStock&&!modoCompras&&<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span>}</div></div>
+          <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div><div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{!isStock&&!modoCompras&&<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span>}</div></div>
           <HeaderRight/>
         </div>
         <SearchBar value={q} onChange={setQ}/>
@@ -942,7 +931,7 @@ const ResponsiveContainer=({children})=>children||null;
     }
     return (<div className="fade">
       <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-        <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>{tabTitle}</div>
+        <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div>
           <div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{productos.length} productos{!isStock&&!modoCompras&&<> · <span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
         </div>
         <HeaderRight/>
@@ -966,7 +955,7 @@ const ResponsiveContainer=({children})=>children||null;
             <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550",marginTop:2}}>›</div></div>
           </div>);
         })}
-        {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#3b82f611",border:"1px solid #3b82f6",color:"#3b82f6",padding:"13px",fontSize:14,marginTop:4,width:"100%",fontWeight:600}}>+ Agregar categoría</button>}
+
       </div>
       {showAddCat&&<AddModal title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={addCat} showColor={true}/>}
     </div>);
@@ -1610,6 +1599,29 @@ const ResponsiveContainer=({children})=>children||null;
             </div>);})}
           {(()=>{const validS=new Set(cat.subs.map(s=>s.id));const orph=cp.filter(p=>!p.subId||!validS.has(p.subId));return orph.length>0?(<div className="row" style={{padding:"9px 16px 9px 44px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid #1a2235"}} onClick={()=>showPreview(cat.id,"__sin_sub__")}><div style={{flex:1}}><div style={{fontSize:13,color:"#8b9ab0"}}>Sin subcategoría</div><div style={{fontSize:11,color:"#4a5568"}}>{orph.length} productos</div></div><div style={{fontSize:14,color:"#2a3550"}}>›</div></div>):null;})()}
         </div>);})}
+    </div>);
+  }
+
+  // ── BackupScreen ──────────────────────────────────────────────────────────────
+  function BackupScreen({cats,productos,pop,showToast}) {
+    const [copied,setCopied]=useState(false);
+    const text=buildBackupText(cats,productos);
+    const doCopy=async()=>{
+      const ok=await copyToClipboard(text);
+      if(ok){setCopied(true);showToast("💾 Backup copiado al portapapeles");setTimeout(()=>setCopied(false),3000);}
+      else showToast("No se pudo copiar","err");
+    };
+    return (<div className="fade">
+      <TopBar title="💾 Backup" subtitle="Formato importable — copia de seguridad completa" onBack={pop}/>
+      <div className="card" style={{padding:16,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div style={{fontSize:13,color:"#4a5568"}}>{productos.length} productos · {cats.length} categorías</div>
+          <button className="btn" onClick={doCopy} style={{background:copied?"#10b981":"#3b82f6",color:"#fff",padding:"7px 16px",fontSize:13,transition:"background .3s"}}>
+            {copied?"✅ Copiado":"Copiar todo"}
+          </button>
+        </div>
+        <pre style={{fontSize:12,color:"#c8cfe0",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:"#080c14",borderRadius:8,padding:12,maxHeight:400,overflowY:"auto"}}>{text||"Sin productos."}</pre>
+      </div>
     </div>);
   }
 
