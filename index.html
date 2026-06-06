@@ -648,14 +648,17 @@ const ResponsiveContainer=({children})=>children||null;
     );
   }
 
-  const SearchRow=({q,onChange,sortValue,onSort,sortOptions})=>(
-    <div style={{display:"flex",gap:8,marginBottom:14}}>
-      <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>onChange(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
-      <select value={sortValue} onChange={e=>onSort(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
-        {sortOptions}
-      </select>
-    </div>
-  );
+  function SearchRow({q,onChange,sortValue,onSort,sortOptions}) {
+    const inputRef=useRef(null);
+    return (
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        <input ref={inputRef} className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>onChange(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
+        <select value={sortValue} onChange={e=>onSort(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
+          {sortOptions}
+        </select>
+      </div>
+    );
+  }
 
   function SearchBar({value,onChange,placeholder="🔍 Buscar en toda la canasta…"}) {
     return <input className="inp" placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)} style={{marginBottom:14}}/>;
@@ -983,22 +986,8 @@ const ResponsiveContainer=({children})=>children||null;
       </div>
     );
 
-    if(q){
-      const ticketIdsQ=new Set((ticket||[]).map(i=>i.prodId)); const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())).filter(p=>!modoCompras||!ticketIdsQ.has(p.id));
-      return (<div className="fade">
-        <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div><div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{!isStock&&!modoCompras&&<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span>}</div></div>
-          <HeaderRight/>
-        </div>
-        <SearchBar value={q} onChange={setQ}/>
-        <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);
-          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
-          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
-          return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;
-        })}</div>
-      </div>);
-    }
+    const ticketIdsQ=new Set((ticket||[]).map(i=>i.prodId));
+    const results=q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())).filter(p=>!modoCompras||!ticketIdsQ.has(p.id)):[];
     return (<div className="fade">
       <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div>
@@ -1014,20 +1003,30 @@ const ResponsiveContainer=({children})=>children||null;
           {!isStock&&!modoCompras&&<><option value="gasto-desc">Gasto ↓</option><option value="gasto-asc">Gasto ↑</option></>}
         </select>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {sortedCats.map(cat=>{
-          const catProds=productos.filter(p=>p.catId===cat.id);
-          const gasto=catProds.reduce((s,p)=>s+(gastoMensual(p)||0),0);
-          return (<div key={cat.id} className="card row" style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14,borderLeft:`4px solid ${cat.color}`}}
-            onClick={()=>cat.subs?.length?push("subs",{catId:cat.id}):push("lista",{catId:cat.id,subId:null})}>
-            <div style={{fontSize:28}}>{cat.emoji}</div>
-            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:16,color:"#e8eaf0"}}>{cat.label}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{cat.subs?.length?`${cat.subs.length} subcategorías · `:""}{catProds.length} productos</div></div>
-            <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550",marginTop:2}}>›</div></div>
-          </div>);
-        })}
-
-      </div>
-      {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#3b82f611",border:"1px solid #3b82f6",color:"#3b82f6",padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar categoría</button>}
+      {q?(
+        <>
+          <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);
+            if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
+            if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
+            return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;
+          })}</div>
+        </>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {sortedCats.map(cat=>{
+            const catProds=productos.filter(p=>p.catId===cat.id);
+            const gasto=catProds.reduce((s,p)=>s+(gastoMensual(p)||0),0);
+            return (<div key={cat.id} className="card row" style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14,borderLeft:`4px solid ${cat.color}`}}
+              onClick={()=>cat.subs?.length?push("subs",{catId:cat.id}):push("lista",{catId:cat.id,subId:null})}>
+              <div style={{fontSize:28}}>{cat.emoji}</div>
+              <div style={{flex:1}}><div style={{fontWeight:600,fontSize:16,color:"#e8eaf0"}}>{cat.label}</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{cat.subs?.length?`${cat.subs.length} subcategorías · `:""}{catProds.length} productos</div></div>
+              <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550",marginTop:2}}>›</div></div>
+            </div>);
+          })}
+          {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#3b82f611",border:"1px solid #3b82f6",color:"#3b82f6",padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar categoría</button>}
+        </div>
+      )}
       {showAddCat&&<AddModal title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={addCat} showColor={true}/>}
     </div>);
   }
@@ -1055,22 +1054,8 @@ const ResponsiveContainer=({children})=>children||null;
       </select>
     );
 
-    if(q){
-      const ticketIdsQ=new Set((ticket||[]).map(i=>i.prodId)); const results=productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())).filter(p=>!modoCompras||!ticketIdsQ.has(p.id));
-      return (<div className="fade">
-        <TopBar title={`${cat.emoji} ${cat.label}`} onBack={pop} right={!isStock&&!modoCompras&&<button className="btn" onClick={()=>push("config")} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#a78bfa",padding:"8px 11px",fontSize:14}}>📂</button>}/>
-        <div style={{display:"flex",gap:8,marginBottom:14}}>
-          <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
-          <SortSelect/>
-        </div>
-        <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>{results.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
-          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
-          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
-          return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;
-        })}</div>
-      </div>);
-    }
+    const ticketIdsQS=new Set((ticket||[]).map(i=>i.prodId));
+    const resultsQ=q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())).filter(p=>!modoCompras||!ticketIdsQS.has(p.id)):[];
 
     return (<div className="fade">
       <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
@@ -1084,7 +1069,14 @@ const ResponsiveContainer=({children})=>children||null;
         {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
         <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
       </>}/>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+      {q?(<>
+        <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{resultsQ.length} resultado{resultsQ.length!==1?"s":""} en toda la canasta</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>{resultsQ.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
+          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
+          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
+          return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;
+        })}</div>
+      </>):(<div style={{display:"flex",flexDirection:"column",gap:8}}>
         {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
           const subProds=productos.filter(p=>p.catId===catId&&p.subId===sub.id);
           const gasto=subProds.reduce((s,p)=>s+(gastoMensual(p)||0),0);
@@ -1107,6 +1099,7 @@ const ResponsiveContainer=({children})=>children||null;
         )}
       </div>
       {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>}
+      </div>)}
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
