@@ -590,11 +590,11 @@ const ResponsiveContainer=({children})=>children||null;
 
   function TopBar({title,subtitle,onBack,right}) {
     return (
-      <div style={{padding:"24px 0 16px",display:"flex",alignItems:"center",gap:12}}>
+      <div style={{padding:"28px 0 12px",display:"flex",alignItems:"center",gap:12}}>
         {onBack&&<button className="btn" onClick={onBack} style={{background:"#0d1321",color:"#e8eaf0",border:"1px solid #1a2235",padding:"8px 12px",fontSize:14,flexShrink:0}}>←</button>}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:700,fontSize:17,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{title}</div>
-          {subtitle&&<div style={{fontSize:12,color:"#4a5568",marginTop:2}}>{subtitle}</div>}
+          <div style={{fontWeight:700,fontSize:22,letterSpacing:"-.03em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#e8eaf0"}}>{title}</div>
+          {subtitle&&<div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{subtitle}</div>}
         </div>
         {right}
       </div>
@@ -940,7 +940,7 @@ const ResponsiveContainer=({children})=>children||null;
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0}}/>
-        <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0}}>
+        <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
           {!isStock&&!modoCompras&&<><option value="gasto-desc">Gasto ↓</option><option value="gasto-asc">Gasto ↑</option></>}
@@ -980,7 +980,7 @@ const ResponsiveContainer=({children})=>children||null;
     const orphanGasto=orphans.reduce((s,p)=>s+(gastoMensual(p)||0),0);
 
     const SortSelect=()=>(
-      <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0}}>
+      <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
         {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
         <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
@@ -1120,7 +1120,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0}}/>
-        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0}}>
+        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
           {(isStock||modoCompras)&&<><option value="meses-asc">Meses ↑</option><option value="meses-desc">Meses ↓</option></>}
