@@ -1411,7 +1411,14 @@ const ResponsiveContainer=({children})=>children||null;
     const cat=getCat(p.catId); const sub=p.subId?getSub(p.catId,p.subId):null;
     const gm=gastoMensual(p); const clr=cat?.color||"#3b82f6";
     const hist=p.historialCompra||[];
-    const chartData=hist.map(h=>({fecha:fmtDate(h.fecha),precio:h.equivalente??h.precio}));
+    const chartData=hist.map(h=>{
+      let precioGrafico=h.equivalente;
+      if(precioGrafico==null&&h.cantidad&&p.cantidadRef){
+        const cantNum=parseFloat(String(h.cantidad).replace(",","."));
+        if(cantNum>0) precioGrafico=(h.precio/cantNum)*p.cantidadRef;
+      }
+      return {fecha:fmtDate(h.fecha),precio:precioGrafico??h.precio};
+    });
     const variacion=hist.length>=2?((hist[hist.length-1].precio-hist[0].precio)/hist[0].precio*100).toFixed(1):null;
     const del=()=>askConfirm(`¿Eliminar "${p.nombre}"?`,async()=>{await guardar(null,productos.filter(x=>x.id!==prodId),{deleteRemoved:true});showToast("🗑️ Eliminado");pop();},"Eliminar","#ef4444");
     const delH=(hid)=>askConfirm("¿Eliminar este registro?",async()=>{await guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:x.historialCompra.filter(h=>h.id!==hid)}:x));showToast("Eliminado");},"Eliminar","#ef4444");
