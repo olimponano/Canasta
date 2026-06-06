@@ -941,7 +941,7 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── HomeScreen ───────────────────────────────────────────────────────────────
-  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial}) {
+  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial,setConfirmCompra}) {
     const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false); const [sortCats,setSortCats]=useState("nombre-az");
     const [menuOpen,setMenuOpen]=useState(false);
     const isStock=activeTab==="stock"; 
@@ -1025,7 +1025,7 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
     const isStock=activeTab==="stock"; 
@@ -1102,7 +1102,7 @@ const ResponsiveContainer=({children})=>children||null;
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
-  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm}) {
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra}) {
     const [q,setQ]=useState("");
     const isStock=activeTab==="stock";
     const defaultSort="nombre-az";
