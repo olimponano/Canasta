@@ -1097,8 +1097,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>
           </div>
         )}
-      </div>
-      {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>}
+        {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>}
       </div>)}
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
