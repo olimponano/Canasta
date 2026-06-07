@@ -1450,7 +1450,7 @@ const ResponsiveContainer=({children})=>children||null;
       {hist.length>=1&&(
       <div className="card" style={{padding:"18px 12px 10px",marginBottom:12}}>
         <div style={{fontSize:13,fontWeight:600,marginBottom:8,paddingLeft:4,color:"#e8eaf0"}}>Evolución del precio de compra</div>
-        <PriceChart hist={hist} precioRef={p.precioRef} clr={clr}/>
+        <PriceChart hist={chartData} precioRef={p.precioRef} clr={clr}/>
       </div>
     )}
       {hist.length>0&&(<div className="card" style={{padding:16}}>
