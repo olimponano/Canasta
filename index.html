@@ -982,7 +982,7 @@ const ResponsiveContainer=({children})=>children||null;
     );
 
     const ticketIdsQ=new Set((ticket||[]).map(i=>i.prodId));
-    const results=q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())).filter(p=>!modoCompras||!ticketIdsQ.has(p.id)):[];
+    const results=q?productos.filter(p=>norm(p.nombre).includes(norm(q))||norm(p.marca||"").includes(norm(q))).filter(p=>!modoCompras||!ticketIdsQ.has(p.id)):[];
     return (<div className="fade">
       <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div>
@@ -1050,7 +1050,7 @@ const ResponsiveContainer=({children})=>children||null;
     );
 
     const ticketIdsQS=new Set((ticket||[]).map(i=>i.prodId));
-    const resultsQ=q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())).filter(p=>!modoCompras||!ticketIdsQS.has(p.id)):[];
+    const resultsQ=q?productos.filter(p=>norm(p.nombre).includes(norm(q))||norm(p.marca||"").includes(norm(q))).filter(p=>!modoCompras||!ticketIdsQS.has(p.id)):[];
 
     return (<div className="fade">
       <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
@@ -1122,7 +1122,7 @@ const ResponsiveContainer=({children})=>children||null;
     };
     const ticketIds=new Set((ticket||[]).map(i=>i.prodId));
     const baseLista=productos.filter(p=>{if(p.catId!==catId)return false;if(isUnassignedView)return isUnassignedProd(p,cat);if(subId)return p.subId===subId;return true;}).filter(p=>!modoCompras||!ticketIds.has(p.id));
-    const listaOrdenada=[...(q?productos.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase())||(p.marca||"").toLowerCase().includes(q.toLowerCase())):baseLista)].sort(sortFn);
+    const listaOrdenada=[...(q?productos.filter(p=>norm(p.nombre).includes(norm(q))||norm(p.marca||"").includes(norm(q))):baseLista)].sort(sortFn);
     // En stock, congelar el orden mientras hay un panel abierto
     const lista=isStock&&frozenOrder?frozenOrder.filter(p=>listaOrdenada.find(x=>x.id===p.id)):listaOrdenada;
     const handleStockOpen=(id)=>{
@@ -1461,7 +1461,7 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{display:"flex",alignItems:"baseline",gap:8}}><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(h.precio)}</div>{h.cantidad&&p.unidad&&<div style={{fontSize:12,color:"#4a5568"}}>{h.cantidad}{p.unidad}</div>}</div>
               <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3,flexWrap:"wrap"}}>
                 <div style={{fontSize:11,color:"#4a5568"}}>{fmtDate(h.fecha)}</div>
-                
+                {h.equivalente!=null&&p.cantidadRef&&(<div style={{fontSize:11,color:clr}}>≈ {fmt(h.equivalente)} por {fmtCantRef(p)}</div>)}
               </div>
             </div>
             <button className="btn" onClick={()=>delH(h.id)} style={{background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"5px 10px",fontSize:12}}>✕</button>
