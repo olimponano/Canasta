@@ -1461,7 +1461,7 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{display:"flex",alignItems:"baseline",gap:8}}><div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(h.precio)}</div>{h.cantidad&&p.unidad&&<div style={{fontSize:12,color:"#4a5568"}}>{h.cantidad}{p.unidad}</div>}</div>
               <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3,flexWrap:"wrap"}}>
                 <div style={{fontSize:11,color:"#4a5568"}}>{fmtDate(h.fecha)}</div>
-                {h.equivalente!=null&&p.cantidadRef&&(<div style={{fontSize:11,color:clr}}>≈ {fmt(h.equivalente)} por {fmtCantRef(p)}</div>)}
+                
               </div>
             </div>
             <button className="btn" onClick={()=>delH(h.id)} style={{background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"5px 10px",fontSize:12}}>✕</button>
