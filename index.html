@@ -498,7 +498,7 @@ const ResponsiveContainer=({children})=>children||null;
           cantDisplay,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha,
           cantComprada:cantCompradaNum,totalPagado,totalRef,
           entrada, // guardamos la entrada para aplicarla al finalizar
-          stockDelta:{cantRef:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,display:p.cantidadRefDisplay||null}
+          stockDelta:{cantRef:cantNum||cantRefNum,cantRefProd:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,display:p.cantidadRefDisplay||null}
         });
         showToast("✅ Agregado al ticket");
         setOpen(false);
@@ -874,13 +874,19 @@ const ResponsiveContainer=({children})=>children||null;
         // Aplicar stock de todos los items
         for(const item of ticket){
           if(!item.stockDelta||item.stockDelta.cantidad<=0) continue;
-          const {cantRef,cantidad,entradasBase,display}=item.stockDelta;
-          const base=entradasBase.length===0&&cantRef
-            ?[{cantRef,unidad:item.unidad||"gr",stock:0,display:display||null}]
+          const {cantRef,cantRefProd,cantidad,entradasBase,display}=item.stockDelta;
+          const base=entradasBase.length===0&&cantRefProd
+            ?[{cantRef:cantRefProd,unidad:item.unidad||"gr",stock:0,display:display||null}]
             :[...entradasBase];
           const idx=base.findIndex(e=>e.cantRef===cantRef);
-          const target=idx>=0?idx:0;
-          const nuevas=base.map((e,i)=>i===target?{...e,stock:e.stock+cantidad}:e);
+          let nuevas;
+          if(idx>=0){
+            // Entrada existente — sumar
+            nuevas=base.map((e,i)=>i===idx?{...e,stock:e.stock+cantidad}:e);
+          } else {
+            // No existe ese tamaño — crear nueva entrada
+            nuevas=[...base,{cantRef,unidad:item.unidad||"gr",stock:cantidad,display:null}];
+          }
           guardarStock(item.prodId,nuevas);
         }
         try {
