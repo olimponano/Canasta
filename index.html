@@ -1225,7 +1225,7 @@ const ResponsiveContainer=({children})=>children||null;
 
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
-    const mesesTxt=fmtMeses(meses,true);
+    const mesesTxt=fmtMeses(meses);
     const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
 
     const handleOpen=()=>{const abriendo=!open;setOpen(abriendo);setShowAddDim(false);if(abriendo&&onOpen)onOpen();if(!abriendo&&onClose)onClose();};
