@@ -378,8 +378,8 @@ const ResponsiveContainer=({children})=>children||null;
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>{item.nombre}</div>
                       <div style={{display:"flex",gap:8}}>
-                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" value={editPrecio} onChange={e=>setEditPrecio(e.target.value)} style={{padding:"7px 10px",fontSize:14}} autoFocus/></div>
-                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" value={editCant} onChange={e=>setEditCant(e.target.value)} style={{padding:"7px 10px",fontSize:14}}/></div>
+                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" value={editPrecio} onChange={e=>setEditPrecio(e.target.value)} style={{padding:"7px 10px",fontSize:14}} autoFocus/></div>
+                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" value={editCant} onChange={e=>setEditCant(e.target.value)} style={{padding:"7px 10px",fontSize:14}}/></div>
                       </div>
                       <div style={{display:"flex",gap:8}}>
                         <button className="btn" onClick={()=>setEditIdx(null)} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:"7px 0",fontSize:13}}>Cancelar</button>
@@ -561,34 +561,34 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,alignItems:"end"}}>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
-                  <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="ej. 1000" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
+                  <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="ej. 1000" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Rollos x Paq</div>
-                  <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Metros</div>
-                  <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
-                  <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                 </div>
               </div>
             ):(
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
-                  <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
+                  <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>{p.unidad||"gr"}</div>
-                  <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+                  <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
-                  <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+                  <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
                 </div>
               </div>
             )}
@@ -1316,9 +1316,9 @@ const ResponsiveContainer=({children})=>children||null;
             {showAddDim&&(p.unidad==="m"?(
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="3" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}} autoFocus/>
+                  <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="3" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}} autoFocus/>
                   <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>rollos ×</span>
-                  <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="40" value={newMetros} onChange={e=>setNewMetros(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="40" value={newMetros} onChange={e=>setNewMetros(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                   <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>m</span>
                   <button className="btn" onClick={agregarDimension} style={{background:"#3b82f6",color:"#fff",padding:"8px 12px",fontSize:14}}>+</button>
                   <button className="btn" onClick={()=>{setShowAddDim(false);setNewCantRef("");setNewMetros("");}} style={{background:"#1a2235",color:"#8b9ab0",padding:"8px 10px",fontSize:14}}>✕</button>
@@ -1327,7 +1327,7 @@ const ResponsiveContainer=({children})=>children||null;
               </div>
             ):(
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="ej. 1500" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)}
+                <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="ej. 1500" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)}
                   style={{flex:1,padding:"8px 12px",fontSize:14}} autoFocus
                   onKeyDown={e=>e.key==="Enter"&&agregarDimension()}/>
                 <span style={{fontSize:13,color:"#4a5568",whiteSpace:"nowrap"}}>{p.unidad||"gr"}</span>
@@ -1508,9 +1508,9 @@ const ResponsiveContainer=({children})=>children||null;
         <div>
           <label style={{display:"block",fontSize:12,color:"#8b9ab0",marginBottom:6,fontWeight:600}}>Cantidad ref.</label>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="3" value={rollos} onChange={e=>handleRollos(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
+            <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="3" value={rollos} onChange={e=>handleRollos(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
             <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>×</span>
-            <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="40" value={metros} onChange={e=>handleMetros(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
+            <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="40" value={metros} onChange={e=>handleMetros(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
             <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>m</span>
           </div>
           {total>0&&<div style={{fontSize:11,color:"#4a5568",marginTop:4}}>= <span style={{color:"#3b82f6",fontWeight:600}}>{total} m</span> en total</div>}
@@ -1520,7 +1520,7 @@ const ResponsiveContainer=({children})=>children||null;
     return (
       <div className="field">
         <label>Cantidad ref.</label>
-        <input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="ej. 300" value={cantidadRef!=null?String(cantidadRef):""} onChange={e=>onChange({valor:e.target.value,display:null})}/>
+        <input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="ej. 300" value={cantidadRef!=null?String(cantidadRef):""} onChange={e=>onChange({valor:e.target.value,display:null})}/>
       </div>
     );
   }
@@ -1555,8 +1555,8 @@ const ResponsiveContainer=({children})=>children||null;
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div className="field"><label>Unidades/mes</label><input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
-          <div className="field"><label>Precio ref. ($)</label><input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="ej. 1200" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
+          <div className="field"><label>Unidades/mes</label><input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
+          <div className="field"><label>Precio ref. ($)</label><input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="ej. 1200" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} cantidadRefDisplay={form.cantidadRefDisplay} onChange={({valor,display})=>setForm(f=>({...f,cantidadRef:valor,cantidadRefDisplay:display}))}/>
@@ -1642,8 +1642,8 @@ const ResponsiveContainer=({children})=>children||null;
         {showAddSub&&<AddModal title={`Nueva subcategoría en ${selCat?.label}`} namePlaceholder="ej. Personal" onClose={()=>{setShowAddSub(false);setNewSubLabel("");}} onSave={({label})=>createSub(label)} showColor={false} accentColor={selCat?.color||"#3b82f6"}/>}
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div className="field"><label>Unidades/mes</label><input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
-          <div className="field"><label>Precio ref. ($)</label><input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
+          <div className="field"><label>Unidades/mes</label><input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
+          <div className="field"><label>Precio ref. ($)</label><input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} cantidadRefDisplay={form.cantidadRefDisplay} onChange={({valor,display})=>setForm(f=>({...f,cantidadRef:valor,cantidadRefDisplay:display}))}/>
@@ -1689,8 +1689,8 @@ const ResponsiveContainer=({children})=>children||null;
     return (<div className="fade"><TopBar title="Precio de compra" subtitle={`${p.nombre} · ${p.marca||""}`} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div style={{background:clr+"15",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#8b9ab0"}}>Precio de referencia: <span style={{color:clr,fontWeight:700}}>{p.precioRef?fmt(p.precioRef):"no definido"}</span>{cantRef&&<span style={{marginLeft:8,color:"#4a5568"}}>· {cantRef}{unidad}</span>}</div>
-        <div className="field"><label>Precio que pagué ($)</label><input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder="ej. 1200" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} autoFocus/></div>
-        <div className="field"><label>Cantidad comprada ({unidad})</label><input type="number" inputMode="decimal" step="any" autoComplete="new-password" className="inp" placeholder={cantRef?String(cantRef):unidad==="m"?"ej. 6x50":unidad==="un"?"ej. 50":"ej. 100"} value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))}/></div>
+        <div className="field"><label>Precio que pagué ($)</label><input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder="ej. 1200" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} autoFocus/></div>
+        <div className="field"><label>Cantidad comprada ({unidad})</label><input type="number" inputMode="decimal" step="any" autoComplete="off" className="inp" placeholder={cantRef?String(cantRef):unidad==="m"?"ej. 6x50":unidad==="un"?"ej. 50":"ej. 100"} value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))}/></div>
         {equivalente!=null&&(<div style={{background:"#080c14",borderRadius:10,padding:"12px 14px"}}>
           <div style={{fontSize:11,color:"#4a5568",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Equivalente a {cantRef}{unidad}</div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
