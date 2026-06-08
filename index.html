@@ -494,7 +494,7 @@ const ResponsiveContainer=({children})=>children||null;
         const entrada={id:uid(),precio:precioNum,cantidad:cantGuardada,equivalente,fecha};
         // NO guardar en Supabase todavía — se guarda al finalizar la compra
         agregarAlTicket({
-          prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantRefNum,cantRefDisplay:p.cantidadRefDisplay||null,
+          prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantNum||cantRefNum,cantRefDisplay:p.cantidadRefDisplay||null,
           cantDisplay,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha,
           cantComprada:cantCompradaNum,totalPagado,totalRef,
           entrada, // guardamos la entrada para aplicarla al finalizar
