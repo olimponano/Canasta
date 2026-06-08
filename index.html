@@ -291,16 +291,16 @@ const ResponsiveContainer=({children})=>children||null;
     const [label,setLabel]=useState(""); const [emoji,setEmoji]=useState("📦"); const [color,setColor]=useState(accentColor);
     const submit=()=>{if(!label.trim())return; onSave({label:label.trim(),emoji,color});};
     return (
-      <div style={{position:"fixed",inset:0,background:"#000b",zIndex:1500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{position:"fixed",inset:0,background:"#000b",zIndex:1500,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"60px 20px 20px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
         <div style={{background:"#0d1321",borderRadius:16,padding:24,width:"100%",maxWidth:400,border:"1px solid #2a3550",boxShadow:"0 8px 40px #0009"}}>
           <div style={{fontWeight:700,fontSize:18,marginBottom:20,color:"#e8eaf0"}}>{title}</div>
           {showColor?(
             <div style={{display:"grid",gridTemplateColumns:"64px 1fr",gap:10,marginBottom:16}}>
-              <div className="field"><label>Emoji</label><input autoComplete="off" className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:22,padding:"10px 4px"}} autoFocus autoComplete="off"/></div>
-              <div className="field"><label>Nombre</label><input autoComplete="off" className="inp" placeholder={namePlaceholder} value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="off"/></div>
+              <div className="field"><label>Emoji</label><input autoComplete="new-password" className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:22,padding:"10px 4px"}} autoFocus autoComplete="new-password"/></div>
+              <div className="field"><label>Nombre</label><input autoComplete="new-password" className="inp" placeholder={namePlaceholder} value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="new-password"/></div>
             </div>
           ):(
-            <div className="field" style={{marginBottom:16}}><label>Nombre</label><input autoComplete="off" className="inp" placeholder={namePlaceholder} value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoFocus autoComplete="off"/></div>
+            <div className="field" style={{marginBottom:16}}><label>Nombre</label><input autoComplete="new-password" className="inp" placeholder={namePlaceholder} value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoFocus autoComplete="new-password"/></div>
           )}
           {showColor&&(
             <div style={{marginBottom:20}}>
@@ -377,8 +377,8 @@ const ResponsiveContainer=({children})=>children||null;
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>{item.nombre}</div>
                       <div style={{display:"flex",gap:8}}>
-                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input autoComplete="off" className="inp" value={editPrecio} onChange={e=>setEditPrecio(e.target.value)} style={{padding:"7px 10px",fontSize:14}} autoFocus/></div>
-                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input autoComplete="off" className="inp" value={editCant} onChange={e=>setEditCant(e.target.value)} style={{padding:"7px 10px",fontSize:14}}/></div>
+                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input autoComplete="new-password" className="inp" value={editPrecio} onChange={e=>setEditPrecio(e.target.value)} style={{padding:"7px 10px",fontSize:14}} autoFocus/></div>
+                        <div style={{flex:1}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input autoComplete="new-password" className="inp" value={editCant} onChange={e=>setEditCant(e.target.value)} style={{padding:"7px 10px",fontSize:14}}/></div>
                       </div>
                       <div style={{display:"flex",gap:8}}>
                         <button className="btn" onClick={()=>setEditIdx(null)} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:"7px 0",fontSize:13}}>Cancelar</button>
@@ -560,34 +560,34 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,alignItems:"end"}}>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
-                  <input autoComplete="off" className="inp" placeholder="ej. 1000" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
+                  <input autoComplete="new-password" className="inp" placeholder="ej. 1000" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Rollos x Paq</div>
-                  <input autoComplete="off" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <input autoComplete="new-password" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Metros</div>
-                  <input autoComplete="off" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <input autoComplete="new-password" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
-                  <input autoComplete="off" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <input autoComplete="new-password" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                 </div>
               </div>
             ):(
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
-                  <input autoComplete="off" className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
+                  <input autoComplete="new-password" className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>{p.unidad||"gr"}</div>
-                  <input autoComplete="off" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+                  <input autoComplete="new-password" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
-                  <input autoComplete="off" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
+                  <input autoComplete="new-password" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
                 </div>
               </div>
             )}
@@ -650,7 +650,7 @@ const ResponsiveContainer=({children})=>children||null;
     const inputRef=useRef(null);
     return (
       <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <input autoComplete="off" ref={inputRef} className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>onChange(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
+        <input autoComplete="new-password" ref={inputRef} className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>onChange(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
         <select value={sortValue} onChange={e=>onSort(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
           {sortOptions}
         </select>
@@ -659,7 +659,7 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   function SearchBar({value,onChange,placeholder="🔍 Buscar en toda la canasta…"}) {
-    return <input autoComplete="off" className="inp" placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)} style={{marginBottom:14}}/>;
+    return <input autoComplete="new-password" className="inp" placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)} style={{marginBottom:14}}/>;
   }
 
   function ProdCard({p,cat,gastoMensual,push,selectMode,selected,onToggle}) {
@@ -1001,7 +1001,7 @@ const ResponsiveContainer=({children})=>children||null;
         <HeaderRight/>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <input autoComplete="off" className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
+        <input autoComplete="new-password" className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
         <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
@@ -1186,7 +1186,7 @@ const ResponsiveContainer=({children})=>children||null;
               {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>}
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <input autoComplete="off" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
+        <input autoComplete="new-password" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
         <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
@@ -1315,9 +1315,9 @@ const ResponsiveContainer=({children})=>children||null;
             {showAddDim&&(p.unidad==="m"?(
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <input autoComplete="off" className="inp" placeholder="3" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}} autoFocus/>
+                  <input autoComplete="new-password" className="inp" placeholder="3" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}} autoFocus/>
                   <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>rollos ×</span>
-                  <input autoComplete="off" className="inp" placeholder="40" value={newMetros} onChange={e=>setNewMetros(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
+                  <input autoComplete="new-password" className="inp" placeholder="40" value={newMetros} onChange={e=>setNewMetros(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
                   <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>m</span>
                   <button className="btn" onClick={agregarDimension} style={{background:"#3b82f6",color:"#fff",padding:"8px 12px",fontSize:14}}>+</button>
                   <button className="btn" onClick={()=>{setShowAddDim(false);setNewCantRef("");setNewMetros("");}} style={{background:"#1a2235",color:"#8b9ab0",padding:"8px 10px",fontSize:14}}>✕</button>
@@ -1326,7 +1326,7 @@ const ResponsiveContainer=({children})=>children||null;
               </div>
             ):(
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <input autoComplete="off" className="inp" placeholder="ej. 1500" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)}
+                <input autoComplete="new-password" className="inp" placeholder="ej. 1500" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)}
                   style={{flex:1,padding:"8px 12px",fontSize:14}} autoFocus
                   onKeyDown={e=>e.key==="Enter"&&agregarDimension()}/>
                 <span style={{fontSize:13,color:"#4a5568",whiteSpace:"nowrap"}}>{p.unidad||"gr"}</span>
@@ -1507,9 +1507,9 @@ const ResponsiveContainer=({children})=>children||null;
         <div>
           <label style={{display:"block",fontSize:12,color:"#8b9ab0",marginBottom:6,fontWeight:600}}>Cantidad ref.</label>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <input autoComplete="off" className="inp" placeholder="3" value={rollos} onChange={e=>handleRollos(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
+            <input autoComplete="new-password" className="inp" placeholder="3" value={rollos} onChange={e=>handleRollos(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
             <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>×</span>
-            <input autoComplete="off" className="inp" placeholder="40" value={metros} onChange={e=>handleMetros(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
+            <input autoComplete="new-password" className="inp" placeholder="40" value={metros} onChange={e=>handleMetros(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
             <span style={{fontSize:12,color:"#4a5568",flexShrink:0}}>m</span>
           </div>
           {total>0&&<div style={{fontSize:11,color:"#4a5568",marginTop:4}}>= <span style={{color:"#3b82f6",fontWeight:600}}>{total} m</span> en total</div>}
@@ -1519,7 +1519,7 @@ const ResponsiveContainer=({children})=>children||null;
     return (
       <div className="field">
         <label>Cantidad ref.</label>
-        <input autoComplete="off" className="inp" placeholder="ej. 300" value={cantidadRef!=null?String(cantidadRef):""} onChange={e=>onChange({valor:e.target.value,display:null})}/>
+        <input autoComplete="new-password" className="inp" placeholder="ej. 300" value={cantidadRef!=null?String(cantidadRef):""} onChange={e=>onChange({valor:e.target.value,display:null})}/>
       </div>
     );
   }
@@ -1528,8 +1528,9 @@ const ResponsiveContainer=({children})=>children||null;
   function EditarProdScreen({prodId,cats,productos,guardar,pop,showToast,askConfirm}) {
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
     const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef,cantidadRefDisplay:p.cantidadRefDisplay||null,unidad:p.unidad||"gr"});
-    const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
-    const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
+    const [showAddSub,setShowAddSub]=useState(false);
+    const selCat=cats.find(c=>c.id===form.catId);
+    const createSub=async(label)=>{const ns={id:uid(),label:label.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setShowAddSub(false);showToast("✅ Subcategoría creada");};
     const submit=()=>askConfirm("¿Guardar los cambios?",async()=>{
       if(!form.nombre.trim())return showToast("El nombre es obligatorio","err");
       const pr=form.precioRef?parseFloat(String(form.precioRef).replace(",",".")):null;
@@ -1540,16 +1541,21 @@ const ResponsiveContainer=({children})=>children||null;
     },"Guardar cambios");
     return (<div className="fade"><TopBar title="Editar producto" subtitle={p.nombre} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
-        <div className="field"><label>Nombre</label><input autoComplete="off" className="inp" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
-        <div className="field"><label>Marca / detalle</label><input autoComplete="off" className="inp" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
+        <div className="field"><label>Nombre</label><input autoComplete="new-password" className="inp" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
+        <div className="field"><label>Marca / detalle</label><input autoComplete="new-password" className="inp" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
         <div className="field"><label>Categoría</label><select className="inp" value={form.catId} onChange={e=>setForm(f=>({...f,catId:e.target.value,subId:""}))}>
           {[...cats].sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}</select></div>
-        <div className="field"><label>Subcategoría</label><select className="inp" value={form.subId} onChange={e=>setForm(f=>({...f,subId:e.target.value}))}>
-          <option value="">— Sin subcategoría —</option>{[...(selCat?.subs||[])].sort((a,b)=>alpha(a,b)).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
-        <div style={{display:"flex",gap:8}}><input autoComplete="off" className="inp" placeholder="+ Crear nueva subcategoría…" value={newSubLabel} onChange={e=>setNewSubLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&createSub()} style={{flex:1,borderStyle:"dashed",fontSize:13,padding:"9px 12px"}}/><button className="btn" onClick={createSub} style={{background:selCat?.color||"#3b82f6",color:"#080c14",padding:"9px 16px",fontSize:16}}>+</button></div>
+        <div className="field"><label>Subcategoría</label>
+          <div style={{display:"flex",gap:8}}>
+            <select className="inp" value={form.subId} onChange={e=>setForm(f=>({...f,subId:e.target.value}))} style={{flex:1}}>
+              <option value="">— Sin subcategoría —</option>{[...(selCat?.subs||[])].sort((a,b)=>alpha(a,b)).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+            <button className="btn" onClick={()=>setShowAddSub(true)} style={{background:selCat?.color||"#3b82f6",color:"#fff",padding:"9px 14px",fontSize:18,flexShrink:0}}>+</button>
+          </div>
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div className="field"><label>Unidades/mes</label><input autoComplete="off" className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
-          <div className="field"><label>Precio ref. ($)</label><input autoComplete="off" className="inp" placeholder="ej. 1200" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
+          <div className="field"><label>Unidades/mes</label><input autoComplete="new-password" className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
+          <div className="field"><label>Precio ref. ($)</label><input autoComplete="new-password" className="inp" placeholder="ej. 1200" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} cantidadRefDisplay={form.cantidadRefDisplay} onChange={({valor,display})=>setForm(f=>({...f,cantidadRef:valor,cantidadRefDisplay:display}))}/>
@@ -1561,6 +1567,7 @@ const ResponsiveContainer=({children})=>children||null;
           <button className="btn" onClick={submit} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}}>Guardar cambios</button>
         </div>
       </div>
+      {showAddSub&&<AddModal title={`Nueva subcategoría en ${selCat?.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={({label})=>createSub(label)} showColor={false} accentColor={selCat?.color||"#3b82f6"}/>}
     </div>);
   }
 
@@ -1605,8 +1612,8 @@ const ResponsiveContainer=({children})=>children||null;
 
     return (<div className="fade"><TopBar title="Nuevo producto" onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
-        <div className="field"><label>Nombre</label><input autoComplete="off" className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
-        <div className="field"><label>Marca / detalle</label><input autoComplete="off" className="inp" placeholder="ej. La Serenísima" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
+        <div className="field"><label>Nombre</label><input autoComplete="new-password" className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
+        <div className="field"><label>Marca / detalle</label><input autoComplete="new-password" className="inp" placeholder="ej. La Serenísima" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
 
         {/* Categoría con botón + */}
         <div className="field"><label>Categoría</label>
@@ -1634,8 +1641,8 @@ const ResponsiveContainer=({children})=>children||null;
         {showAddSub&&<AddModal title={`Nueva subcategoría en ${selCat?.label}`} namePlaceholder="ej. Personal" onClose={()=>{setShowAddSub(false);setNewSubLabel("");}} onSave={({label})=>createSub(label)} showColor={false} accentColor={selCat?.color||"#3b82f6"}/>}
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div className="field"><label>Unidades/mes</label><input autoComplete="off" className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
-          <div className="field"><label>Precio ref. ($)</label><input autoComplete="off" className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
+          <div className="field"><label>Unidades/mes</label><input autoComplete="new-password" className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
+          <div className="field"><label>Precio ref. ($)</label><input autoComplete="new-password" className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} cantidadRefDisplay={form.cantidadRefDisplay} onChange={({valor,display})=>setForm(f=>({...f,cantidadRef:valor,cantidadRefDisplay:display}))}/>
@@ -1681,8 +1688,8 @@ const ResponsiveContainer=({children})=>children||null;
     return (<div className="fade"><TopBar title="Precio de compra" subtitle={`${p.nombre} · ${p.marca||""}`} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div style={{background:clr+"15",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#8b9ab0"}}>Precio de referencia: <span style={{color:clr,fontWeight:700}}>{p.precioRef?fmt(p.precioRef):"no definido"}</span>{cantRef&&<span style={{marginLeft:8,color:"#4a5568"}}>· {cantRef}{unidad}</span>}</div>
-        <div className="field"><label>Precio que pagué ($)</label><input autoComplete="off" className="inp" placeholder="ej. 1200" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} autoFocus/></div>
-        <div className="field"><label>Cantidad comprada ({unidad})</label><input autoComplete="off" className="inp" placeholder={cantRef?String(cantRef):unidad==="m"?"ej. 6x50":unidad==="un"?"ej. 50":"ej. 100"} value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))}/></div>
+        <div className="field"><label>Precio que pagué ($)</label><input autoComplete="new-password" className="inp" placeholder="ej. 1200" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} autoFocus/></div>
+        <div className="field"><label>Cantidad comprada ({unidad})</label><input autoComplete="new-password" className="inp" placeholder={cantRef?String(cantRef):unidad==="m"?"ej. 6x50":unidad==="un"?"ej. 50":"ej. 100"} value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))}/></div>
         {equivalente!=null&&(<div style={{background:"#080c14",borderRadius:10,padding:"12px 14px"}}>
           <div style={{fontSize:11,color:"#4a5568",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Equivalente a {cantRef}{unidad}</div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1873,7 +1880,7 @@ const ResponsiveContainer=({children})=>children||null;
             {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>(<SubEditRow key={sub.id} sub={sub} catColor={cat.color}
               onSave={(label)=>askConfirm("¿Guardar cambios?",()=>save(localCats.map(c=>c.id===cat.id?{...c,subs:c.subs.map(s=>s.id===sub.id?{...s,label}:s)}:c)),"Guardar")}
               onDelete={()=>deleteSub(cat.id,sub.id)} onMove={()=>{setMovingSub({catId:cat.id,subId:sub.id,label:sub.label});setMoveTarget("");}}/>))}
-            <div style={{display:"flex",gap:8,marginTop:6}}><input autoComplete="off" className="inp" placeholder="+ Nueva subcategoría…" value={newSubInputs[cat.id]||""} onChange={e=>setNewSubInputs(f=>({...f,[cat.id]:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&addSub(cat.id)} style={{flex:1,borderStyle:"dashed",padding:"8px 12px",fontSize:13}}/><button className="btn" onClick={()=>addSub(cat.id)} style={{background:cat.color,color:"#080c14",padding:"7px 14px",fontSize:14}}>+</button></div>
+            <div style={{display:"flex",gap:8,marginTop:6}}><input autoComplete="new-password" className="inp" placeholder="+ Nueva subcategoría…" value={newSubInputs[cat.id]||""} onChange={e=>setNewSubInputs(f=>({...f,[cat.id]:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&addSub(cat.id)} style={{flex:1,borderStyle:"dashed",padding:"8px 12px",fontSize:13}}/><button className="btn" onClick={()=>addSub(cat.id)} style={{background:cat.color,color:"#080c14",padding:"7px 14px",fontSize:14}}>+</button></div>
           </div>
           <button className="btn" onClick={()=>deleteCat(cat.id)} style={{marginTop:14,width:"100%",background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:10,fontSize:13}}>Eliminar categoría</button>
         </div>)}
@@ -1885,8 +1892,8 @@ const ResponsiveContainer=({children})=>children||null;
     const [emoji,setEmoji]=useState(cat.emoji); const [label,setLabel]=useState(cat.label); const [color,setColor]=useState(cat.color);
     return (<div style={{marginTop:12}}>
       <div style={{display:"grid",gridTemplateColumns:"64px 1fr",gap:8}}>
-        <div className="field"><label>Emoji</label><input autoComplete="off" className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:18,padding:"8px 4px"}}/></div>
-        <div className="field"><label>Nombre</label><input autoComplete="off" className="inp" value={label} onChange={e=>setLabel(e.target.value)}/></div>
+        <div className="field"><label>Emoji</label><input autoComplete="new-password" className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:18,padding:"8px 4px"}}/></div>
+        <div className="field"><label>Nombre</label><input autoComplete="new-password" className="inp" value={label} onChange={e=>setLabel(e.target.value)}/></div>
       </div>
       <div style={{marginTop:10}}><div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Color</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{COLORS.map(c=><div key={c} onClick={()=>setColor(c)} style={{width:26,height:26,borderRadius:"50%",background:c,cursor:"pointer",border:color===c?"3px solid #fff":"3px solid transparent",transition:"all .15s"}}/>)}</div></div>
       <button className="btn" onClick={()=>onSave({emoji,label,color})} style={{marginTop:10,width:"100%",background:"#1a2235",color:"#93c5fd",padding:10,fontSize:13}}>Guardar cambios categoría</button>
@@ -1896,7 +1903,7 @@ const ResponsiveContainer=({children})=>children||null;
   function SubEditRow({sub,catColor,onSave,onDelete,onMove}) {
     const [label,setLabel]=useState(sub.label);
     return (<div style={{background:"#080c14",borderRadius:8,padding:"8px 10px",marginBottom:6}}>
-      <input autoComplete="off" className="inp" value={label} onChange={e=>setLabel(e.target.value)} style={{marginBottom:6,padding:"7px 10px",fontSize:13}}/>
+      <input autoComplete="new-password" className="inp" value={label} onChange={e=>setLabel(e.target.value)} style={{marginBottom:6,padding:"7px 10px",fontSize:13}}/>
       <div style={{display:"flex",gap:6}}>
         <button className="btn" onClick={()=>onSave(label)} style={{flex:1,background:"#1a2235",color:"#93c5fd",padding:"6px 0",fontSize:12}}>Guardar</button>
         <button className="btn" onClick={onMove} style={{flex:1,background:"#1a2235",color:"#facc15",padding:"6px 0",fontSize:12}}>Mover</button>
