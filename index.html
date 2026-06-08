@@ -1563,19 +1563,87 @@ const ResponsiveContainer=({children})=>children||null;
 
   // ── NuevoProdScreen ───────────────────────────────────────────────────────────
   function NuevoProdScreen({cats,initCatId,initSubId,productos,guardar,pop,showToast}) {
-    const [form,setForm]=useState({nombre:"",marca:"",catId:initCatId||cats[0]?.id,subId:initSubId&&initSubId!==UNASSIGNED_ID?initSubId:"",unidadesMes:"1",precioRef:"",cantidadRef:null,cantidadRefDisplay:null,unidad:"gr"});
-    const [newSubLabel,setNewSubLabel]=useState(""); const selCat=cats.find(c=>c.id===form.catId);
-    const createSub=async()=>{if(!newSubLabel.trim())return showToast("Escribí un nombre","err");const ns={id:uid(),label:newSubLabel.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setNewSubLabel("");showToast("✅ Subcategoría creada");};
-    const submit=async()=>{if(!form.nombre.trim()||!form.marca.trim())return showToast("Nombre y marca son obligatorios","err");const pr=form.precioRef?parseFloat(String(form.precioRef).replace(",",".")):null;const um=form.unidadesMes?parseFrac(form.unidadesMes):null;const cr=form.cantidadRef!=null?parseFloat(form.cantidadRef):null;await guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,cantidadRefDisplay:form.cantidadRefDisplay||null,id:uid(),historialCompra:[],subId:form.subId||null}]);showToast("✅ Producto creado");pop();};
+    const [form,setForm]=useState({
+      nombre:"",marca:"",
+      catId:initCatId||"", // sin default
+      subId:initSubId&&initSubId!==UNASSIGNED_ID?initSubId:"",
+      unidadesMes:"1",precioRef:"",cantidadRef:null,cantidadRefDisplay:null,unidad:"gr"
+    });
+    const [showAddCat,setShowAddCat]=useState(false);
+    const [showAddSub,setShowAddSub]=useState(false);
+    const [newSubLabel,setNewSubLabel]=useState("");
+    const subRef=useRef(null);
+
+    const selCat=cats.find(c=>c.id===form.catId);
+
+    const createCat=async({label,emoji,color})=>{
+      const nc={id:uid(),label,emoji,color,subs:[]};
+      await guardar([...cats,nc],null);
+      setForm(f=>({...f,catId:nc.id,subId:""}));
+      setShowAddCat(false);
+      showToast("✅ Categoría creada");
+    };
+
+    const createSub=async()=>{
+      if(!newSubLabel.trim())return showToast("Escribí un nombre","err");
+      const ns={id:uid(),label:newSubLabel.trim()};
+      await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);
+      setForm(f=>({...f,subId:ns.id}));
+      setNewSubLabel("");
+      setShowAddSub(false);
+      showToast("✅ Subcategoría creada");
+    };
+
+    const submit=async()=>{
+      if(!form.nombre.trim()||!form.marca.trim()) return showToast("Nombre y marca son obligatorios","err");
+      if(!form.catId) return showToast("Elegí una categoría","err");
+      const pr=form.precioRef?parseFloat(String(form.precioRef).replace(",",".")):null;
+      const um=form.unidadesMes?parseFrac(form.unidadesMes):null;
+      const cr=form.cantidadRef!=null?parseFloat(form.cantidadRef):null;
+      await guardar(null,[...productos,{...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,cantidadRefDisplay:form.cantidadRefDisplay||null,id:uid(),historialCompra:[],subId:form.subId||null}]);
+      showToast("✅ Producto creado");pop();
+    };
+
     return (<div className="fade"><TopBar title="Nuevo producto" onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
         <div className="field"><label>Marca / detalle</label><input className="inp" placeholder="ej. La Serenísima" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
-        <div className="field"><label>Categoría</label><select className="inp" value={form.catId} onChange={e=>setForm(f=>({...f,catId:e.target.value,subId:""}))}>
-          {[...cats].sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}</select></div>
-        <div className="field"><label>Subcategoría</label><select className="inp" value={form.subId} onChange={e=>setForm(f=>({...f,subId:e.target.value}))}>
-          <option value="">— Sin subcategoría —</option>{[...(selCat?.subs||[])].sort((a,b)=>alpha(a,b)).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
-        <div style={{display:"flex",gap:8}}><input className="inp" placeholder="+ Crear nueva subcategoría…" value={newSubLabel} onChange={e=>setNewSubLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&createSub()} style={{flex:1,borderStyle:"dashed",fontSize:13,padding:"9px 12px"}}/><button className="btn" onClick={createSub} style={{background:selCat?.color||"#3b82f6",color:"#080c14",padding:"9px 16px",fontSize:16}}>+</button></div>
+
+        {/* Categoría con botón + */}
+        <div className="field"><label>Categoría</label>
+          <div style={{display:"flex",gap:8}}>
+            <select className="inp" value={form.catId} onChange={e=>setForm(f=>({...f,catId:e.target.value,subId:""}))} style={{flex:1}}>
+              <option value="">— Elegir categoría —</option>
+              {[...cats].sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+            </select>
+            <button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#3b82f6",color:"#fff",padding:"9px 14px",fontSize:18,flexShrink:0}}>+</button>
+          </div>
+        </div>
+
+        {/* Subcategoría con botón + */}
+        <div className="field"><label>Subcategoría</label>
+          <div style={{display:"flex",gap:8}}>
+            <select className="inp" value={form.subId} onChange={e=>setForm(f=>({...f,subId:e.target.value}))} disabled={!form.catId} style={{flex:1,opacity:form.catId?1:0.4}}>
+              <option value="">— Sin subcategoría —</option>
+              {[...(selCat?.subs||[])].sort((a,b)=>alpha(a,b)).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+            <button className="btn" onClick={()=>form.catId&&setShowAddSub(true)} style={{background:form.catId?(selCat?.color||"#3b82f6"):"#1a2235",color:form.catId?"#fff":"#4a5568",padding:"9px 14px",fontSize:18,flexShrink:0,cursor:form.catId?"pointer":"default"}}>+</button>
+          </div>
+        </div>
+
+        {/* Modal agregar subcategoría inline */}
+        {showAddSub&&(
+          <div style={{background:"#080c14",border:`1px solid ${selCat?.color||"#2a3550"}`,borderRadius:10,padding:12,display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{fontSize:12,color:"#8b9ab0",fontWeight:600}}>Nueva subcategoría en {selCat?.label}</div>
+            <input className="inp" placeholder="ej. Personal" value={newSubLabel} onChange={e=>setNewSubLabel(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&createSub()} autoFocus style={{marginBottom:0}}/>
+            <div style={{display:"flex",gap:8}}>
+              <button className="btn" onClick={()=>{setShowAddSub(false);setNewSubLabel("");}} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:"8px 0",fontSize:13}}>Cancelar</button>
+              <button className="btn" onClick={createSub} style={{flex:2,background:selCat?.color||"#3b82f6",color:"#fff",padding:"8px 0",fontSize:13}}>Crear</button>
+            </div>
+          </div>
+        )}
+
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div className="field"><label>Unidades/mes</label><input className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
           <div className="field"><label>Precio ref. ($)</label><input className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
@@ -1587,9 +1655,10 @@ const ResponsiveContainer=({children})=>children||null;
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
           <button className="btn" onClick={pop} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Cancelar</button>
-          <button className="btn" onClick={submit} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}}>Guardar</button>
+          <button className="btn" onClick={submit} style={{flex:2,background:form.catId?"#3b82f6":"#1a2235",color:form.catId?"#fff":"#4a5568",padding:13,fontSize:15,cursor:form.catId?"pointer":"default"}}>Guardar</button>
         </div>
       </div>
+      {showAddCat&&<AddModal title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={createCat} showColor={true}/>}
     </div>);
   }
 
