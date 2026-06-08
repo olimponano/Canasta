@@ -295,10 +295,14 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{background:"#0d1321",borderRadius:"20px 20px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:500,border:"1px solid #1a2235",borderBottom:"none"}}>
           <div style={{width:40,height:4,background:"#2a3550",borderRadius:2,margin:"0 auto 24px"}}/>
           <div style={{fontWeight:700,fontSize:18,marginBottom:20,color:"#e8eaf0"}}>{title}</div>
-          <div style={{display:"grid",gridTemplateColumns:"64px 1fr",gap:10,marginBottom:16}}>
-            <div className="field"><label>Emoji</label><input className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:22,padding:"10px 4px"}} autoFocus/></div>
-            <div className="field"><label>Nombre</label><input className="inp" placeholder={namePlaceholder} value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
-          </div>
+          {showColor?(
+            <div style={{display:"grid",gridTemplateColumns:"64px 1fr",gap:10,marginBottom:16}}>
+              <div className="field"><label>Emoji</label><input className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:22,padding:"10px 4px"}} autoFocus/></div>
+              <div className="field"><label>Nombre</label><input className="inp" placeholder={namePlaceholder} value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+            </div>
+          ):(
+            <div className="field" style={{marginBottom:16}}><label>Nombre</label><input className="inp" placeholder={namePlaceholder} value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoFocus/></div>
+          )}
           {showColor&&(
             <div style={{marginBottom:20}}>
               <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:10}}>Color</div>
@@ -1571,8 +1575,6 @@ const ResponsiveContainer=({children})=>children||null;
     });
     const [showAddCat,setShowAddCat]=useState(false);
     const [showAddSub,setShowAddSub]=useState(false);
-    const [newSubLabel,setNewSubLabel]=useState("");
-    const subRef=useRef(null);
 
     const selCat=cats.find(c=>c.id===form.catId);
 
@@ -1584,12 +1586,10 @@ const ResponsiveContainer=({children})=>children||null;
       showToast("✅ Categoría creada");
     };
 
-    const createSub=async()=>{
-      if(!newSubLabel.trim())return showToast("Escribí un nombre","err");
-      const ns={id:uid(),label:newSubLabel.trim()};
+    const createSub=async(label)=>{
+      const ns={id:uid(),label:label.trim()};
       await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);
       setForm(f=>({...f,subId:ns.id}));
-      setNewSubLabel("");
       setShowAddSub(false);
       showToast("✅ Subcategoría creada");
     };
@@ -1631,18 +1631,8 @@ const ResponsiveContainer=({children})=>children||null;
           </div>
         </div>
 
-        {/* Modal agregar subcategoría inline */}
-        {showAddSub&&(
-          <div style={{background:"#080c14",border:`1px solid ${selCat?.color||"#2a3550"}`,borderRadius:10,padding:12,display:"flex",flexDirection:"column",gap:8}}>
-            <div style={{fontSize:12,color:"#8b9ab0",fontWeight:600}}>Nueva subcategoría en {selCat?.label}</div>
-            <input className="inp" placeholder="ej. Personal" value={newSubLabel} onChange={e=>setNewSubLabel(e.target.value)}
-              onKeyDown={e=>e.key==="Enter"&&createSub()} autoFocus style={{marginBottom:0}}/>
-            <div style={{display:"flex",gap:8}}>
-              <button className="btn" onClick={()=>{setShowAddSub(false);setNewSubLabel("");}} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:"8px 0",fontSize:13}}>Cancelar</button>
-              <button className="btn" onClick={createSub} style={{flex:2,background:selCat?.color||"#3b82f6",color:"#fff",padding:"8px 0",fontSize:13}}>Crear</button>
-            </div>
-          </div>
-        )}
+        {/* Modal agregar subcategoría */}
+        {showAddSub&&<AddModal title={`Nueva subcategoría en ${selCat?.label}`} namePlaceholder="ej. Personal" onClose={()=>{setShowAddSub(false);setNewSubLabel("");}} onSave={({label})=>createSub(label)} showColor={false} accentColor={selCat?.color||"#3b82f6"}/>}
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div className="field"><label>Unidades/mes</label><input className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
