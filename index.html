@@ -466,7 +466,7 @@ const ResponsiveContainer=({children})=>children||null;
     const entradasGuardadas=stock[p.id]||[];
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
-    const mesesTxt=fmtMeses(meses);
+    const mesesTxt=fmtMeses(meses,true);
     const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
     const hist=p.historialCompra||[];
     const ultimoPrecio=hist.length>0?hist[hist.length-1].precio:null;
@@ -832,12 +832,13 @@ const ResponsiveContainer=({children})=>children||null;
       if(!p.unidadesMes||p.unidadesMes===0)return null;
       return total/p.unidadesMes;
     };
-    const fmtMeses=(m)=>{
+    const fmtMeses=(m,corto=false)=>{
       if(m===null)return "Sin consumo definido";
       if(m===0)return "Sin stock";
-      if(m<1)return "Queda para menos de 1 mes";
+      if(m<1)return corto?"menos de 1 mes":"Queda para menos de 1 mes";
       const r=Math.round(m*10)/10;
-      return `Queda para ${r===1?"1 mes":`${r} meses`}`;
+      const mesesStr=r===1?"1 mes":`${r} meses`;
+      return corto?mesesStr:`Queda para ${mesesStr}`;
     };
     const handleExport=async(catId=null,subId=null)=>{
       const text=buildExportText(cats,productos,catId,subId);
@@ -1224,7 +1225,7 @@ const ResponsiveContainer=({children})=>children||null;
 
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
-    const mesesTxt=fmtMeses(meses);
+    const mesesTxt=fmtMeses(meses,true);
     const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
 
     const handleOpen=()=>{const abriendo=!open;setOpen(abriendo);setShowAddDim(false);if(abriendo&&onOpen)onOpen();if(!abriendo&&onClose)onClose();};
