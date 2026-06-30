@@ -440,7 +440,7 @@ const ResponsiveContainer=({children})=>children||null;
                   )}
                 </div>);
               })}
-              {ticket.length===0&&<div style={{padding:"30px 16px",textAlign:"center",color:"#4a5568",fontSize:13}}>Todavía no agregaste productos.</div>}
+
             </div>
             {/* Botones de agregar */}
             <div style={{padding:"10px 16px 0",display:"flex",gap:8,borderTop:"1px solid #1a2235",flexShrink:0}}>
@@ -496,14 +496,13 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── ComprasCardInline ─────────────────────────────────────────────────────────
-  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket,askConfirm,setConfirmCompra}) {
+  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket}) {
     const [open,setOpen]=useState(false);
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
-    const [cantRollos,setCantRollos]=useState(""); // rollos por paquete
-    const [cantMetros,setCantMetros]=useState(""); // metros por rollo
-    const [cantComprada,setCantComprada]=useState("1"); // paquetes comprados
-    const [fecha,setFecha]=useState(todayISO());
+    const [cantRollos,setCantRollos]=useState("");
+    const [cantMetros,setCantMetros]=useState("");
+    const [cantComprada,setCantComprada]=useState("1");
     const [saving,setSaving]=useState(false);
 
     const esM=p.unidad==="m";
@@ -532,16 +531,17 @@ const ResponsiveContainer=({children})=>children||null;
     const totalRef=p.precioRef&&cantCompradaNum>0?p.precioRef*cantCompradaNum:null;
 
     const doRegistrar=async()=>{
+      if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
       setSaving(true);
       try {
         const cantGuardada=esM?String(cantNum):cantidad||null;
+        const fecha=todayISO();
         const entrada={id:uid(),precio:precioNum,cantidad:cantGuardada,equivalente,fecha};
-        // NO guardar en Supabase todavía — se guarda al finalizar la compra
         agregarAlTicket({
           prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantNum||cantRefNum,cantRefDisplay:p.cantidadRefDisplay||null,
           cantDisplay,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha,
           cantComprada:cantCompradaNum,totalPagado,totalRef,
-          entrada, // guardamos la entrada para aplicarla al finalizar
+          entrada,
           stockDelta:{cantRef:cantNum||cantRefNum,cantRefProd:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,display:p.cantidadRefDisplay||null}
         });
         showToast("✅ Agregado al ticket");
@@ -550,112 +550,61 @@ const ResponsiveContainer=({children})=>children||null;
       finally{setSaving(false);}
     };
 
-    const cardRef=useRef(null);
-
-    const registrar=()=>{
-      if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
-      const cantDesc=esM&&cantRollosNum>0&&cantMetrosNum>0?`${cantRollosNum}×${cantMetrosNum}m`:cantidad?`${cantidad}${p.unidad||""}`:fmtCantRef(p);
-      setConfirmCompra({
-        nombre:p.nombre,
-        marca:p.marca||"",
-        cantDesc,
-        precio:precioNum,
-        cantComprada:cantCompradaNum,
-        totalPagado,
-        catColor:cat?.color||"#3b82f6",
-        onOk:doRegistrar
-      });
-    };
-
-    return (
-      <div ref={cardRef} className="card" style={{borderLeft:`3px solid ${cat?.color||"#444"}`,overflow:"hidden"}}>
+    return (<>
+      <div className="card" style={{borderLeft:`3px solid ${cat?.color||"#444"}`}}>
         <div style={{padding:"12px 14px",display:"flex",alignItems:"stretch",gap:10}}>
-          <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
+          <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{fontWeight:600,fontSize:15,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,marginRight:8}}>{p.nombre}</div>
               <div style={{fontSize:12,fontWeight:700,color:urgColor,flexShrink:0,textAlign:"right"}}>{mesesTxt}</div>
             </div>
             <div style={{fontSize:12,color:"#4a5568",marginTop:2,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{fmtCantRef(p)}</span>}</span>
-              <span style={{fontSize:12,color:"#4a5568"}}>Stock: <span className="mono" style={{fontWeight:700,color:"#e8eaf0",fontSize:13}}>{fmtTotal(total)}</span></span>
+              <span>Stock: <span className="mono" style={{fontWeight:700,color:"#e8eaf0",fontSize:13}}>{fmtTotal(total)}</span></span>
             </div>
             <div style={{marginTop:4,display:"flex",gap:10}}>
               {p.precioRef&&<span style={{fontSize:12,color:"#4a5568"}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
               {ultimoPrecio&&<span style={{fontSize:12,color:"#4a5568"}}>Último: <span style={{color:"#e8eaf0",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
             </div>
           </div>
-          <button onClick={()=>{
-            const abriendo=!open;
-            setOpen(abriendo);
-            if(abriendo){
-              setTimeout(()=>{
-                cardRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
-              },100);
-            }
-          }} style={{width:38,alignSelf:"center",height:38,borderRadius:10,background:open?"#1a2235":"#3b82f6",border:"none",color:"#fff",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,flexShrink:0,transition:"background .15s"}}>{open?"▲":"+"}</button>
+          <button onClick={()=>setOpen(true)} style={{width:38,alignSelf:"center",height:38,borderRadius:10,background:"#3b82f6",border:"none",color:"#fff",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,flexShrink:0}}>+</button>
         </div>
-
-        {open&&(
-          <div style={{borderTop:"1px solid #1a2235",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+      </div>
+      {open&&(
+        <div style={{position:"fixed",inset:0,background:"#000c",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&setOpen(false)}>
+          <div style={{background:"#0d1321",borderRadius:16,padding:"20px",width:"100%",maxWidth:400,border:`1px solid ${cat?.color||"#2a3550"}`,boxShadow:"0 8px 32px #0008"}}>
+            <div style={{fontWeight:700,fontSize:17,color:"#e8eaf0",marginBottom:4}}>{p.nombre}</div>
+            <div style={{fontSize:12,color:"#4a5568",marginBottom:16}}>{p.marca}{p.cantidadRef&&` · ${fmtCantRef(p)}`}{p.precioRef&&<span> · Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(p.precioRef)}</span></span>}</div>
             {esM?(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,alignItems:"end"}}>
-                <div>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
-                  <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 1000" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
-                </div>
-                <div>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Rollos x Paq</div>
-                  <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
-                </div>
-                <div>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Metros</div>
-                  <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
-                </div>
-                <div>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
-                  <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
-                </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginBottom:14}}>
+                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1000" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
+                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Rollos x Paq</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Metros</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
               </div>
             ):(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                <div>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Precio $</div>
-                  <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 1200" value={precio} onChange={e=>setPrecio(e.target.value)} style={{padding:"8px 10px",fontSize:14}} autoFocus/>
-                </div>
-                <div>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>{p.unidad||"gr"}</div>
-                  <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
-                </div>
-                <div>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compré</div>
-                  <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{padding:"8px 10px",fontSize:14}}/>
-                </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1200" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
+                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>{p.unidad||"gr"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)}/></div>
+                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)}/></div>
               </div>
             )}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,alignItems:"end"}}>
-              <div>
-                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Fecha</div>
-                <input className="inp" type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{padding:"8px 10px",fontSize:14,height:42,boxSizing:"border-box"}}/>
+            {totalPagado&&<div style={{background:"#080c14",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{fontSize:13,color:"#4a5568"}}>Total</span>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
+                <span className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
               </div>
-              <div>
-                <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Total</div>
-                <div style={{background:"#080c14",border:"1px solid #1a2235",borderRadius:10,padding:"0 12px",height:42,display:"flex",alignItems:"center",gap:8,boxSizing:"border-box"}}>
-                  {totalPagado?<>
-                    <span className="mono" style={{fontWeight:700,fontSize:15,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
-                    {diff!=null&&<span style={{fontSize:12,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
-                  </>:<span style={{fontSize:12,color:"#2a3550"}}>—</span>}
-                </div>
-              </div>
+            </div>}
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn" onClick={()=>setOpen(false)} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:"11px 0",fontSize:14}}>Cancelar</button>
+              <button className="btn" onClick={doRegistrar} disabled={saving||!precioNum||precioNum<=0} style={{flex:2,background:precioNum>0?(cat?.color||"#10b981"):"#1a2235",color:precioNum>0?"#080c14":"#4a5568",padding:"11px 0",fontSize:14,fontWeight:700}}>Confirmar</button>
             </div>
-            <button className="btn" onClick={registrar} disabled={saving} style={{background:saving?"#1a2235":"#10b981",color:saving?"#4a5568":"#fff",padding:"10px 0",fontSize:14,fontWeight:700}}>
-              {saving?"Guardando…":"Registrar y agregar al ticket"}
-            </button>
           </div>
-        )}
-      </div>
-    );
+        </div>
+      )}
+    </>);
   }
-
   function BottomTabs({activeTab,setActiveTab,modoCompras,onTapCompras}) {
     const tabs=[
       {id:"productos",label:"Precios",icon:"💲"},
@@ -1000,7 +949,7 @@ const ResponsiveContainer=({children})=>children||null;
           {s==="backup"      &&<BackupScreen {...shared}/>}
           {s==="import"      &&<ImportScreen {...shared}/>}
         </div>
-        {!isFormScreen&&activeTab==="productos"&&!modoCompras&&(
+        {!isFormScreen&&(activeTab==="productos"||activeTab==="stock")&&!modoCompras&&(
           <FloatingAdd onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
         )}
         {modoCompras&&(
@@ -1083,8 +1032,8 @@ const ResponsiveContainer=({children})=>children||null;
         <>
           <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);
-            if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
-            if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
+            if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} />;
+            if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} />;
             return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;
           })}</div>
         </>
@@ -1100,7 +1049,7 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#4a5568"}}>/mes</span></div>}<div style={{fontSize:18,color:"#2a3550",marginTop:2}}>›</div></div>
             </div>);
           })}
-          {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#3b82f611",border:"1px solid #3b82f6",color:"#3b82f6",padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar categoría</button>}
+          {!modoCompras&&<button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#3b82f611",border:"1px solid #3b82f6",color:"#3b82f6",padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar categoría</button>}
         </div>
       )}
       {showAddCat&&<AddModal title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={addCat} showColor={true}/>}
@@ -1123,7 +1072,7 @@ const ResponsiveContainer=({children})=>children||null;
     const orphanGasto=orphans.reduce((s,p)=>s+(gastoMensual(p)||0),0);
 
     const SortSelect=()=>(
-      <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
+      <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
         {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
         <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
@@ -1148,8 +1097,8 @@ const ResponsiveContainer=({children})=>children||null;
       {q?(<>
         <div style={{fontSize:12,color:"#4a5568",marginBottom:10}}>{resultsQ.length} resultado{resultsQ.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{resultsQ.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
-          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm}/>;
-          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
+          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} />;
+          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} />;
           return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
       </>):(<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -1173,7 +1122,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>
           </div>
         )}
-        {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>}
+        {!modoCompras&&<button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>}
       </div>)}
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
@@ -1258,7 +1207,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
-        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
+        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
           {(isStock||modoCompras)&&<><option value="meses-asc">Meses ↑</option><option value="meses-desc">Meses ↓</option></>}
@@ -1271,7 +1220,7 @@ const ResponsiveContainer=({children})=>children||null;
           {lista.map(p=>{
             const pcat=q?cats.find(c=>c.id===p.catId):cat;
             if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} onOpen={()=>handleStockOpen(p.id)} onClose={handleStockClose}/>;
-            if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} askConfirm={askConfirm} setConfirmCompra={setConfirmCompra}/>;
+            if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} />;
             const isSel=selected.has(p.id);
             return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#3b82f6":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#0d1321",transition:"all .15s"}}
               onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
