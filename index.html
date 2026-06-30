@@ -573,29 +573,36 @@ const ResponsiveContainer=({children})=>children||null;
       {open&&(
         <div style={{position:"fixed",inset:0,background:"#000c",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&setOpen(false)}>
           <div style={{background:"#0d1321",borderRadius:16,padding:"20px",width:"100%",maxWidth:400,border:`1px solid ${cat?.color||"#2a3550"}`,boxShadow:"0 8px 32px #0008"}}>
-            <div style={{fontWeight:700,fontSize:17,color:"#e8eaf0",marginBottom:4}}>{p.nombre}</div>
-            <div style={{fontSize:12,color:"#4a5568",marginBottom:16}}>{p.marca}{p.cantidadRef&&` · ${fmtCantRef(p)}`}{p.precioRef&&<span> · Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(p.precioRef)}</span></span>}</div>
+            {/* Header: nombre + marca + stock */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+              <div style={{fontWeight:700,fontSize:17,color:"#e8eaf0"}}>{p.nombre}</div>
+              <div style={{fontSize:13,color:"#4a5568",textAlign:"right",marginLeft:8}}>{p.marca||"—"}</div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div style={{fontSize:12,color:"#4a5568"}}>{p.cantidadRef&&fmtCantRef(p)}{p.precioRef&&<span> · Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(p.precioRef)}</span></span>}</div>
+              <div style={{fontSize:12,color:"#4a5568",textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
+            </div>
             {esM?(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginBottom:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,marginBottom:14,alignItems:"end"}}>
                 <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1000" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
-                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Rollos x Paq</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}}/></div>
-                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Metros</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}}/></div>
-                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Rollos</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Metros</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
               </div>
             ):(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,marginBottom:14,alignItems:"end"}}>
                 <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1200" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
-                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>{p.unidad||"gr"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)}/></div>
-                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>{p.unidad||"gr"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)}/></div>
               </div>
             )}
-            {totalPagado&&<div style={{background:"#080c14",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{background:"#080c14",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span style={{fontSize:13,color:"#4a5568"}}>Total</span>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
-                <span className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
+                <span className="mono" style={{fontWeight:700,fontSize:16,color:totalPagado?"#e8eaf0":"#2a3550"}}>{totalPagado?fmt(totalPagado):"—"}</span>
               </div>
-            </div>}
+            </div>
             <div style={{display:"flex",gap:10}}>
               <button className="btn" onClick={()=>setOpen(false)} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:"11px 0",fontSize:14}}>Cancelar</button>
               <button className="btn" onClick={doRegistrar} disabled={saving||!precioNum||precioNum<=0} style={{flex:2,background:precioNum>0?(cat?.color||"#10b981"):"#1a2235",color:precioNum>0?"#080c14":"#4a5568",padding:"11px 0",fontSize:14,fontWeight:700}}>Confirmar</button>
@@ -1638,8 +1645,10 @@ const ResponsiveContainer=({children})=>children||null;
       showToast("✅ Producto creado");pop();
     };
 
-    return (<div className="fade"><TopBar title="Nuevo producto" onBack={pop}/>
+    return (<div className="fade">
+      <div style={{height:20}}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{fontWeight:700,fontSize:18,color:"#e8eaf0",marginBottom:2}}>Nuevo producto</div>
         <div className="field"><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
         <div className="field"><label>Marca / detalle</label><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. La Serenísima" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
 
@@ -1738,31 +1747,46 @@ const ResponsiveContainer=({children})=>children||null;
 
   // ── ExportScreen ──────────────────────────────────────────────────────────────
   function ExportScreen({cats,productos,pop,showToast}) {
-    const [preview,setPreview]=useState(null);
-    const showPreview=(catId=null,subId=null)=>setPreview({text:buildExportText(cats,productos,catId,subId)});
-    const doCopy=async()=>{if(!preview?.text)return;const ok=await copyToClipboard(preview.text);if(ok){showToast("📋 Copiado al portapapeles");return;}const el=document.querySelector(".export-pre");if(el){const range=document.createRange();range.selectNodeContents(el);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);showToast("Seleccionado — copiá con Ctrl+C");}else showToast("No se pudo copiar","err");};
-    return (<div className="fade"><TopBar title="📋 Exportar lista" subtitle="Elegí qué querés copiar" onBack={pop}/>
-      {preview&&(<div className="card" style={{padding:16,marginBottom:14}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>Vista previa</div><button className="btn" onClick={doCopy} style={{background:"#3b82f6",color:"#fff",padding:"7px 16px",fontSize:13}}>Copiar</button></div>
-        <pre className="export-pre" style={{fontSize:13,color:"#c8cfe0",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:"#080c14",borderRadius:8,padding:12,maxHeight:260,overflowY:"auto"}}>{preview.text||"Sin productos."}</pre>
-      </div>)}
-      <div className="card row" style={{padding:"14px 18px",marginBottom:8,display:"flex",alignItems:"center",gap:12,borderLeft:"4px solid #3b82f6"}} onClick={()=>showPreview(null,null)}>
-        <div style={{flex:1}}><div style={{fontWeight:600,fontSize:15,color:"#e8eaf0"}}>Toda la canasta</div><div style={{fontSize:12,color:"#4a5568",marginTop:2}}>Formato legible</div></div>
-        <div style={{fontSize:18,color:"#2a3550"}}>›</div>
-      </div>
+    const [openSections,setOpenSections]=useState({});
+    const toggle=(key)=>setOpenSections(s=>({...s,[key]:!s[key]}));
+    const doCopy=async(text)=>{const ok=await copyToClipboard(text);showToast(ok?"📋 Copiado al portapapeles":"No se pudo copiar",ok?null:"err");};
 
+    const SectionPreview=({label,text,indent=false})=>{
+      const key=label;
+      const isOpen=openSections[key];
+      return (<div style={{borderTop:"1px solid #1a2235"}}>
+        <div className="row" style={{padding:`9px 16px 9px ${indent?44:16}px`,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>toggle(key)}>
+          <div style={{flex:1}}><div style={{fontSize:indent?13:14,color:indent?"#c8cfe0":"#e8eaf0",fontWeight:indent?400:600}}>{label}</div></div>
+          <button className="btn" onClick={e=>{e.stopPropagation();doCopy(text);}} style={{background:"#3b82f6",color:"#fff",padding:"5px 12px",fontSize:12}}>Copiar</button>
+          <div style={{fontSize:14,color:"#4a5568"}}>{isOpen?"▼":"›"}</div>
+        </div>
+        {isOpen&&<pre style={{fontSize:12,color:"#c8cfe0",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:"#080c14",padding:"10px 16px",margin:0,borderTop:"1px solid #1a2235"}}>{text||"Sin productos."}</pre>}
+      </div>);
+    };
+
+    return (<div className="fade"><TopBar title="📋 Exportar lista" subtitle="Tocá una sección para ver y copiar" onBack={pop}/>
+      <div className="card" style={{overflow:"hidden",marginBottom:8}}>
+        <SectionPreview label="Toda la canasta" text={buildExportText(cats,productos,null,null)}/>
+      </div>
       <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,marginTop:4}}>Por sección</div>
-      {[...cats].sort((a,b)=>alpha(a,b)).map(cat=>{const cp=productos.filter(p=>p.catId===cat.id);return(
-        <div key={cat.id} className="card" style={{marginBottom:8,overflow:"hidden",borderLeft:`3px solid ${cat.color}`}}>
-          <div className="row" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10}} onClick={()=>showPreview(cat.id,null)}>
-            <span style={{fontSize:18}}>{cat.emoji}</span><div style={{flex:1}}><div style={{fontWeight:600,fontSize:14,color:"#e8eaf0"}}>{cat.label}</div><div style={{fontSize:11,color:"#4a5568"}}>{cp.length} productos</div></div><div style={{fontSize:16,color:"#2a3550"}}>›</div>
+      {[...cats].sort((a,b)=>alpha(a,b)).map(cat=>{
+        const cp=productos.filter(p=>p.catId===cat.id);
+        const validS=new Set(cat.subs.map(s=>s.id));
+        const orphans=cp.filter(p=>!p.subId||!validS.has(p.subId));
+        return (<div key={cat.id} className="card" style={{marginBottom:8,overflow:"hidden",borderLeft:`3px solid ${cat.color}`}}>
+          <div className="row" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:18}}>{cat.emoji}</span>
+            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:14,color:"#e8eaf0"}}>{cat.label}</div><div style={{fontSize:11,color:"#4a5568"}}>{cp.length} productos</div></div>
           </div>
-          {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{const sp=cp.filter(p=>p.subId===sub.id);if(!sp.length)return null;return(
-            <div key={sub.id} className="row" style={{padding:"9px 16px 9px 44px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid #1a2235"}} onClick={()=>showPreview(cat.id,sub.id)}>
-              <div style={{flex:1}}><div style={{fontSize:13,color:"#c8cfe0"}}>{sub.label}</div><div style={{fontSize:11,color:"#4a5568"}}>{sp.length} productos</div></div><div style={{fontSize:14,color:"#2a3550"}}>›</div>
-            </div>);})}
-          {(()=>{const validS=new Set(cat.subs.map(s=>s.id));const orph=cp.filter(p=>!p.subId||!validS.has(p.subId));return orph.length>0?(<div className="row" style={{padding:"9px 16px 9px 44px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid #1a2235"}} onClick={()=>showPreview(cat.id,"__sin_sub__")}><div style={{flex:1}}><div style={{fontSize:13,color:"#8b9ab0"}}>Sin subcategoría</div><div style={{fontSize:11,color:"#4a5568"}}>{orph.length} productos</div></div><div style={{fontSize:14,color:"#2a3550"}}>›</div></div>):null;})()}
-        </div>);})}
+          <SectionPreview label={`${cat.emoji} ${cat.label} — todo`} text={buildExportText(cats,productos,cat.id,null)}/>
+          {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
+            const sp=cp.filter(p=>p.subId===sub.id);
+            if(!sp.length)return null;
+            return <SectionPreview key={sub.id} label={sub.label} text={buildExportText(cats,productos,cat.id,sub.id)} indent/>;
+          })}
+          {orphans.length>0&&<SectionPreview label="Sin subcategoría" text={buildExportText(cats,productos,cat.id,"__sin_sub__")} indent/>}
+        </div>);
+      })}
     </div>);
   }
 
