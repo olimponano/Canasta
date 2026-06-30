@@ -379,7 +379,7 @@ const ResponsiveContainer=({children})=>children||null;
     return (
       <div style={{position:"fixed",top:ticketOpen?0:"auto",bottom:64,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:ticketOpen?0:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         {/* Header: siempre visible, clickeable */}
-        <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",flexShrink:0}} onClick={()=>setTicketOpen(o=>!o)}>
+        <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",flexShrink:0,WebkitTapHighlightColor:"transparent"}} onClick={()=>setTicketOpen(o=>!o)}>
           <div style={{flex:1}}>
             <div style={{fontSize:14,fontWeight:700,color:"#10b981"}}>🛒 Modo compras</div>
             <div style={{color:"#8b9ab0",fontWeight:400,fontSize:12,marginTop:2}}>{ticket.length} producto{ticket.length!==1?"s":""}</div>
@@ -579,21 +579,21 @@ const ResponsiveContainer=({children})=>children||null;
               <div style={{fontSize:13,color:"#4a5568",textAlign:"right",marginLeft:8}}>{p.marca||"—"}</div>
             </div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <div style={{fontSize:12,color:"#4a5568"}}>{p.cantidadRef&&fmtCantRef(p)}{p.precioRef&&<span> · Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(p.precioRef)}</span></span>}</div>
+              <div style={{fontSize:12,color:"#4a5568"}}>{p.precioRef&&<span>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(p.precioRef)}</span></span>}</div>
               <div style={{fontSize:12,color:"#4a5568",textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
             </div>
             {esM?(
               <div style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,marginBottom:14,alignItems:"end"}}>
                 <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1000" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Rollos</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}}/></div>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Metros</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}}/></div>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Rollos</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="3" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Metros</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="40" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
               </div>
             ):(
               <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,marginBottom:14,alignItems:"end"}}>
                 <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1200" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>{p.unidad||"gr"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)}/></div>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{p.cantidadRef?`${p.cantidadRef}${p.unidad||"gr"}`:(p.unidad||"gr")}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
               </div>
             )}
             <div style={{background:"#080c14",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -612,24 +612,34 @@ const ResponsiveContainer=({children})=>children||null;
       )}
     </>);
   }
-  function BottomTabs({activeTab,setActiveTab,modoCompras,onTapCompras}) {
-    const tabs=[
-      {id:"productos",label:"Precios",icon:"💲"},
-      {id:"compras",label:"Compras",icon:"🛒"},
-      {id:"stock",label:"Stock",icon:"📦"},
-    ];
+  function BottomTabs({activeTab,setActiveTab,modoCompras,onTapCompras,ticketCount}) {
     return (
-      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0d1321",borderTop:"1px solid #1a2235",display:"flex",zIndex:200,maxWidth:500,margin:"0 auto"}}>
-        {tabs.map(t=>{
-          const isActive=t.id==="compras"?modoCompras:(activeTab===t.id&&!modoCompras);
-          return (
-            <button key={t.id} onClick={()=>t.id==="compras"?onTapCompras():setActiveTab(t.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",padding:"10px 0 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,fontFamily:"inherit"}}>
-              <span style={{fontSize:20}}>{t.icon}</span>
-              <span style={{fontSize:11,fontWeight:600,color:isActive?"#3b82f6":"#4a5568",letterSpacing:".02em"}}>{t.label}</span>
-              {isActive&&<div style={{width:20,height:2,background:"#3b82f6",borderRadius:1}}/>}
-            </button>
-          );
-        })}
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0d1321",borderTop:"1px solid #1a2235",display:"flex",zIndex:200,maxWidth:500,margin:"0 auto",alignItems:"flex-end"}}>
+        {/* Precios */}
+        <button onClick={()=>setActiveTab("productos")} style={{flex:1,background:"none",border:"none",cursor:"pointer",padding:"10px 0 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
+          <span style={{fontSize:20}}>💲</span>
+          <span style={{fontSize:11,fontWeight:600,color:activeTab==="productos"&&!modoCompras?"#3b82f6":"#4a5568"}}>Precios</span>
+          {activeTab==="productos"&&!modoCompras&&<div style={{width:20,height:2,background:"#3b82f6",borderRadius:1}}/>}
+        </button>
+
+        {/* Compras — círculo elevado */}
+        <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"flex-end",paddingBottom:8}}>
+          <button onClick={onTapCompras} style={{position:"relative",width:52,height:52,borderRadius:"50%",background:modoCompras?"#10b981":"#1a2235",border:`2px solid ${modoCompras?"#10b981":"#2a3550"}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",boxShadow:"0 -2px 12px #0006",marginBottom:6}}>
+            <span style={{fontSize:22}}>🛒</span>
+            {ticketCount>0&&(
+              <div style={{position:"absolute",top:-2,right:-2,background:"#ef4444",borderRadius:"50%",minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",padding:"0 3px"}}>
+                {ticketCount}
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Stock */}
+        <button onClick={()=>setActiveTab("stock")} style={{flex:1,background:"none",border:"none",cursor:"pointer",padding:"10px 0 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
+          <span style={{fontSize:20}}>📦</span>
+          <span style={{fontSize:11,fontWeight:600,color:activeTab==="stock"&&!modoCompras?"#3b82f6":"#4a5568"}}>Stock</span>
+          {activeTab==="stock"&&!modoCompras&&<div style={{width:20,height:2,background:"#3b82f6",borderRadius:1}}/>}
+        </button>
       </div>
     );
   }
@@ -936,6 +946,7 @@ const ResponsiveContainer=({children})=>children||null;
     const s=current.screen;
     const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra};
 
+    const isMenuScreen=["export","backup","import","config"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio"].includes(s);
 
     return (
@@ -956,7 +967,7 @@ const ResponsiveContainer=({children})=>children||null;
           {s==="backup"      &&<BackupScreen {...shared}/>}
           {s==="import"      &&<ImportScreen {...shared}/>}
         </div>
-        {!isFormScreen&&(activeTab==="productos"||activeTab==="stock")&&!modoCompras&&(
+        {!isFormScreen&&!isMenuScreen&&(activeTab==="productos"||activeTab==="stock")&&!modoCompras&&(
           <FloatingAdd onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
         )}
         {modoCompras&&(
@@ -974,7 +985,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>
           </div>
         )}
-        {!isFormScreen&&<BottomTabs activeTab={activeTab} setActiveTab={(t)=>{setActiveTab(t);if(modoCompras)setModoCompras(false);}} modoCompras={modoCompras} onTapCompras={()=>{
+        {!isFormScreen&&<BottomTabs activeTab={activeTab} setActiveTab={(t)=>{setActiveTab(t);if(modoCompras)setModoCompras(false);}} modoCompras={modoCompras} ticketCount={ticket.length} onTapCompras={()=>{
           if(modoCompras){}
           else if(ticket.length>0){ setModoCompras(true); }
           else { setShowIniciarCompra(true); }
@@ -1747,44 +1758,48 @@ const ResponsiveContainer=({children})=>children||null;
 
   // ── ExportScreen ──────────────────────────────────────────────────────────────
   function ExportScreen({cats,productos,pop,showToast}) {
-    const [openSections,setOpenSections]=useState({});
-    const toggle=(key)=>setOpenSections(s=>({...s,[key]:!s[key]}));
-    const doCopy=async(text)=>{const ok=await copyToClipboard(text);showToast(ok?"📋 Copiado al portapapeles":"No se pudo copiar",ok?null:"err");};
+    const [openKey,setOpenKey]=useState(null);
+    const toggle=(key)=>setOpenKey(k=>k===key?null:key);
+    const doCopy=async(text,e)=>{e.stopPropagation();const ok=await copyToClipboard(text);showToast(ok?"📋 Copiado":"No se pudo copiar",ok?null:"err");};
 
-    const SectionPreview=({label,text,indent=false})=>{
-      const key=label;
-      const isOpen=openSections[key];
+    const SectionRow=({label,catId,subId,indent=false})=>{
+      const key=`${catId}-${subId}`;
+      const isOpen=openKey===key;
+      const text=buildExportText(cats,productos,catId,subId);
       return (<div style={{borderTop:"1px solid #1a2235"}}>
-        <div className="row" style={{padding:`9px 16px 9px ${indent?44:16}px`,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>toggle(key)}>
-          <div style={{flex:1}}><div style={{fontSize:indent?13:14,color:indent?"#c8cfe0":"#e8eaf0",fontWeight:indent?400:600}}>{label}</div></div>
-          <button className="btn" onClick={e=>{e.stopPropagation();doCopy(text);}} style={{background:"#3b82f6",color:"#fff",padding:"5px 12px",fontSize:12}}>Copiar</button>
+        <div className="row" style={{padding:`10px 16px 10px ${indent?44:16}px`,display:"flex",alignItems:"center",gap:10,cursor:"pointer",WebkitTapHighlightColor:"transparent"}} onClick={()=>toggle(key)}>
+          <div style={{flex:1,fontSize:indent?13:14,color:indent?"#c8cfe0":"#e8eaf0",fontWeight:indent?400:600}}>{label}</div>
           <div style={{fontSize:14,color:"#4a5568"}}>{isOpen?"▼":"›"}</div>
         </div>
-        {isOpen&&<pre style={{fontSize:12,color:"#c8cfe0",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:"#080c14",padding:"10px 16px",margin:0,borderTop:"1px solid #1a2235"}}>{text||"Sin productos."}</pre>}
+        {isOpen&&<div style={{position:"relative"}}>
+          <button onClick={e=>doCopy(text,e)} style={{position:"absolute",top:8,right:12,background:"#3b82f6",border:"none",borderRadius:8,color:"#fff",padding:"4px 10px",fontSize:12,cursor:"pointer",zIndex:1}}>📋 Copiar</button>
+          <pre style={{fontSize:12,color:"#c8cfe0",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:"#080c14",padding:"32px 16px 12px",margin:0,borderTop:"1px solid #1a2235"}}>{text||"Sin productos."}</pre>
+        </div>}
       </div>);
     };
 
     return (<div className="fade"><TopBar title="📋 Exportar lista" subtitle="Tocá una sección para ver y copiar" onBack={pop}/>
       <div className="card" style={{overflow:"hidden",marginBottom:8}}>
-        <SectionPreview label="Toda la canasta" text={buildExportText(cats,productos,null,null)}/>
+        <SectionRow label="Toda la canasta" catId={null} subId={null}/>
       </div>
       <div style={{fontSize:11,fontWeight:600,color:"#4a5568",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,marginTop:4}}>Por sección</div>
       {[...cats].sort((a,b)=>alpha(a,b)).map(cat=>{
         const cp=productos.filter(p=>p.catId===cat.id);
         const validS=new Set(cat.subs.map(s=>s.id));
         const orphans=cp.filter(p=>!p.subId||!validS.has(p.subId));
+        const hasSubs=cat.subs.length>0;
         return (<div key={cat.id} className="card" style={{marginBottom:8,overflow:"hidden",borderLeft:`3px solid ${cat.color}`}}>
-          <div className="row" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+          <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:18}}>{cat.emoji}</span>
             <div style={{flex:1}}><div style={{fontWeight:600,fontSize:14,color:"#e8eaf0"}}>{cat.label}</div><div style={{fontSize:11,color:"#4a5568"}}>{cp.length} productos</div></div>
           </div>
-          <SectionPreview label={`${cat.emoji} ${cat.label} — todo`} text={buildExportText(cats,productos,cat.id,null)}/>
-          {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
+          <SectionRow label={cat.label} catId={cat.id} subId={null}/>
+          {hasSubs&&[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
             const sp=cp.filter(p=>p.subId===sub.id);
             if(!sp.length)return null;
-            return <SectionPreview key={sub.id} label={sub.label} text={buildExportText(cats,productos,cat.id,sub.id)} indent/>;
+            return <SectionRow key={sub.id} label={sub.label} catId={cat.id} subId={sub.id} indent/>;
           })}
-          {orphans.length>0&&<SectionPreview label="Sin subcategoría" text={buildExportText(cats,productos,cat.id,"__sin_sub__")} indent/>}
+          {hasSubs&&orphans.length>0&&<SectionRow label="Sin subcategoría" catId={cat.id} subId="__sin_sub__" indent/>}
         </div>);
       })}
     </div>);
