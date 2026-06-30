@@ -322,9 +322,7 @@ const ResponsiveContainer=({children})=>children||null;
     return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:"#3b82f6",color:"#fff",fontSize:28,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 24px #3b82f655",zIndex:100,lineHeight:1}}>+</button>;
   }
 
-  function FloatingCompras({onClick}) {
-    return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:"#10b981",color:"#fff",fontSize:26,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 24px #10b98155",zIndex:100,lineHeight:1,filter:"brightness(1.3)"}}>🛒</button>;
-  }
+
 
   function TicketDrawer({ticket,setTicket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,askConfirm}) {
     const [editIdx,setEditIdx]=useState(null);
@@ -366,7 +364,7 @@ const ResponsiveContainer=({children})=>children||null;
         </div>
 
         {/* Panel expandible */}
-        {ticketOpen&&ticket.length>0&&<div style={{borderTop:"1px solid #1a2235",maxHeight:240,overflowY:"auto"}}>
+        {ticketOpen&&ticket.length>0&&<div style={{borderTop:"1px solid #1a2235",maxHeight:"calc(100vh - 160px)",overflowY:"auto"}}>
               {ticket.map((item,i)=>{
                 const p=productos.find(x=>x.id===item.prodId);
                 const cat=cats.find(c=>c.id===p?.catId);
@@ -616,20 +614,24 @@ const ResponsiveContainer=({children})=>children||null;
     );
   }
 
-  function BottomTabs({activeTab,setActiveTab}) {
+  function BottomTabs({activeTab,setActiveTab,modoCompras,onTapCompras}) {
     const tabs=[
-      {id:"productos",label:"Productos",icon:"🧺"},
+      {id:"productos",label:"Precios",icon:"💲"},
+      {id:"compras",label:"Compras",icon:"🛒"},
       {id:"stock",label:"Stock",icon:"📦"},
     ];
     return (
       <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0d1321",borderTop:"1px solid #1a2235",display:"flex",zIndex:200,maxWidth:500,margin:"0 auto"}}>
-        {tabs.map(t=>(
-          <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",padding:"10px 0 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,fontFamily:"inherit"}}>
-            <span style={{fontSize:20}}>{t.icon}</span>
-            <span style={{fontSize:11,fontWeight:600,color:activeTab===t.id?"#3b82f6":"#4a5568",letterSpacing:".02em"}}>{t.label}</span>
-            {activeTab===t.id&&<div style={{width:20,height:2,background:"#3b82f6",borderRadius:1}}/>}
-          </button>
-        ))}
+        {tabs.map(t=>{
+          const isActive=t.id==="compras"?modoCompras:(activeTab===t.id&&!modoCompras);
+          return (
+            <button key={t.id} onClick={()=>t.id==="compras"?onTapCompras():setActiveTab(t.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",padding:"10px 0 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,fontFamily:"inherit"}}>
+              <span style={{fontSize:20}}>{t.icon}</span>
+              <span style={{fontSize:11,fontWeight:600,color:isActive?"#3b82f6":"#4a5568",letterSpacing:".02em"}}>{t.label}</span>
+              {isActive&&<div style={{width:20,height:2,background:"#3b82f6",borderRadius:1}}/>}
+            </button>
+          );
+        })}
       </div>
     );
   }
@@ -701,6 +703,7 @@ const ResponsiveContainer=({children})=>children||null;
     const [ticketOpen,setTicketOpen]=useState(!!draft&&draft.length>0);
     const [tickets,setTickets]=useState([]);
     const [showHistorial,setShowHistorial]=useState(false);
+    const [showIniciarCompra,setShowIniciarCompra]=useState(false);
 
     // Guardar ticket en localStorage cada vez que cambia
     useEffect(()=>{
@@ -945,14 +948,18 @@ const ResponsiveContainer=({children})=>children||null;
         {!isFormScreen&&activeTab==="productos"&&!modoCompras&&(
           <FloatingAdd onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
         )}
-        {!isFormScreen&&activeTab==="stock"&&!modoCompras&&(
-          <FloatingCompras onClick={()=>setModoCompras(true)}/>
-        )}
         {modoCompras&&(
           <TicketDrawer ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm}/>
         )}
         {showHistorial&&<HistorialTickets tickets={tickets} onClose={()=>setShowHistorial(false)}/>}
-        {!isFormScreen&&!modoCompras&&<BottomTabs activeTab={activeTab} setActiveTab={setActiveTab}/>}
+        {showIniciarCompra&&(
+          <Confirm msg="¿Iniciar compra?" onOk={()=>{setModoCompras(true);setShowIniciarCompra(false);}} onCancel={()=>setShowIniciarCompra(false)} okLabel="Iniciar" okColor="#10b981"/>
+        )}
+        {!isFormScreen&&<BottomTabs activeTab={activeTab} setActiveTab={(t)=>{setActiveTab(t);if(modoCompras)setModoCompras(false);}} modoCompras={modoCompras} onTapCompras={()=>{
+          if(modoCompras){}
+          else if(ticket.length>0){ setModoCompras(true); }
+          else { setShowIniciarCompra(true); }
+        }}/>
       </div>
     );
   }
