@@ -358,6 +358,7 @@ const ResponsiveContainer=({children})=>children||null;
     const [editIdx,setEditIdx]=useState(null);
     const [editCant,setEditCant]=useState("");
     const [editPrecio,setEditPrecio]=useState("");
+    const [menuIdx,setMenuIdx]=useState(null);
     const totalPagado=ticket.reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
     const totalRef=ticket.reduce((s,i)=>s+(i.totalRef??i.precioRef??0),0);
     const diff=totalPagado-totalRef;
@@ -419,23 +420,25 @@ const ResponsiveContainer=({children})=>children||null;
                       </div>
                     </div>
                   ):(
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setMenuIdx(menuIdx===i?null:i)}>
                       <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:cat?.color||"#444",flexShrink:0}}/>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
-                        <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1&&` × ${item.cantComprada}`}{item.cantRef&&` · ${item.cantDisplay?`${item.cantDisplay}${item.unidad||""}`:item.cantRefDisplay?`${item.cantRefDisplay}${item.unidad||""}`:item.cantRef+""+(item.unidad||"")}`}</div>
+                        <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantRef&&` · ${item.cantDisplay?`${item.cantDisplay}${item.unidad||""}`:item.cantRefDisplay?`${item.cantRefDisplay}${item.unidad||""}`:item.cantRef+""+(item.unidad||"")}`}</div>
                       </div>
-                      <div style={{display:"flex",alignItems:"flex-start",gap:8,flexShrink:0}}>
-                        <div style={{fontSize:11,color:"#4a5568",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",paddingTop:2}}>{fmt(item.precio)} × {item.cantComprada||1} =</div>
-                        <div style={{textAlign:"right"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                        <div style={{fontSize:11,color:"#4a5568",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap"}}>{fmt(item.precio)} × {item.cantComprada||1} =</div>
+                        <div style={{textAlign:"right",minWidth:70}}>
                           <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
                           {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
                         </div>
                       </div>
-                      <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
-                        <button onClick={()=>iniciarEdicion(i)} style={{width:26,height:26,borderRadius:6,background:"#1a2235",border:"1px solid #2a3550",color:"#8b9ab0",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✏️</button>
-                        <button onClick={()=>eliminarItem(i)} style={{width:26,height:26,borderRadius:6,background:"#1a0a0a",border:"1px solid #2d1212",color:"#ef4444",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-                      </div>
+                    </div>
+                  )}
+                  {menuIdx===i&&editIdx!==i&&(
+                    <div style={{display:"flex",gap:8,padding:"8px 0 2px 13px"}}>
+                      <button className="btn" onClick={()=>{iniciarEdicion(i);setMenuIdx(null);}} style={{flex:1,background:"#1a2235",color:"#8b9ab0",border:"1px solid #2a3550",padding:"7px 0",fontSize:13}}>✏️ Editar</button>
+                      <button className="btn" onClick={()=>{eliminarItem(i);setMenuIdx(null);}} style={{flex:1,background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"7px 0",fontSize:13}}>✕ Eliminar</button>
                     </div>
                   )}
                 </div>);
@@ -624,7 +627,7 @@ const ResponsiveContainer=({children})=>children||null;
 
         {/* Compras — círculo elevado */}
         <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"flex-end",paddingBottom:8}}>
-          <button onClick={onTapCompras} style={{position:"relative",width:52,height:52,borderRadius:"50%",background:modoCompras?"#10b981":"#1a2235",border:`2px solid ${modoCompras?"#10b981":"#2a3550"}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",boxShadow:"0 -2px 12px #0006",marginBottom:6}}>
+          <button onClick={onTapCompras} style={{position:"relative",width:60,height:60,borderRadius:"50%",background:"#0d1321",border:`3px solid ${modoCompras?"#10b981":"#2a3550"}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",boxShadow:"0 -2px 12px #0006",marginBottom:6}}>
             <span style={{fontSize:22}}>🛒</span>
             {ticketCount>0&&(
               <div style={{position:"absolute",top:-2,right:-2,background:"#ef4444",borderRadius:"50%",minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",padding:"0 3px"}}>
@@ -1769,7 +1772,7 @@ const ResponsiveContainer=({children})=>children||null;
       return (<div style={{borderTop:"1px solid #1a2235"}}>
         <div className="row" style={{padding:`10px 16px 10px ${indent?44:16}px`,display:"flex",alignItems:"center",gap:10,cursor:"pointer",WebkitTapHighlightColor:"transparent"}} onClick={()=>toggle(key)}>
           <div style={{flex:1,fontSize:indent?13:14,color:indent?"#c8cfe0":"#e8eaf0",fontWeight:indent?400:600}}>{label}</div>
-          <div style={{fontSize:14,color:"#4a5568"}}>{isOpen?"▼":"›"}</div>
+          <div style={{fontSize:12,color:"#4a5568"}}>{isOpen?"▼":"▶"}</div>
         </div>
         {isOpen&&<div style={{position:"relative"}}>
           <button onClick={e=>doCopy(text,e)} style={{position:"absolute",top:8,right:12,background:"#3b82f6",border:"none",borderRadius:8,color:"#fff",padding:"4px 10px",fontSize:12,cursor:"pointer",zIndex:1}}>📋 Copiar</button>
