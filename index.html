@@ -257,11 +257,13 @@ const ResponsiveContainer=({children})=>children||null;
   function ItemSueltoModal({onClose,onSave}) {
     const [nombre,setNombre]=useState("");
     const [precio,setPrecio]=useState("");
+    const [cantidad,setCantidad]=useState("1");
     const precioNum=parseFloat((precio||"").replace(",","."));
+    const cantNum=parseInt(cantidad)||1;
     const submit=()=>{
       if(!nombre.trim())return;
       if(!precioNum||precioNum<=0)return;
-      onSave({nombre:nombre.trim(),precio:precioNum});
+      onSave({nombre:nombre.trim(),precio:precioNum,cantidad:cantNum});
     };
     return (
       <div style={{position:"fixed",inset:0,background:"#000c",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px 40px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -269,7 +271,10 @@ const ResponsiveContainer=({children})=>children||null;
           <div style={{fontWeight:700,fontSize:18,marginBottom:6,color:"#e8eaf0"}}>Item suelto</div>
           <div style={{fontSize:12,color:"#4a5568",marginBottom:20}}>Se suma al total del ticket, sin guardarse como producto</div>
           <div className="field" style={{marginBottom:14}}><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. Bolsa de hielo" value={nombre} onChange={e=>setNombre(e.target.value)} autoFocus/></div>
-          <div className="field" style={{marginBottom:20}}><label>Precio $</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 500" value={precio} onChange={e=>setPrecio(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+            <div className="field"><label>Precio $</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 500" value={precio} onChange={e=>setPrecio(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+            <div className="field"><label>Compré</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantidad} onChange={e=>setCantidad(e.target.value)}/></div>
+          </div>
           <div style={{display:"flex",gap:10}}>
             <button className="btn" onClick={onClose} style={{flex:1,background:"#1a2235",color:"#8b9ab0",padding:13,fontSize:14}}>Cancelar</button>
             <button className="btn" onClick={submit} style={{flex:2,background:"#3b82f6",color:"#080c14",padding:13,fontSize:15,fontWeight:700}}>Agregar</button>
@@ -377,15 +382,15 @@ const ResponsiveContainer=({children})=>children||null;
         <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",flexShrink:0}} onClick={()=>setTicketOpen(o=>!o)}>
           <div style={{flex:1}}>
             <div style={{fontSize:14,fontWeight:700,color:"#10b981"}}>🛒 Modo compras</div>
-            {ticket.length>0&&<div style={{color:"#8b9ab0",fontWeight:400,fontSize:12,marginTop:2}}>{ticket.length} producto{ticket.length>1?"s":""}</div>}
+            <div style={{color:"#8b9ab0",fontWeight:400,fontSize:12,marginTop:2}}>{ticket.length} producto{ticket.length!==1?"s":""}</div>
           </div>
-          {ticket.length>0&&<div style={{textAlign:"right"}}>
+          <div style={{textAlign:"right"}}>
             <div style={{display:"flex",alignItems:"baseline",gap:5,justifyContent:"flex-end"}}>
               <span style={{fontSize:10,color:"#4a5568",fontWeight:600}}>Total</span>
-              <span className="mono" style={{fontWeight:700,fontSize:14,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
+              <span className="mono" style={{fontWeight:700,fontSize:14,color:ticket.length>0?"#e8eaf0":"#2a3550"}}>{ticket.length>0?fmt(totalPagado):"$0,00"}</span>
             </div>
-            {diffPct!==null&&<div style={{fontSize:10,fontWeight:700,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
-          </div>}
+            {ticket.length>0&&diffPct!==null&&<div style={{fontSize:10,fontWeight:700,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+          </div>
           <span style={{color:"#4a5568",fontSize:14}}>{ticketOpen?"▼":"▲"}</span>
         </div>
 
@@ -393,6 +398,7 @@ const ResponsiveContainer=({children})=>children||null;
         {ticketOpen&&(
           <div style={{flex:1,display:"flex",flexDirection:"column",borderTop:"1px solid #1a2235",minHeight:0}}>
             <div style={{flex:1,overflowY:"auto"}}>
+              {ticket.length===0&&<div style={{padding:"40px 16px",textAlign:"center",color:"#4a5568",fontSize:13}}>Todavía no agregaste productos</div>}
               {ticket.map((item,i)=>{
                 const p=productos.find(x=>x.id===item.prodId);
                 const cat=cats.find(c=>c.id===p?.catId);
@@ -438,7 +444,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>
             {/* Botones de agregar */}
             <div style={{padding:"10px 16px 0",display:"flex",gap:8,borderTop:"1px solid #1a2235",flexShrink:0}}>
-              <button className="btn" onClick={onAddSuelto} style={{flex:1,background:"#1a2235",color:"#8b9ab0",border:"1px solid #2a3550",padding:"9px 0",fontSize:13}}>+ Item suelto</button>
+              <button className="btn" onClick={onAddSuelto} style={{flex:1,background:"#1a2235",color:"#3b82f6",border:"1px solid #2a3550",padding:"9px 0",fontSize:13}}>+ Item suelto</button>
               <button className="btn" onClick={onAddProducto} style={{flex:1,background:"#1a2235",color:"#3b82f6",border:"1px solid #2a3550",padding:"9px 0",fontSize:13}}>+ Producto nuevo</button>
             </div>
             {/* Botones solo visibles dentro del panel expandido */}
@@ -690,7 +696,7 @@ const ResponsiveContainer=({children})=>children||null;
     return (
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" ref={inputRef} className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>onChange(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
-        <select value={sortValue} onChange={e=>onSort(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
+        <select value={sortValue} onChange={e=>onSort(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
           {sortOptions}
         </select>
       </div>
@@ -741,6 +747,7 @@ const ResponsiveContainer=({children})=>children||null;
     const [showHistorial,setShowHistorial]=useState(false);
     const [showIniciarCompra,setShowIniciarCompra]=useState(false);
     const [showItemSuelto,setShowItemSuelto]=useState(false);
+    const [showNuevoProdModal,setShowNuevoProdModal]=useState(false);
 
     // Guardar ticket en localStorage cada vez que cambia
     useEffect(()=>{
@@ -900,11 +907,11 @@ const ResponsiveContainer=({children})=>children||null;
       // No abrir el drawer automáticamente — el usuario lo abre cuando quiere
     };
 
-    const agregarItemSuelto=({nombre,precio})=>{
+    const agregarItemSuelto=({nombre,precio,cantidad=1})=>{
       setTicket(t=>[...t,{
         prodId:"suelto-"+uid(),nombre,marca:"",cantRef:null,unidad:"",
         precio,equivalente:null,precioRef:null,fecha:todayISO(),
-        cantComprada:1,totalPagado:precio,totalRef:null,
+        cantComprada:cantidad,totalPagado:precio*cantidad,totalRef:null,
         suelto:true
       }]);
       setShowItemSuelto(false);
@@ -997,13 +1004,20 @@ const ResponsiveContainer=({children})=>children||null;
           <FloatingAdd onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
         )}
         {modoCompras&&(
-          <TicketDrawer ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm} onAddSuelto={()=>setShowItemSuelto(true)} onAddProducto={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null,desdeCompras:true})}/>
+          <TicketDrawer ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm} onAddSuelto={()=>setShowItemSuelto(true)} onAddProducto={()=>setShowNuevoProdModal(true)}/>
         )}
         {showHistorial&&<HistorialTickets tickets={tickets} onClose={()=>setShowHistorial(false)}/>}
         {showIniciarCompra&&(
           <Confirm msg="¿Iniciar compra?" onOk={()=>{setModoCompras(true);setShowIniciarCompra(false);}} onCancel={()=>setShowIniciarCompra(false)} okLabel="Iniciar" okColor="#10b981"/>
         )}
         {showItemSuelto&&<ItemSueltoModal onClose={()=>setShowItemSuelto(false)} onSave={agregarItemSuelto}/>}
+        {showNuevoProdModal&&(
+          <div style={{position:"fixed",inset:0,background:"#000c",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 0 80px"}} onClick={e=>e.target===e.currentTarget&&setShowNuevoProdModal(false)}>
+            <div style={{width:"100%",maxWidth:500,background:"#080c14"}}>
+              <NuevoProdScreen cats={cats} initCatId={current.catId||null} initSubId={null} productos={productos} guardar={guardar} pop={()=>setShowNuevoProdModal(false)} showToast={showToast} desdeCompras={true} agregarAlTicket={agregarAlTicket}/>
+            </div>
+          </div>
+        )}
         {!isFormScreen&&<BottomTabs activeTab={activeTab} setActiveTab={(t)=>{setActiveTab(t);if(modoCompras)setModoCompras(false);}} modoCompras={modoCompras} onTapCompras={()=>{
           if(modoCompras){}
           else if(ticket.length>0){ setModoCompras(true); }
@@ -1059,7 +1073,7 @@ const ResponsiveContainer=({children})=>children||null;
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
-        <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,minWidth:90}}>
+        <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
           {!isStock&&!modoCompras&&<><option value="gasto-desc">Gasto ↓</option><option value="gasto-asc">Gasto ↑</option></>}
