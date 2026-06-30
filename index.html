@@ -347,7 +347,7 @@ const ResponsiveContainer=({children})=>children||null;
       setEditIdx(null);
     };
     return (
-      <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008"}}>
+      <div style={{position:"fixed",bottom:64,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008"}}>
         {/* Header: siempre visible, clickeable */}
         <div style={{padding:"7px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setTicketOpen(o=>!o)}>
           <div style={{flex:1}}>
@@ -364,7 +364,7 @@ const ResponsiveContainer=({children})=>children||null;
         </div>
 
         {/* Panel expandible */}
-        {ticketOpen&&ticket.length>0&&<div style={{borderTop:"1px solid #1a2235",maxHeight:"calc(100vh - 160px)",overflowY:"auto"}}>
+        {ticketOpen&&ticket.length>0&&<div style={{borderTop:"1px solid #1a2235",maxHeight:"calc(100vh - 140px)",overflowY:"auto"}}>
               {ticket.map((item,i)=>{
                 const p=productos.find(x=>x.id===item.prodId);
                 const cat=cats.find(c=>c.id===p?.catId);
