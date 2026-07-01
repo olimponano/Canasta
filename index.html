@@ -478,19 +478,8 @@ const ResponsiveContainer=({children})=>children||null;
                       </div>
                     </div>
                   ):(
-                    <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",minHeight:52}} onClick={()=>setMenuIdx(menuIdx===i?null:i)}>
-                      <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:cat?.color||"#444",flexShrink:0}}/>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.nombre}</div>
-                        <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantRef&&` · ${item.cantDisplay?`${item.cantDisplay}${item.unidad||""}`:item.cantRefDisplay?`${item.cantRefDisplay}${item.unidad||""}`:item.cantRef+""+(item.unidad||"")}`}</div>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0,width:160}}>
-                        <div style={{fontSize:11,color:"#4a5568",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",flex:1,textAlign:"right"}}>{fmt(item.precio)} × {item.cantComprada||1} =</div>
-                        <div style={{textAlign:"right",width:80,flexShrink:0}}>
-                          <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
-                          {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
-                        </div>
-                      </div>
+                    <div style={{cursor:"pointer"}} onClick={()=>setMenuIdx(menuIdx===i?null:i)}>
+                      <TicketItemRow item={item}/>
                     </div>
                   )}
                   {menuIdx===i&&editIdx!==i&&(
@@ -520,90 +509,112 @@ const ResponsiveContainer=({children})=>children||null;
     </>);
   }
 
-  function HistorialTickets({tickets,setTickets,onClose,askConfirm}) {
+  function TicketItemRow({item}) {
+    const totalPagado=item.totalPagado??item.precio??0;
+    const totalRef=item.totalRef??null;
+    const diffItem=totalRef>0?totalPagado-totalRef:null;
+    const diffItemPct=totalRef>0?((totalPagado-totalRef)/totalRef*100).toFixed(1):null;
+    return (
+      <div style={{padding:"10px 0",borderTop:"1px solid #1a2235"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontWeight:600,fontSize:13,color:"#e8eaf0",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.nombre}</div>
+          <div style={{fontSize:12,color:"#4a5568",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",marginLeft:8}}>{fmt(item.precio)} × {item.cantComprada||1}</div>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
+          <div style={{fontSize:11,color:"#4a5568"}}>{item.marca||""}{item.cantComprada>1?` · ${item.cantComprada} unid.`:""}</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+            {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
+            <div className="mono" style={{fontSize:13,fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function FacturaModal({ticket,onClose,onEliminar,soloVer=false,askConfirm}) {
     const fmtFecha=(f)=>new Date(f).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"});
-    const eliminarTicket=(id)=>askConfirm("¿Eliminar esta compra del historial?",async()=>{
+    const totalPagado=ticket.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
+    const totalRef=ticket.items.reduce((s,x)=>s+(x.totalRef??0),0);
+    const diff=totalPagado-totalRef;
+    const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
+    return (
+      <div style={{position:"fixed",inset:0,background:"#000c",zIndex:2500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"#0d1321",borderRadius:16,width:"100%",maxWidth:420,maxHeight:"85vh",display:"flex",flexDirection:"column",border:"1px solid #2a3550",boxShadow:"0 8px 32px #0008"}}>
+          {/* Header */}
+          <div style={{padding:"20px 20px 16px",borderBottom:"1px solid #1a2235",flexShrink:0}}>
+            <div style={{textAlign:"center",fontWeight:700,fontSize:17,color:"#e8eaf0",marginBottom:14}}>Compra finalizada</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+              <div>
+                <div style={{fontSize:11,color:"#4a5568"}}>{fmtFecha(ticket.fecha)}</div>
+                <div style={{fontSize:12,color:"#8b9ab0",marginTop:2}}>{ticket.items.length} producto{ticket.items.length!==1?"s":""}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div className="mono" style={{fontWeight:700,fontSize:20,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
+                {diffPct!==null&&<div style={{fontSize:12,fontWeight:600,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+              </div>
+            </div>
+          </div>
+          {/* Items */}
+          <div style={{overflowY:"auto",flex:1,padding:"0 20px"}}>
+            {ticket.items.map((item,j)=><TicketItemRow key={j} item={item}/>)}
+          </div>
+          {/* Botones */}
+          <div style={{padding:"14px 20px",borderTop:"1px solid #1a2235",display:"flex",gap:8,flexShrink:0}}>
+            {!soloVer&&onEliminar&&<button className="btn" onClick={()=>askConfirm("¿Eliminar esta compra?",onEliminar,"Eliminar","#ef4444")} style={{flex:1,background:"#1a0a0a",color:"#ef4444",border:"1px solid #2d1212",padding:"11px 0",fontSize:14}}>Eliminar</button>}
+            <button className="btn" onClick={onClose} style={{flex:2,background:soloVer?"#10b981":"#1a2235",color:soloVer?"#080c14":"#e8eaf0",padding:"11px 0",fontSize:14,fontWeight:soloVer?700:400}}>Cerrar</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function HistorialTickets({tickets,setTickets,onClose,askConfirm}) {
+    const [ticketAbierto,setTicketAbierto]=useState(null);
+    const fmtFecha=(f)=>new Date(f).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit"});
+    const eliminarTicket=(id)=>{
       const nuevos=tickets.filter(t=>t.id!==id);
       setTickets(nuevos);
-      try{await sb.from("tickets").delete().eq("id",id);}catch(e){}
-    },"Eliminar","#ef4444");
-    return (
+      setTicketAbierto(null);
+      try{sb.from("tickets").delete().eq("id",id);}catch(e){}
+    };
+    return (<>
       <div style={{position:"fixed",inset:0,background:"#000c",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
         <div style={{background:"#0d1321",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:500,border:"1px solid #1a2235",borderBottom:"none",maxHeight:"85vh",overflowY:"auto"}}>
           <div style={{width:40,height:4,background:"#2a3550",borderRadius:2,margin:"0 auto 20px"}}/>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={{fontWeight:700,fontSize:18,color:"#e8eaf0"}}>🧾 Historial de compras</div>
-            <div style={{fontSize:12,color:"#4a5568"}}>{tickets.length}/15 guardados</div>
+            <div style={{fontSize:12,color:"#4a5568"}}>{tickets.length}/15</div>
           </div>
           {tickets.length===0&&<div style={{color:"#4a5568",fontSize:14,textAlign:"center",padding:"40px 0"}}>Sin compras registradas aún.</div>}
-          {tickets.map((t,i)=>{
+          {tickets.map((t)=>{
             const totalPagado=t.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
-            const totalRef=t.items.reduce((s,x)=>s+(x.totalRef??x.precioRef??0),0);
+            const totalRef=t.items.reduce((s,x)=>s+(x.totalRef??0),0);
             const diff=totalPagado-totalRef;
             const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
             return (
               <div key={t.id} className="card" style={{padding:14,marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{fontSize:12,color:"#4a5568"}}>{fmtFecha(t.fecha)}</div>
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{textAlign:"right"}}>
-                      <span className="mono" style={{fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
-                      {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
-                    </div>
-                    <button onClick={()=>eliminarTicket(t.id)} style={{background:"#1a0a0a",border:"1px solid #2d1212",color:"#ef4444",borderRadius:8,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>✕</button>
+                  <div style={{textAlign:"right"}}>
+                    <div className="mono" style={{fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
+                    {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}%</div>}
                   </div>
                 </div>
-                {t.items.map((item,j)=>(
-                  <div key={j} style={{fontSize:12,color:"#8b9ab0",display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:"1px solid #1a2235"}}>
-                    <span>{item.nombre}{item.cantComprada>1?` ×${item.cantComprada}`:""}</span>
-                    <span className="mono" style={{color:"#e8eaf0"}}>{fmt(item.totalPagado??item.precio)}</span>
-                  </div>
-                ))}
+                <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid #1a2235",textAlign:"center"}}>
+                  <button onClick={()=>setTicketAbierto(t)} style={{background:"none",border:"none",color:"#4a5568",fontSize:12,cursor:"pointer",padding:"2px 0"}}>Ver detalle</button>
+                </div>
               </div>
             );
           })}
           <button className="btn" onClick={onClose} style={{width:"100%",background:"#1a2235",color:"#e8eaf0",padding:13,fontSize:14,marginTop:4}}>Cerrar</button>
         </div>
       </div>
-    );
+      {ticketAbierto&&<FacturaModal ticket={ticketAbierto} onClose={()=>setTicketAbierto(null)} onEliminar={()=>eliminarTicket(ticketAbierto.id)} askConfirm={askConfirm}/>}
+    </>);
   }
 
   function TicketFinalizadoModal({ticket,onClose}) {
-    const totalPagado=ticket.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
-    const totalRef=ticket.items.reduce((s,x)=>s+(x.totalRef??x.precioRef??0),0);
-    const diff=totalPagado-totalRef;
-    const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
-    return (
-      <div style={{position:"fixed",inset:0,background:"#000c",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:"#0d1321",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:500,border:"1px solid #10b981",borderBottom:"none",maxHeight:"85vh",overflowY:"auto"}}>
-          <div style={{width:40,height:4,background:"#2a3550",borderRadius:2,margin:"0 auto 20px"}}/>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-            <div style={{fontWeight:700,fontSize:18,color:"#10b981"}}>✅ Compra finalizada</div>
-            <div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
-          </div>
-          {diffPct!==null&&<div style={{fontSize:12,color:diff<=0?"#10b981":"#ef4444",fontWeight:600,marginBottom:16}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
-          <div style={{marginTop:12}}>
-            {ticket.items.map((item,j)=>{
-              const diffItem=item.totalRef>0?item.totalPagado-item.totalRef:null;
-              const diffItemPct=item.totalRef>0?((item.totalPagado-item.totalRef)/item.totalRef*100).toFixed(1):null;
-              return (
-                <div key={j} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderTop:"1px solid #1a2235"}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>{item.nombre}</div>
-                    <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1?` × ${item.cantComprada}`:""}</div>
-                  </div>
-                  <div style={{textAlign:"right"}}>
-                    <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado??item.precio)}</div>
-                    {diffItemPct!=null&&<div style={{fontSize:11,color:diffItem<=0?"#10b981":"#ef4444",fontWeight:600}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <button className="btn" onClick={onClose} style={{width:"100%",background:"#10b981",color:"#080c14",padding:13,fontSize:14,fontWeight:700,marginTop:16}}>Cerrar</button>
-        </div>
-      </div>
-    );
+    return <FacturaModal ticket={ticket} onClose={onClose} soloVer={true}/>;
   }
 
   // ── ComprasCardInline ─────────────────────────────────────────────────────────
@@ -735,8 +746,8 @@ const ResponsiveContainer=({children})=>children||null;
         </button>
 
         {/* Compras — círculo elevado */}
-        <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",paddingBottom:0}}>
-          <button onClick={onTapCompras} style={{position:"relative",width:60,height:60,borderRadius:"50%",background:"#0d1321",border:`3px solid ${modoCompras?"#10b981":"#2a3550"}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",boxShadow:"0 -2px 12px #0006",marginTop:-6}}>
+        <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"stretch"}}>
+          <button onClick={onTapCompras} style={{position:"relative",width:60,background:"#0d1321",border:`3px solid ${modoCompras?"#10b981":"#2a3550"}`,borderRadius:30,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",margin:"6px 0"}}>
             <span style={{fontSize:22}}>🛒</span>
             {ticketCount>0&&(
               <div style={{position:"absolute",top:-2,right:-2,background:"#ef4444",borderRadius:"50%",minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",padding:"0 3px"}}>
@@ -1211,6 +1222,7 @@ const ResponsiveContainer=({children})=>children||null;
       <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Ver todos</button>
+          <button className="btn" onClick={()=>setMenuOpen(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:16}}>☰</button>
         </div>}/>
       <SearchRow q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
@@ -1326,6 +1338,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>
           :<div style={{display:"flex",gap:8}}>
               {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>}
+              <button className="btn" onClick={()=>setMenuOpen(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:16}}>☰</button>
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
