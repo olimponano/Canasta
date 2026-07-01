@@ -354,10 +354,15 @@ const ResponsiveContainer=({children})=>children||null;
 
 
 
-  function EditItemModal({item,productos,cats,onClose,onSave}) {
+  function EditItemModal({item,productos,cats,stock,stockTotal,mesesRestantes,fmtMeses,onClose,onSave}) {
     const p=productos.find(x=>x.id===item.prodId);
     const cat=cats.find(c=>c.id===p?.catId);
     const cantRefNum=item.cantRef;
+    const total=p?stockTotal(p):0;
+    const meses=p?mesesRestantes(p):null;
+    const mesesTxt=fmtMeses(meses,true);
+    const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
+    const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
     const [precio,setPrecio]=useState(String(item.precio||""));
     const [cantidad,setCantidad]=useState(String(item.cantidad||cantRefNum||""));
     const [cantComprada,setCantComprada]=useState(String(item.cantComprada||1));
@@ -376,7 +381,10 @@ const ResponsiveContainer=({children})=>children||null;
             <div style={{fontWeight:700,fontSize:17,color:"#e8eaf0"}}>{item.nombre}</div>
             <div style={{fontSize:13,color:"#4a5568",marginLeft:8}}>{item.marca||"—"}</div>
           </div>
-          <div style={{fontSize:12,color:"#4a5568",marginBottom:16}}>{item.precioRef&&<span>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(item.precioRef)}</span></span>}</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{fontSize:12,color:"#4a5568"}}>{item.precioRef&&<span>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(item.precioRef)}</span></span>}</div>
+            <div style={{fontSize:12,color:"#4a5568",textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
+          </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,marginBottom:14,alignItems:"end"}}>
             <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
             <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{cantRefNum?`${cantRefNum}${item.unidad||"gr"}`:(item.unidad||"gr")}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{textAlign:"center"}}/></div>
@@ -398,7 +406,7 @@ const ResponsiveContainer=({children})=>children||null;
     );
   }
 
-  function TicketDrawer({ticket,setTicket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,askConfirm,onAddSuelto,onAddProducto}) {
+  function TicketDrawer({ticket,setTicket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,askConfirm,onAddSuelto,onAddProducto,stock,stockTotal,mesesRestantes,fmtMeses}) {
     const [editIdx,setEditIdx]=useState(null);
     const [editCant,setEditCant]=useState("");
     const [editPrecio,setEditPrecio]=useState("");
@@ -477,9 +485,7 @@ const ResponsiveContainer=({children})=>children||null;
                         <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantRef&&` · ${item.cantDisplay?`${item.cantDisplay}${item.unidad||""}`:item.cantRefDisplay?`${item.cantRefDisplay}${item.unidad||""}`:item.cantRef+""+(item.unidad||"")}`}</div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                        <div style={{fontSize:11,color:"#4a5568",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",textAlign:"right"}}>
-                          <div>{fmt(item.precio)} × {item.cantComprada||1} =</div>
-                        </div>
+                        <div style={{fontSize:11,color:"#4a5568",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap"}}>{fmt(item.precio)} × {item.cantComprada||1} =</div>
                         <div style={{textAlign:"right",minWidth:70}}>
                           <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado)}</div>
                           {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
@@ -510,17 +516,25 @@ const ResponsiveContainer=({children})=>children||null;
           </div>
         )}
       </div>
-      {editModalIdx!==null&&<EditItemModal item={ticket[editModalIdx]} productos={productos} cats={cats} onClose={()=>setEditModalIdx(null)} onSave={(updates)=>{setTicket(t=>t.map((x,i)=>i===editModalIdx?{...x,...updates}:x));setEditModalIdx(null);}}/>}
+      {editModalIdx!==null&&<EditItemModal item={ticket[editModalIdx]} productos={productos} cats={cats} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} onClose={()=>setEditModalIdx(null)} onSave={(updates)=>{setTicket(t=>t.map((x,i)=>i===editModalIdx?{...x,...updates}:x));setEditModalIdx(null);}}/>}
     </>);
   }
 
-  function HistorialTickets({tickets,onClose}) {
+  function HistorialTickets({tickets,setTickets,onClose,askConfirm}) {
     const fmtFecha=(f)=>new Date(f).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+    const eliminarTicket=(id)=>askConfirm("¿Eliminar esta compra del historial?",async()=>{
+      const nuevos=tickets.filter(t=>t.id!==id);
+      setTickets(nuevos);
+      try{await sb.from("tickets").delete().eq("id",id);}catch(e){}
+    },"Eliminar","#ef4444");
     return (
       <div style={{position:"fixed",inset:0,background:"#000c",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:"#0d1321",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:500,border:"1px solid #1a2235",borderBottom:"none",maxHeight:"80vh",overflowY:"auto"}}>
+        <div style={{background:"#0d1321",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:500,border:"1px solid #1a2235",borderBottom:"none",maxHeight:"85vh",overflowY:"auto"}}>
           <div style={{width:40,height:4,background:"#2a3550",borderRadius:2,margin:"0 auto 20px"}}/>
-          <div style={{fontWeight:700,fontSize:18,marginBottom:16,color:"#e8eaf0"}}>📋 Últimas compras</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{fontWeight:700,fontSize:18,color:"#e8eaf0"}}>🧾 Historial de compras</div>
+            <div style={{fontSize:12,color:"#4a5568"}}>{tickets.length}/15 guardados</div>
+          </div>
           {tickets.length===0&&<div style={{color:"#4a5568",fontSize:14,textAlign:"center",padding:"40px 0"}}>Sin compras registradas aún.</div>}
           {tickets.map((t,i)=>{
             const totalPagado=t.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
@@ -531,9 +545,12 @@ const ResponsiveContainer=({children})=>children||null;
               <div key={t.id} className="card" style={{padding:14,marginBottom:10}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                   <div style={{fontSize:12,color:"#4a5568"}}>{fmtFecha(t.fecha)}</div>
-                  <div style={{textAlign:"right"}}>
-                    <span className="mono" style={{fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
-                    {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{textAlign:"right"}}>
+                      <span className="mono" style={{fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</span>
+                      {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+                    </div>
+                    <button onClick={()=>eliminarTicket(t.id)} style={{background:"#1a0a0a",border:"1px solid #2d1212",color:"#ef4444",borderRadius:8,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>✕</button>
                   </div>
                 </div>
                 {t.items.map((item,j)=>(
@@ -546,6 +563,44 @@ const ResponsiveContainer=({children})=>children||null;
             );
           })}
           <button className="btn" onClick={onClose} style={{width:"100%",background:"#1a2235",color:"#e8eaf0",padding:13,fontSize:14,marginTop:4}}>Cerrar</button>
+        </div>
+      </div>
+    );
+  }
+
+  function TicketFinalizadoModal({ticket,onClose}) {
+    const totalPagado=ticket.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
+    const totalRef=ticket.items.reduce((s,x)=>s+(x.totalRef??x.precioRef??0),0);
+    const diff=totalPagado-totalRef;
+    const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
+    return (
+      <div style={{position:"fixed",inset:0,background:"#000c",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{background:"#0d1321",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:500,border:"1px solid #10b981",borderBottom:"none",maxHeight:"85vh",overflowY:"auto"}}>
+          <div style={{width:40,height:4,background:"#2a3550",borderRadius:2,margin:"0 auto 20px"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+            <div style={{fontWeight:700,fontSize:18,color:"#10b981"}}>✅ Compra finalizada</div>
+            <div className="mono" style={{fontWeight:700,fontSize:16,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
+          </div>
+          {diffPct!==null&&<div style={{fontSize:12,color:diff<=0?"#10b981":"#ef4444",fontWeight:600,marginBottom:16}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+          <div style={{marginTop:12}}>
+            {ticket.items.map((item,j)=>{
+              const diffItem=item.totalRef>0?item.totalPagado-item.totalRef:null;
+              const diffItemPct=item.totalRef>0?((item.totalPagado-item.totalRef)/item.totalRef*100).toFixed(1):null;
+              return (
+                <div key={j} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderTop:"1px solid #1a2235"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>{item.nombre}</div>
+                    <div style={{fontSize:11,color:"#4a5568"}}>{item.marca}{item.cantComprada>1?` × ${item.cantComprada}`:""}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div className="mono" style={{fontSize:14,fontWeight:700,color:"#e8eaf0"}}>{fmt(item.totalPagado??item.precio)}</div>
+                    {diffItemPct!=null&&<div style={{fontSize:11,color:diffItem<=0?"#10b981":"#ef4444",fontWeight:600}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button className="btn" onClick={onClose} style={{width:"100%",background:"#10b981",color:"#080c14",padding:13,fontSize:14,fontWeight:700,marginTop:16}}>Cerrar</button>
         </div>
       </div>
     );
@@ -680,7 +735,7 @@ const ResponsiveContainer=({children})=>children||null;
 
         {/* Compras — círculo elevado */}
         <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",paddingBottom:0}}>
-          <button onClick={onTapCompras} style={{position:"relative",width:60,height:60,borderRadius:"50%",background:"#0d1321",border:`3px solid ${modoCompras?"#10b981":"#2a3550"}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",boxShadow:"0 -2px 12px #0006",marginTop:-16}}>
+          <button onClick={onTapCompras} style={{position:"relative",width:60,height:60,borderRadius:"50%",background:"#0d1321",border:`3px solid ${modoCompras?"#10b981":"#2a3550"}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",boxShadow:"0 -2px 12px #0006",marginTop:-8}}>
             <span style={{fontSize:22}}>🛒</span>
             {ticketCount>0&&(
               <div style={{position:"absolute",top:-2,right:-2,background:"#ef4444",borderRadius:"50%",minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",padding:"0 3px"}}>
@@ -767,6 +822,7 @@ const ResponsiveContainer=({children})=>children||null;
     const [ticketOpen,setTicketOpen]=useState(!!draft&&draft.length>0);
     const [tickets,setTickets]=useState([]);
     const [showHistorial,setShowHistorial]=useState(false);
+    const [ticketFinalizado,setTicketFinalizado]=useState(null);
     const [showIniciarCompra,setShowIniciarCompra]=useState(false);
     const [showItemSuelto,setShowItemSuelto]=useState(false);
     const [showNuevoProdModal,setShowNuevoProdModal]=useState(false);
@@ -944,18 +1000,16 @@ const ResponsiveContainer=({children})=>children||null;
       if(ticket.length===0)return;
       askConfirm(`¿Finalizar compra con ${ticket.length} producto${ticket.length>1?"s":""}?`,async()=>{
         const nuevoTicket={id:uid(),fecha:new Date().toISOString(),items:ticket};
-        const nuevos=[nuevoTicket,...tickets].slice(0,5);
+        const nuevos=[nuevoTicket,...tickets].slice(0,15);
         setTickets(nuevos);
         // Aplicar historial de precios y stock de todos los items
         let prodActualizados=[...productos];
         for(const item of ticket){
-          // Aplicar entrada de precio
           if(item.entrada){
             prodActualizados=prodActualizados.map(p=>p.id===item.prodId?{...p,historialCompra:[...(p.historialCompra||[]),item.entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:p);
           }
         }
         await guardar(null,prodActualizados);
-
         // Aplicar stock de todos los items
         for(const item of ticket){
           if(!item.stockDelta||item.stockDelta.cantidad<=0) continue;
@@ -965,19 +1019,14 @@ const ResponsiveContainer=({children})=>children||null;
             :[...entradasBase];
           const idx=base.findIndex(e=>e.cantRef===cantRef);
           let nuevas;
-          if(idx>=0){
-            // Entrada existente — sumar
-            nuevas=base.map((e,i)=>i===idx?{...e,stock:e.stock+cantidad}:e);
-          } else {
-            // No existe ese tamaño — crear nueva entrada
-            nuevas=[...base,{cantRef,unidad:item.unidad||"gr",stock:cantidad,display:null}];
-          }
+          if(idx>=0){nuevas=base.map((e,i)=>i===idx?{...e,stock:e.stock+cantidad}:e);}
+          else{nuevas=[...base,{cantRef,unidad:item.unidad||"gr",stock:cantidad,display:null}];}
           guardarStock(item.prodId,nuevas);
         }
         try {
           await sb.from("tickets").upsert({id:nuevoTicket.id,fecha:nuevoTicket.fecha,items:nuevoTicket.items});
-          if(tickets.length>=5){
-            const aEliminar=tickets.slice(4).map(t=>t.id);
+          if(tickets.length>=15){
+            const aEliminar=tickets.slice(14).map(t=>t.id);
             if(aEliminar.length) await sb.from("tickets").delete().in("id",aEliminar);
           }
         } catch(e){console.warn("Ticket save error:",e);}
@@ -985,7 +1034,7 @@ const ResponsiveContainer=({children})=>children||null;
         setTicketOpen(false);
         setModoCompras(false);
         try{localStorage.removeItem(TICKET_KEY);}catch(e){}
-        showToast("✅ Compra finalizada");
+        setTicketFinalizado(nuevoTicket);
       },"Finalizar","#10b981");
     };
 
@@ -1027,9 +1076,10 @@ const ResponsiveContainer=({children})=>children||null;
           <FloatingAdd onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
         )}
         {modoCompras&&(
-          <TicketDrawer ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm} onAddSuelto={()=>setShowItemSuelto(true)} onAddProducto={()=>setShowNuevoProdModal(true)}/>
+          <TicketDrawer ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm} onAddSuelto={()=>setShowItemSuelto(true)} onAddProducto={()=>setShowNuevoProdModal(true)} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses}/>
         )}
-        {showHistorial&&<HistorialTickets tickets={tickets} onClose={()=>setShowHistorial(false)}/>}
+        {showHistorial&&<HistorialTickets tickets={tickets} setTickets={setTickets} onClose={()=>setShowHistorial(false)} askConfirm={askConfirm}/>}
+        {ticketFinalizado&&<TicketFinalizadoModal ticket={ticketFinalizado} onClose={()=>setTicketFinalizado(null)}/>}
         {showIniciarCompra&&(
           <Confirm msg="¿Iniciar compra?" onOk={()=>{setModoCompras(true);setShowIniciarCompra(false);}} onCancel={()=>setShowIniciarCompra(false)} okLabel="Iniciar" okColor="#10b981"/>
         )}
