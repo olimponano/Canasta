@@ -420,7 +420,8 @@ const ResponsiveContainer=({children})=>children||null;
     };
     const totalPagado=ticket.reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
     const totalRef=ticket.filter(i=>!i.suelto&&(i.totalRef??0)>0).reduce((s,i)=>s+(i.totalRef??0),0);
-    const diff=totalPagado-totalRef;
+    const totalPagadoConRef=ticket.filter(i=>!i.suelto&&(i.totalRef??0)>0).reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
+    const diff=totalPagadoConRef-totalRef;
     const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
     const eliminarItem=(idx)=>askConfirm("¿Eliminar este producto del ticket?",()=>setTicket(t=>t.filter((_,i)=>i!==idx)),"Eliminar","#ef4444");
     const iniciarEdicion=(idx)=>{const item=ticket[idx];setEditCant(String(item.cantComprada||1));setEditPrecio(String(item.precio||""));setEditIdx(idx);};
@@ -465,7 +466,7 @@ const ResponsiveContainer=({children})=>children||null;
                 const diffItem=item.totalRef>0?item.totalPagado-item.totalRef:null;
                 const diffItemPct=item.totalRef>0?((item.totalPagado-item.totalRef)/item.totalRef*100).toFixed(1):null;
                 const isEditing=editIdx===i;
-                return (<div key={i} style={{padding:"8px 16px",borderBottom:"1px solid #1a2235"}}>
+                return (<div key={i} style={{padding:"8px 16px"}}>
                   {isEditing?(
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>{item.nombre}</div>
@@ -517,7 +518,7 @@ const ResponsiveContainer=({children})=>children||null;
     const diffItemPct=totalRef>0?((totalPagado-totalRef)/totalRef*100).toFixed(1):null;
     const cantLabel=item.cantRef?`${item.cantRef}${item.unidad||""}`:null;
     return (
-      <div style={{padding:"7px 0"}}>
+      <div style={{padding:"5px 0"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontWeight:600,fontSize:13,color:"#e8eaf0",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.nombre}</div>
           <div style={{fontSize:12,color:"#4a5568",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",marginLeft:8}}>{fmt(item.precio)} × {item.cantComprada||1}</div>
@@ -536,8 +537,9 @@ const ResponsiveContainer=({children})=>children||null;
   function FacturaModal({ticket,onClose,onEliminar,soloVer=false,askConfirm}) {
     const fmtFecha=(f)=>new Date(f).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"});
     const totalPagado=ticket.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
-    const totalRef=ticket.items.filter(x=>!x.suelto).reduce((s,x)=>s+(x.totalRef??0),0);
-    const diff=totalPagado-totalRef;
+    const totalRef=ticket.items.filter(x=>!x.suelto&&(x.totalRef??0)>0).reduce((s,x)=>s+(x.totalRef??0),0);
+    const totalPagadoConRef=ticket.items.filter(x=>!x.suelto&&(x.totalRef??0)>0).reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
+    const diff=totalPagadoConRef-totalRef;
     const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
     return (
       <div style={{position:"fixed",inset:0,background:"#000c",zIndex:2500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -590,8 +592,9 @@ const ResponsiveContainer=({children})=>children||null;
           {tickets.length===0&&<div style={{color:"#4a5568",fontSize:14,textAlign:"center",padding:"40px 0"}}>Sin compras registradas aún.</div>}
           {tickets.map((t)=>{
             const totalPagado=t.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
-            const totalRef=t.items.filter(x=>!x.suelto).reduce((s,x)=>s+(x.totalRef??0),0);
-            const diff=totalPagado-totalRef;
+            const totalRef=t.items.filter(x=>!x.suelto&&(x.totalRef??0)>0).reduce((s,x)=>s+(x.totalRef??0),0);
+            const totalPagadoConRef=t.items.filter(x=>!x.suelto&&(x.totalRef??0)>0).reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
+            const diff=totalPagadoConRef-totalRef;
             const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
             return (
               <div key={t.id} className="card" style={{padding:14,marginBottom:10}}>
