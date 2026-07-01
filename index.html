@@ -418,7 +418,7 @@ const ResponsiveContainer=({children})=>children||null;
       setEditModalIdx(idx);
     };
     const totalPagado=ticket.reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
-    const totalRef=ticket.reduce((s,i)=>s+(i.totalRef??i.precioRef??0),0);
+    const totalRef=ticket.filter(i=>!i.suelto&&(i.totalRef??0)>0).reduce((s,i)=>s+(i.totalRef??0),0);
     const diff=totalPagado-totalRef;
     const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
     const eliminarItem=(idx)=>askConfirm("¿Eliminar este producto del ticket?",()=>setTicket(t=>t.filter((_,i)=>i!==idx)),"Eliminar","#ef4444");
@@ -464,7 +464,7 @@ const ResponsiveContainer=({children})=>children||null;
                 const diffItem=item.totalRef>0?item.totalPagado-item.totalRef:null;
                 const diffItemPct=item.totalRef>0?((item.totalPagado-item.totalRef)/item.totalRef*100).toFixed(1):null;
                 const isEditing=editIdx===i;
-                return (<div key={i} style={{padding:"14px 16px",borderBottom:"1px solid #1a2235"}}>
+                return (<div key={i} style={{padding:"8px 16px",borderBottom:"1px solid #1a2235"}}>
                   {isEditing?(
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       <div style={{fontSize:13,fontWeight:600,color:"#e8eaf0"}}>{item.nombre}</div>
@@ -515,13 +515,13 @@ const ResponsiveContainer=({children})=>children||null;
     const diffItem=totalRef>0?totalPagado-totalRef:null;
     const diffItemPct=totalRef>0?((totalPagado-totalRef)/totalRef*100).toFixed(1):null;
     return (
-      <div style={{padding:"10px 0",borderTop:"1px solid #1a2235"}}>
+      <div style={{padding:"7px 0",borderTop:"1px solid #1a2235"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontWeight:600,fontSize:13,color:"#e8eaf0",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.nombre}</div>
           <div style={{fontSize:12,color:"#4a5568",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",marginLeft:8}}>{fmt(item.precio)} × {item.cantComprada||1}</div>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
-          <div style={{fontSize:11,color:"#4a5568"}}>{item.marca||""}{item.cantComprada>1?` · ${item.cantComprada} unid.`:""}</div>
+          <div style={{fontSize:11,color:"#4a5568"}}>{item.marca||""}</div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
             {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
             <div className="mono" style={{fontSize:13,fontWeight:700,color:"#e8eaf0"}}>{fmt(totalPagado)}</div>
@@ -600,7 +600,15 @@ const ResponsiveContainer=({children})=>children||null;
                     {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}%</div>}
                   </div>
                 </div>
-                <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid #1a2235",textAlign:"center"}}>
+                <div style={{marginTop:8}}>
+                  {t.items.map((item,j)=>(
+                    <div key={j} style={{fontSize:12,color:"#8b9ab0",display:"flex",justifyContent:"space-between",padding:"3px 0",borderTop:"1px solid #1a2235"}}>
+                      <span>{item.nombre}{item.cantComprada>1?` ×${item.cantComprada}`:""}</span>
+                      <span className="mono" style={{color:"#e8eaf0"}}>{fmt(item.totalPagado??item.precio)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginTop:6,paddingTop:6,borderTop:"1px solid #1a2235",textAlign:"center"}}>
                   <button onClick={()=>setTicketAbierto(t)} style={{background:"none",border:"none",color:"#4a5568",fontSize:12,cursor:"pointer",padding:"2px 0"}}>Ver detalle</button>
                 </div>
               </div>
@@ -737,17 +745,17 @@ const ResponsiveContainer=({children})=>children||null;
   }
   function BottomTabs({activeTab,setActiveTab,modoCompras,onTapCompras,ticketCount}) {
     return (
-      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0d1321",borderTop:"1px solid #1a2235",display:"flex",zIndex:200,maxWidth:500,margin:"0 auto",alignItems:"flex-end"}}>
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0d1321",borderTop:"1px solid #1a2235",display:"flex",zIndex:200,maxWidth:500,margin:"0 auto",height:64,alignItems:"stretch"}}>
         {/* Precios */}
-        <button onClick={()=>setActiveTab("productos")} style={{flex:1,background:"none",border:"none",cursor:"pointer",padding:"10px 0 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
+        <button onClick={()=>setActiveTab("productos")} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
           <span style={{fontSize:20}}>💲</span>
           <span style={{fontSize:11,fontWeight:600,color:activeTab==="productos"&&!modoCompras?"#3b82f6":"#4a5568"}}>Precios</span>
           {activeTab==="productos"&&!modoCompras&&<div style={{width:20,height:2,background:"#3b82f6",borderRadius:1}}/>}
         </button>
 
-        {/* Compras — círculo elevado */}
-        <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"stretch"}}>
-          <button onClick={onTapCompras} style={{position:"relative",width:56,background:"#0d1321",border:`3px solid ${modoCompras?"#10b981":"#2a3550"}`,borderRadius:"50% / 40%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",margin:"4px 0"}}>
+        {/* Compras — círculo que ocupa toda la altura */}
+        <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"stretch",padding:"4px 0"}}>
+          <button onClick={onTapCompras} style={{position:"relative",aspectRatio:"1",background:"#0d1321",border:`3px solid ${modoCompras?"#10b981":"#2a3550"}`,borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
             <span style={{fontSize:22}}>🛒</span>
             {ticketCount>0&&(
               <div style={{position:"absolute",top:-2,right:-2,background:"#ef4444",borderRadius:"50%",minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",padding:"0 3px"}}>
@@ -758,7 +766,7 @@ const ResponsiveContainer=({children})=>children||null;
         </div>
 
         {/* Stock */}
-        <button onClick={()=>setActiveTab("stock")} style={{flex:1,background:"none",border:"none",cursor:"pointer",padding:"10px 0 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
+        <button onClick={()=>setActiveTab("stock")} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
           <span style={{fontSize:20}}>📦</span>
           <span style={{fontSize:11,fontWeight:600,color:activeTab==="stock"&&!modoCompras?"#3b82f6":"#4a5568"}}>Stock</span>
           {activeTab==="stock"&&!modoCompras&&<div style={{width:20,height:2,background:"#3b82f6",borderRadius:1}}/>}
@@ -1065,7 +1073,7 @@ const ResponsiveContainer=({children})=>children||null;
     const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra};
 
     const isMenuScreen=["export","backup","import","config"].includes(s);
-    const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio"].includes(s);
+    const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
 
     return (
       <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",minHeight:"100vh",background:"#080c14",color:"#e8eaf0"}}>
@@ -1158,7 +1166,7 @@ const ResponsiveContainer=({children})=>children||null;
         <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div>
           <div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{productos.length} productos{!isStock&&!modoCompras&&<> · <span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
         </div>
-        <HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>
+        {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
@@ -1226,7 +1234,7 @@ const ResponsiveContainer=({children})=>children||null;
       <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Ver todos</button>
-          <HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>
+          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
         </div>}/>
       <SearchRow q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
@@ -1342,7 +1350,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>
           :<div style={{display:"flex",gap:8}}>
               {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>}
-              <HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>
+              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
