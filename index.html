@@ -515,7 +515,7 @@ const ResponsiveContainer=({children})=>children||null;
     const diffItem=totalRef>0?totalPagado-totalRef:null;
     const diffItemPct=totalRef>0?((totalPagado-totalRef)/totalRef*100).toFixed(1):null;
     return (
-      <div style={{padding:"7px 0",borderTop:"1px solid #1a2235"}}>
+      <div style={{padding:"7px 0"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontWeight:600,fontSize:13,color:"#e8eaf0",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.nombre}</div>
           <div style={{fontSize:12,color:"#4a5568",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",marginLeft:8}}>{fmt(item.precio)} × {item.cantComprada||1}</div>
@@ -571,11 +571,11 @@ const ResponsiveContainer=({children})=>children||null;
   function HistorialTickets({tickets,setTickets,onClose,askConfirm}) {
     const [ticketAbierto,setTicketAbierto]=useState(null);
     const fmtFecha=(f)=>new Date(f).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit"});
-    const eliminarTicket=(id)=>{
+    const eliminarTicket=async(id)=>{
       const nuevos=tickets.filter(t=>t.id!==id);
       setTickets(nuevos);
       setTicketAbierto(null);
-      try{sb.from("tickets").delete().eq("id",id);}catch(e){}
+      try{await sb.from("tickets").delete().eq("id",id);}catch(e){console.warn(e);}
     };
     return (<>
       <div style={{position:"fixed",inset:0,background:"#000c",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
