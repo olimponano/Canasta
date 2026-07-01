@@ -747,7 +747,7 @@ const ResponsiveContainer=({children})=>children||null;
 
         {/* Compras — círculo elevado */}
         <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"stretch"}}>
-          <button onClick={onTapCompras} style={{position:"relative",width:60,background:"#0d1321",border:`3px solid ${modoCompras?"#10b981":"#2a3550"}`,borderRadius:30,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",margin:"6px 0"}}>
+          <button onClick={onTapCompras} style={{position:"relative",width:56,background:"#0d1321",border:`3px solid ${modoCompras?"#10b981":"#2a3550"}`,borderRadius:"50% / 40%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",margin:"4px 0"}}>
             <span style={{fontSize:22}}>🛒</span>
             {ticketCount>0&&(
               <div style={{position:"absolute",top:-2,right:-2,background:"#ef4444",borderRadius:"50%",minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",padding:"0 3px"}}>
@@ -1197,7 +1197,7 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
     const isStock=activeTab==="stock"; 
@@ -1266,7 +1266,7 @@ const ResponsiveContainer=({children})=>children||null;
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
-  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra}) {
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial}) {
     const [q,setQ]=useState("");
     const isStock=activeTab==="stock";
     const defaultSort="nombre-az";
