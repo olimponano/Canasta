@@ -96,7 +96,7 @@ const ResponsiveContainer=({children})=>children||null;
     return isNaN(n) ? null : n;
   };
   // Muestra "3x40m" si hay display guardado, sino "120m"
-  const fmtCantRef=(p)=>{if(!p||!p.cantidadRef)return "";const disp=p.cantidadRefDisplay?`${p.cantidadRefDisplay}${p.unidad||""}`:null;return disp||`${p.cantidadRef}${p.unidad||""}`};
+  const fmtCantRef=(p)=>{if(!p||!p.cantidadRef)return "";if(p.unidad==="m"&&p.rollosRef&&p.metrosRef)return `${p.rollosRef}x${p.metrosRef}m`;return `${p.cantidadRef}${p.unidad||""}`;};
 
   const DEFAULT_CATS = [
     { id:"primario",   label:"Primario",   emoji:"🛒", color:"#60a5fa", subs:[] },
@@ -163,7 +163,7 @@ const ResponsiveContainer=({children})=>children||null;
       const orphans=productos.filter(p=>p.catId===filterCatId&&(!p.subId||!validSubs.has(p.subId)));
       const lines=[];
       lines.push(`=== ${cat?.label.toUpperCase()} — SIN SUBCATEGORÍA ===`);
-      [...orphans].sort((a,b)=>alpha(a,b,"nombre")).forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
+      [...orphans].sort((a,b)=>alpha(a,b,"nombre")).forEach(p=>{const cant=p.unidad==="m"&&p.rollosRef&&p.metrosRef?`${p.rollosRef}x${p.metrosRef}`:p.cantidadRef||"";const um=p.unidadesMes||"";lines.push(`${p.nombre}-${p.marca||""}-${cant}-${p.unidad||"gr"}-$${p.precioRef||""}-${um}`);});
       return lines.join("\n").trim();
     }
     const lines = [];
@@ -174,7 +174,11 @@ const ResponsiveContainer=({children})=>children||null;
         const f = filterSubId ? [] : [...cp].sort((a,b)=>alpha(a,b,"nombre"));
         if (!f.length) return;
         lines.push(`=== ${cat.label.toUpperCase()} ===`);
-        f.forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
+        f.forEach(p=>{
+          const cant=p.unidad==="m"&&p.rollosRef&&p.metrosRef?`${p.rollosRef}x${p.metrosRef}`:p.cantidadRef||"";
+          const um=p.unidadesMes||"";
+          lines.push(`${p.nombre}-${p.marca||""}-${cant}-${p.unidad||"gr"}-$${p.precioRef||""}-${um}`);
+        });
       } else {
         const tSubs = filterSubId ? cat.subs.filter(s=>s.id===filterSubId) : [...cat.subs].sort((a,b)=>alpha(a,b));
         const validSubs=new Set(cat.subs.map(s=>s.id));
@@ -186,12 +190,12 @@ const ResponsiveContainer=({children})=>children||null;
           const sp = [...cp.filter(p=>p.subId===sub.id)].sort((a,b)=>alpha(a,b,"nombre"));
           if (!sp.length) return;
           lines.push(`--- ${sub.label} ---`);
-          sp.forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
+          sp.forEach(p=>{const cant=p.unidad==="m"&&p.rollosRef&&p.metrosRef?`${p.rollosRef}x${p.metrosRef}`:p.cantidadRef||"";const um=p.unidadesMes||"";lines.push(`${p.nombre}-${p.marca||""}-${cant}-${p.unidad||"gr"}-$${p.precioRef||""}-${um}`);});
         });
         // Exportar huérfanos al final si no hay filtro de sub
         if(!filterSubId&&orphans.length>0){
           lines.push(`--- Sin subcategoría ---`);
-          [...orphans].sort((a,b)=>alpha(a,b,"nombre")).forEach(p=>{lines.push(p.nombre);lines.push(`${p.marca||""}${p.precioRef?" "+fmt(p.precioRef):""}`.trim());lines.push("");});
+          [...orphans].sort((a,b)=>alpha(a,b,"nombre")).forEach(p=>{const cant=p.unidad==="m"&&p.rollosRef&&p.metrosRef?`${p.rollosRef}x${p.metrosRef}`:p.cantidadRef||"";const um=p.unidadesMes||"";lines.push(`${p.nombre}-${p.marca||""}-${cant}-${p.unidad||"gr"}-$${p.precioRef||""}-${um}`);});
         }
       }
     });
@@ -214,12 +218,22 @@ const ResponsiveContainer=({children})=>children||null;
     const nombre=parts[0],marca=parts[1];
     const rawCant=(parts[2]||"").trim();
     const uLow=(parts[3]||"").toLowerCase();
-    const cantidad=(uLow==="m"||uLow==="un")?rawCant:(parseFloat(rawCant)||null);
     const unidad=uLow==="ml"?"mL":uLow==="l"?"L":uLow==="kg"?"kg":uLow==="m"?"m":uLow==="un"?"un":"gr";
     const precioRef=parseFloat((parts[4]||"").replace(/[$\s]/g,"").replace(",","."))||null;
     const umStr=(parts[5]||"").trim();
     const unidadesMes=umStr?(umStr.includes("/")?parseFloat(umStr.split("/")[0])/parseFloat(umStr.split("/")[1]):parseFloat(umStr.replace(",","."))):null;
-    return {nombre,marca,cantidadRef:cantidad,unidad,precioRef,unidadesMes};
+    let cantidadRef=null, rollosRef=null, metrosRef=null;
+    if(unidad==="m"){
+      // Para metros debe ser formato NxM
+      const mMatch=rawCant.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/i);
+      if(!mMatch) return {error:`Formato inválido para metros: "${rawCant}". Usá formato 3x40`, nombre, marca};
+      rollosRef=parseFloat(mMatch[1]);
+      metrosRef=parseFloat(mMatch[2]);
+      cantidadRef=rollosRef*metrosRef;
+    } else {
+      cantidadRef=uLow==="un"?parseFloat(rawCant)||null:(parseFloat(rawCant)||null);
+    }
+    return {nombre,marca,cantidadRef,rollosRef,metrosRef,unidad,precioRef,unidadesMes};
   }
 
   function parseImportText(text) {
@@ -674,11 +688,11 @@ const ResponsiveContainer=({children})=>children||null;
         const fecha=todayISO();
         const entrada={id:uid(),precio:precioNum,cantidad:cantGuardada,equivalente,fecha};
         agregarAlTicket({
-          prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantNum||cantRefNum,cantRefDisplay:p.cantidadRefDisplay||null,
+          prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantNum||cantRefNum,rollosRef:esM?(parseInt(cantRollos)||null):null,metrosRef:esM?(parseFloat(cantMetros)||null):null,
           cantDisplay,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha,
           cantComprada:cantCompradaNum,totalPagado,totalRef,
           entrada,
-          stockDelta:{cantRef:cantNum||cantRefNum,cantRefProd:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,display:p.cantidadRefDisplay||null}
+          stockDelta:{cantRef:cantNum||cantRefNum,cantRefProd:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,rollosRef:esM?(parseInt(cantRollos)||null):null,metrosRef:esM?(parseFloat(cantMetros)||null):null}
         });
         showToast("✅ Agregado al ticket");
         setOpen(false);
@@ -875,16 +889,19 @@ const ResponsiveContainer=({children})=>children||null;
             const lc = catRows.map(r=>({id:r.id,label:r.label,emoji:r.emoji,color:r.color,subs:r.subs||[]}));
             const validSubs = new Set(lc.flatMap(c=>c.subs.map(s=>s.id)));
             const lp = (prodRows||[]).map(r=>{
-              let cr=r.cantidad_ref, crd=r.cantidad_ref_display||null;
-              if(cr!=null&&typeof cr==="string"){
-                // Si viene como "4x30" guardar display y calcular número
-                if(/^\d+x\d+$/.test(cr.trim())){crd=crd||cr.trim();} 
-                cr=parseQty(cr);
+              let cr=r.cantidad_ref;
+              let rollosRef=r.rollos_ref||null, metrosRef=r.metros_ref||null;
+              // Migración: si no tiene rollos_ref pero tiene cantidad_ref_display, extraer
+              if(r.unidad==="m"&&!rollosRef&&r.cantidad_ref_display&&/^\d+x\d+/.test(r.cantidad_ref_display)){
+                const parts=r.cantidad_ref_display.split("x");
+                rollosRef=parseFloat(parts[0])||null;
+                metrosRef=parseFloat(parts[1])||null;
               }
+              if(cr!=null&&typeof cr==="string"){cr=parseQty(cr);}
               return {
                 id:r.id, nombre:r.nombre, marca:r.marca||"", catId:r.cat_id, subId:r.sub_id&&validSubs.has(r.sub_id)?r.sub_id:null,
                 precioRef:r.precio_ref, unidadesMes:r.unidades_mes,
-                cantidadRef:cr, cantidadRefDisplay:crd, unidad:r.unidad||"gr",
+                cantidadRef:cr, rollosRef, metrosRef, unidad:r.unidad||"gr",
                 historialCompra:r.historial_compra||[]
               };
             });
@@ -933,13 +950,13 @@ const ResponsiveContainer=({children})=>children||null;
             const chunk=np.slice(i,i+CHUNK);
             const res=await sb.from("productos").upsert(
               chunk.map(p=>{
-                let cr=p.cantidadRef, crd=p.cantidadRefDisplay||null;
+                let cr=p.cantidadRef;
                 if(cr!=null&&typeof cr==="string"){
                   if(/^\d+x\d+$/.test(cr.trim())){crd=crd||cr.trim();}
                   cr=parseQty(cr);
                 }
                 return {id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
-                  precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:cr||null,cantidad_ref_display:crd,
+                  precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:cr||null,rollos_ref:p.rollosRef||null,metros_ref:p.metrosRef||null,
                   unidad:p.unidad||"gr",historial_compra:p.historialCompra||[]};
               })
             );
@@ -1395,7 +1412,7 @@ const ResponsiveContainer=({children})=>children||null;
 
     const entradasGuardadas=stock[p.id]||[];
     const entradas=entradasGuardadas.length===0&&p.cantidadRef
-      ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,virtual:true,display:p.cantidadRefDisplay||null}]
+      ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,virtual:true,rollosRef:p.rollosRef||null,metrosRef:p.metrosRef||null}]
       :entradasGuardadas;
 
     const total=stockTotal(p);
@@ -1406,14 +1423,14 @@ const ResponsiveContainer=({children})=>children||null;
     const handleOpen=()=>{const abriendo=!open;setOpen(abriendo);setShowAddDim(false);if(abriendo&&onOpen)onOpen();if(!abriendo&&onClose)onClose();};
 
     const fmtEntrada=(e)=>{
-      if(e.display) return `${e.display}${e.unidad||p.unidad||""}`;
+      if(e.rollosRef&&e.metrosRef) return `${e.rollosRef}x${e.metrosRef}${e.unidad||p.unidad||""}`;
       if(e.cantRef===p.cantidadRef) return fmtCantRef(p);
       return `${e.cantRef}${e.unidad||p.unidad||"gr"}`;
     };
 
     const cambiarStock=(idx,delta)=>{
       const base=entradasGuardadas.length===0&&p.cantidadRef
-        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,display:p.cantidadRefDisplay||null}]
+        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,rollosRef:p.rollosRef||null,metrosRef:p.metrosRef||null}]
         :entradasGuardadas;
       const nuevas=base.map((e,i)=>i===idx?{...e,stock:Math.max(0,e.stock+delta)}:e);
       guardarStock(p.id,nuevas);
@@ -1437,7 +1454,7 @@ const ResponsiveContainer=({children})=>children||null;
       if(!cant||cant<=0)return;
       if(entradasGuardadas.find(e=>e.cantRef===cant))return;
       const base=entradasGuardadas.length===0&&p.cantidadRef
-        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,display:p.cantidadRefDisplay||null}]
+        ?[{cantRef:p.cantidadRef,unidad:p.unidad||"gr",stock:0,rollosRef:p.rollosRef||null,metrosRef:p.metrosRef||null}]
         :entradasGuardadas;
       const nuevas=[...base,{cantRef:cant,unidad:p.unidad||"gr",stock:0,display}];
       guardarStock(p.id,nuevas);
@@ -1654,21 +1671,21 @@ const ResponsiveContainer=({children})=>children||null;
   }
 
   // ── CantidadRefField ──────────────────────────────────────────────────────────
-  function CantidadRefField({unidad, cantidadRef, cantidadRefDisplay, onChange}) {
-    const initRollos = cantidadRefDisplay ? cantidadRefDisplay.split("x")[0]||"" : "";
-    const initMetros = cantidadRefDisplay ? cantidadRefDisplay.split("x")[1]||"" : "";
+  function CantidadRefField({unidad, cantidadRef, rollosRef, metrosRef, onChange}) {
+    const initRollos = rollosRef ? String(rollosRef) : "";
+    const initMetros = metrosRef ? String(metrosRef) : "";
     const [rollos, setRollos] = useState(initRollos);
     const [metros, setMetros] = useState(initMetros);
 
     const handleRollos=(v)=>{
       setRollos(v);
       const r=parseFloat(v)||0, m=parseFloat(metros)||0, total=r*m;
-      onChange({valor:total>0?total:null, display:r>0&&m>0?`${r}x${m}`:null});
+      onChange({valor:total>0?total:null, rollosRef:r>0?r:null, metrosRef:m>0?m:null});
     };
     const handleMetros=(v)=>{
       setMetros(v);
       const r=parseFloat(rollos)||0, m=parseFloat(v)||0, total=r*m;
-      onChange({valor:total>0?total:null, display:r>0&&m>0?`${r}x${m}`:null});
+      onChange({valor:total>0?total:null, rollosRef:r>0?r:null, metrosRef:m>0?m:null});
     };
 
     if(unidad==="m"){
@@ -1699,7 +1716,7 @@ const ResponsiveContainer=({children})=>children||null;
   // ── EditarProdScreen ──────────────────────────────────────────────────────────
   function EditarProdScreen({prodId,cats,productos,guardar,pop,showToast,askConfirm}) {
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
-    const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef,cantidadRefDisplay:p.cantidadRefDisplay||null,unidad:p.unidad||"gr"});
+    const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef,rollosRef:p.rollosRef||null,metrosRef:p.metrosRef||null,unidad:p.unidad||"gr"});
     const [showAddSub,setShowAddSub]=useState(false);
     const selCat=cats.find(c=>c.id===form.catId);
     const createSub=async(label)=>{const ns={id:uid(),label:label.trim()};await guardar(cats.map(c=>c.id===form.catId?{...c,subs:[...c.subs,ns]}:c),null);setForm(f=>({...f,subId:ns.id}));setShowAddSub(false);showToast("✅ Subcategoría creada");};
@@ -1708,7 +1725,7 @@ const ResponsiveContainer=({children})=>children||null;
       const pr=form.precioRef?parseFloat(String(form.precioRef).replace(",",".")):null;
       const um=form.unidadesMes?parseFrac(form.unidadesMes):null;
       const cr=form.cantidadRef!=null?parseFloat(form.cantidadRef):null;
-      await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,cantidadRefDisplay:form.cantidadRefDisplay||null,subId:form.subId||null}:x));
+      await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,rollosRef:form.rollosRef||null,metrosRef:form.metrosRef||null,subId:form.subId||null}:x));
       showToast("✅ Guardado");pop();
     },"Guardar cambios");
     return (<div className="fade"><TopBar title="Editar producto" subtitle={p.nombre} onBack={pop}/>
@@ -1730,8 +1747,8 @@ const ResponsiveContainer=({children})=>children||null;
           <div className="field"><label>Precio ref. ($)</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 1200" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} cantidadRefDisplay={form.cantidadRefDisplay} onChange={({valor,display})=>setForm(f=>({...f,cantidadRef:valor,cantidadRefDisplay:display}))}/>
-          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:null,cantidadRefDisplay:null}))}>
+          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} rollosRef={form.rollosRef} metrosRef={form.metrosRef} onChange={({valor,rollosRef,metrosRef})=>setForm(f=>({...f,cantidadRef:valor,rollosRef:rollosRef||null,metrosRef:metrosRef||null}))}/>
+          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:null,rollosRef:null,metrosRef:null}))}>
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
@@ -1749,7 +1766,7 @@ const ResponsiveContainer=({children})=>children||null;
       nombre:"",marca:"",
       catId:initCatId||"", // sin default
       subId:initSubId&&initSubId!==UNASSIGNED_ID?initSubId:"",
-      unidadesMes:"1",precioRef:"",cantidadRef:null,cantidadRefDisplay:null,unidad:"gr"
+      unidadesMes:"1",precioRef:"",cantidadRef:null,rollosRef:null,metrosRef:null,unidad:"gr"
     });
     const [showAddCat,setShowAddCat]=useState(false);
     const [showAddSub,setShowAddSub]=useState(false);
@@ -1778,11 +1795,11 @@ const ResponsiveContainer=({children})=>children||null;
       const pr=form.precioRef?parseFloat(String(form.precioRef).replace(",",".")):null;
       const um=form.unidadesMes?parseFrac(form.unidadesMes):null;
       const cr=form.cantidadRef!=null?parseFloat(form.cantidadRef):null;
-      const nuevoProd={...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,cantidadRefDisplay:form.cantidadRefDisplay||null,id:uid(),historialCompra:[],subId:form.subId||null};
+      const nuevoProd={...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,rollosRef:form.rollosRef||null,metrosRef:form.metrosRef||null,id:uid(),historialCompra:[],subId:form.subId||null};
       await guardar(null,[...productos,nuevoProd]);
       if(desdeCompras&&agregarAlTicket&&pr){
         agregarAlTicket({
-          prodId:nuevoProd.id,nombre:nuevoProd.nombre,marca:nuevoProd.marca,cantRef:cr,cantRefDisplay:nuevoProd.cantidadRefDisplay,
+          prodId:nuevoProd.id,nombre:nuevoProd.nombre,marca:nuevoProd.marca,cantRef:cr,rollosRef:nuevoProd.rollosRef,metrosRef:nuevoProd.metrosRef,
           unidad:nuevoProd.unidad,precio:pr,equivalente:pr,precioRef:pr,fecha:todayISO(),
           cantComprada:1,totalPagado:pr,totalRef:pr
         });
@@ -1827,8 +1844,8 @@ const ResponsiveContainer=({children})=>children||null;
           <div className="field"><label>Precio ref. ($)</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} cantidadRefDisplay={form.cantidadRefDisplay} onChange={({valor,display})=>setForm(f=>({...f,cantidadRef:valor,cantidadRefDisplay:display}))}/>
-          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:null,cantidadRefDisplay:null}))}>
+          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} rollosRef={form.rollosRef} metrosRef={form.metrosRef} onChange={({valor,rollosRef,metrosRef})=>setForm(f=>({...f,cantidadRef:valor,rollosRef:rollosRef||null,metrosRef:metrosRef||null}))}/>
+          <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:null,rollosRef:null,metrosRef:null}))}>
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
@@ -2032,7 +2049,7 @@ const ResponsiveContainer=({children})=>children||null;
           <div style={{fontWeight:600,fontSize:14,marginBottom:2,color:"#e8eaf0"}}>{cat?.emoji} {block.catLabel}{block.subLabel?` › ${block.subLabel}`:""}</div>
           {block.autoCreated&&<div style={{fontSize:12,color:"#4ade80",marginBottom:6}}>✅ Categoría nueva creada</div>}
           {block.autoCreatedSub&&<div style={{fontSize:12,color:"#4ade80",marginBottom:6}}>✅ Subcategoría nueva creada</div>}
-          <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>{block.products.map((p,pi)=>(<div key={pi} style={{fontSize:13,color:"#c8cfe0",display:"flex",justifyContent:"space-between"}}><span>{p.nombre} · <span style={{color:"#4a5568"}}>{p.marca}</span></span><span className="mono" style={{color:"#60a5fa"}}>{p.precioRef?fmt(p.precioRef):"—"}</span></div>))}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>{block.products.map((p,pi)=>(<div key={pi} style={{fontSize:13,color:p.error?"#ef4444":"#c8cfe0",display:"flex",justifyContent:"space-between"}}><span>{p.error?`⚠️ ${p.error}`:`${p.nombre} · `}<span style={{color:"#4a5568"}}>{p.marca}</span></span><span className="mono" style={{color:"#60a5fa"}}>{p.precioRef?fmt(p.precioRef):"—"}</span></div>))}</div>
         </div>);})}
         <div style={{display:"flex",gap:10,marginTop:4}}><button className="btn" onClick={()=>setStep("input")} style={{flex:1,background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:13}}>Volver</button><button className="btn" onClick={checkConflicts} style={{flex:2,background:"#3b82f6",color:"#fff",padding:13,fontSize:15}}>Importar</button></div>
       </div>)}
