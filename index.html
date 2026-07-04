@@ -225,8 +225,8 @@ const ResponsiveContainer=({children})=>children||null;
     let cantidadRef=null, rollosRef=null, metrosRef=null;
     if(unidad==="m"){
       // Para metros debe ser formato NxM
-      const mMatch=rawCant.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/i);
-      if(!mMatch) return {error:`Formato inválido para metros: "${rawCant}". Usá formato 3x40`, nombre, marca};
+      const mMatch=rawCant.match(/^(\d+(?:\.\d+)?)[xX×*](\d+(?:\.\d+)?)$/);
+      if(!mMatch) return {error:`Formato inválido para metros: "${rawCant}". Usá formato 3x40 (o 3×40)`, nombre, marca};
       rollosRef=parseFloat(mMatch[1]);
       metrosRef=parseFloat(mMatch[2]);
       cantidadRef=rollosRef*metrosRef;
@@ -687,8 +687,8 @@ const ResponsiveContainer=({children})=>children||null;
     const [open,setOpen]=useState(false);
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
-    const [cantRollos,setCantRollos]=useState("");
-    const [cantMetros,setCantMetros]=useState("");
+    const [cantRollos,setCantRollos]=useState(p.rollosRef?String(p.rollosRef):"");
+    const [cantMetros,setCantMetros]=useState(p.metrosRef?String(p.metrosRef):"");
     const [cantComprada,setCantComprada]=useState("1");
     const [saving,setSaving]=useState(false);
 
