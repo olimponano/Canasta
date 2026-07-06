@@ -369,21 +369,23 @@ const ResponsiveContainer=({children})=>children||null;
 
 
   function EditItemModal({item,productos,cats,stock,stockTotal,mesesRestantes,fmtMeses,onClose,onSave}) {
+    const esSuelto=item.suelto===true;
     const p=productos.find(x=>x.id===item.prodId);
     const cat=cats.find(c=>c.id===p?.catId);
-    const esM=item.unidad==="m";
+    const esM=!esSuelto&&item.unidad==="m";
     const cantRefProd=p?.cantidadRef??item.cantRef;
     const rollosRefProd=p?.rollosRef||item.rollosRef||null;
     const metrosRefProd=p?.metrosRef||item.metrosRef||null;
-    const total=p?stockTotal(p):0;
-    const meses=p?mesesRestantes(p):null;
+    const total=p&&!esSuelto?stockTotal(p):0;
+    const meses=p&&!esSuelto?mesesRestantes(p):null;
     const mesesTxt=fmtMeses(meses,true);
     const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
     const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
+    const [nombre,setNombre]=useState(item.nombre||"");
     const [precio,setPrecio]=useState(String(item.precio||""));
     const [cantRollos,setCantRollos]=useState(esM?String(item.rollosRef||rollosRefProd||""):"");
     const [cantMetros,setCantMetros]=useState(esM?String(item.metrosRef||metrosRefProd||""):"");
-    const [cantidad,setCantidad]=useState(!esM?String(item.cantRef||cantRefProd||""):"");
+    const [cantidad,setCantidad]=useState(!esM&&!esSuelto?String(item.cantRef||cantRefProd||""):"");
     const [cantComprada,setCantComprada]=useState(String(item.cantComprada||1));
     const precioNum=parseFloat((precio||"").replace(",","."));
     const cantCompradaNum=parseInt(cantComprada)||1;
@@ -393,41 +395,48 @@ const ResponsiveContainer=({children})=>children||null;
     const cantNum=esM?metrosPorPaq:parseFloat((cantidad||"").replace(",","."));
     const equivalente=esM
       ?(precioNum>0&&metrosPorPaq>0&&cantRefProd?(precioNum/metrosPorPaq)*cantRefProd:null)
-      :(precioNum>0&&cantNum>0&&cantRefProd?(precioNum/cantNum)*cantRefProd:item.equivalente);
+      :(!esSuelto&&precioNum>0&&cantNum>0&&cantRefProd?(precioNum/cantNum)*cantRefProd:item.equivalente);
     const totalPagado=precioNum>0&&cantCompradaNum>0?precioNum*cantCompradaNum:null;
-    const precioRefEquiv=cantRefProd&&cantNum>0&&item.precioRef?(item.precioRef/cantRefProd)*cantNum:item.precioRef;
+    const precioRefEquiv=!esSuelto&&cantRefProd&&cantNum>0&&item.precioRef?(item.precioRef/cantRefProd)*cantNum:item.precioRef;
     const totalRef=precioRefEquiv!=null&&cantCompradaNum>0?precioRefEquiv*cantCompradaNum:null;
     const diff=equivalente!=null&&item.precioRef?((equivalente-item.precioRef)/item.precioRef*100):null;
     const guardar=()=>onSave({
-      precio:precioNum,cantRef:esM?cantNum:(parseFloat(cantidad)||cantRefProd),
+      nombre:nombre.trim()||item.nombre,
+      precio:precioNum,cantRef:esM?cantNum:(!esSuelto?(parseFloat(cantidad)||cantRefProd):null),
       rollosRef:esM?(cantRollosNum||null):null,metrosRef:esM?(cantMetrosNum||null):null,
       cantComprada:cantCompradaNum,totalPagado,totalRef,equivalente,
-      stockDelta:item.stockDelta?{...item.stockDelta,cantidad:cantCompradaNum,rollosRef:esM?(cantRollosNum||null):null,metrosRef:esM?(cantMetrosNum||null):null}:item.stockDelta
+      stockDelta:item.stockDelta?{...item.stockDelta,cantidad:cantCompradaNum}:item.stockDelta
     });
     return (
       <div style={{position:"fixed",inset:0,background:"#000c",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
         <div style={{background:"#0d1321",borderRadius:16,padding:"20px",width:"100%",maxWidth:400,border:`1px solid ${cat?.color||"#2a3550"}`,boxShadow:"0 8px 32px #0008"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-            <div style={{fontWeight:700,fontSize:17,color:"#e8eaf0"}}>{item.nombre}</div>
-            <div style={{fontSize:13,color:"#4a5568",marginLeft:8}}>{item.marca||"—"}</div>
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          {esSuelto?(
+            <div className="field" style={{marginBottom:12}}>
+              <label>Nombre</label>
+              <input type="search" autoComplete="canasta-field-ignore" className="inp" value={nombre} onChange={e=>setNombre(e.target.value)} autoFocus/>
+            </div>
+          ):(
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+              <div style={{fontWeight:700,fontSize:17,color:"#e8eaf0"}}>{item.nombre}</div>
+              <div style={{fontSize:13,color:"#4a5568",marginLeft:8}}>{item.marca||"—"}</div>
+            </div>
+          )}
+          {!esSuelto&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={{fontSize:12,color:"#4a5568"}}>{item.precioRef&&<span>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(item.precioRef)}</span></span>}</div>
             <div style={{fontSize:12,color:"#4a5568",textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
-          </div>
-          {esM?(
+          </div>}
+          {esSuelto?(
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginBottom:14,alignItems:"end"}}>
+              <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)}/></div>
+              <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
+            </div>
+          ):esM?(
             <div style={{marginBottom:14}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,alignItems:"end"}}>
-                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
-                <div style={{width:60}}>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{rollosRefProd||"Rollos"}</div>
-                  <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}} placeholder={rollosRefProd?String(rollosRefProd):"3"}/>
-                </div>
+                <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{rollosRefProd||"Rollos"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}}/></div>
                 <div style={{display:"flex",alignItems:"flex-end",paddingBottom:10,color:"#4a5568",fontSize:14}}>×</div>
-                <div style={{width:60}}>
-                  <div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{metrosRefProd||"Metros"}</div>
-                  <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}} placeholder={metrosRefProd?String(metrosRefProd):"40"}/>
-                </div>
+                <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{metrosRefProd||"Metros"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}}/></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:6,marginTop:6,alignItems:"end"}}>
                 <div/>
@@ -436,7 +445,7 @@ const ResponsiveContainer=({children})=>children||null;
             </div>
           ):(
             <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,marginBottom:14,alignItems:"end"}}>
-              <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
+              <div><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)}/></div>
               <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{cantRefProd?`${cantRefProd}${item.unidad||"gr"}`:(item.unidad||"gr")}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{textAlign:"center"}}/></div>
               <div style={{width:60}}><div style={{fontSize:10,color:"#4a5568",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
             </div>
@@ -488,7 +497,7 @@ const ResponsiveContainer=({children})=>children||null;
       setEditIdx(null);
     };
     return (<>
-      <div style={{position:"fixed",top:ticketOpen?0:"auto",bottom:64,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:ticketOpen?0:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{position:"fixed",top:ticketOpen?"120px":"auto",bottom:64,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#0d1321",borderTop:"2px solid #10b981",borderRadius:ticketOpen?"16px 16px 0 0":"16px 16px 0 0",boxShadow:"0 -8px 32px #0008",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         {/* Header: siempre visible, clickeable */}
         <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",flexShrink:0,WebkitTapHighlightColor:"transparent"}} onClick={()=>setTicketOpen(o=>!o)}>
           <div style={{flex:1}}>
