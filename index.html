@@ -7,32 +7,32 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="theme-color" content="#faf8f3"/>
+  <meta name="theme-color" content="#080c14"/>
   <title>Canasta</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#faf8f3;font-family:'DM Sans','Segoe UI',sans-serif}
+    body{background:var(--bg,#080c14);font-family:'DM Sans','Segoe UI',sans-serif;color:var(--text,#e8eaf0)}
     #root{min-height:100vh}
-    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#d4c5b0}
+    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--scrollThumb,#1e2535)}
     .btn{cursor:pointer;border:none;font-family:inherit;font-weight:600;transition:all .15s;border-radius:10px}
-    .btn:hover{filter:brightness(1.05);transform:translateY(-1px)}
+    .btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
     .btn:active{transform:translateY(0);filter:brightness(.95)}
-    .card{background:#ffffff;border:1px solid #e8dfd0;border-radius:14px;box-shadow:0 1px 3px rgba(139,92,46,0.08)}
+    .card{background:var(--card,#0d1321);border:1px solid var(--cardBorder,#1a2235);border-radius:14px}
     .field{display:flex;flex-direction:column;gap:6px}
-    .field label{font-size:11px;font-weight:600;color:#8b6f47;text-transform:uppercase;letter-spacing:.08em}
-    .inp{background:#ffffff;border:1px solid #e8dfd0;color:#3d2e1f;border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
-    .inp:focus{border-color:#d4a574}
+    .field label{font-size:11px;font-weight:600;color:var(--textMuted,#4a5568);text-transform:uppercase;letter-spacing:.08em}
+    .inp{background:var(--inputBg,#080c14);border:1px solid var(--cardBorder,#1a2235);color:var(--text,#e8eaf0);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
+    .inp:focus{border-color:var(--accent,#3b82f6)}
     .mono{font-family:'DM Mono',monospace}
     .fade{animation:fi .22s ease}
     @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
     .row{cursor:pointer;transition:all .15s}
-    .row:hover{transform:translateX(3px);border-color:#d4c5b0!important}
+    .row:hover{transform:translateX(3px);border-color:var(--hoverCard,#2a3550)!important}
   </style>
 </head>
 <body>
-<div id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#d4a574;font-family:monospace">Cargando…</div></div>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#3b82f6;font-family:monospace">Cargando…</div></div>
 
 <!-- 1. React -->
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -51,70 +51,25 @@
   const SUPABASE_KEY = "sb_publishable_nJE2_030ourYKjbk_lKlTQ__8l2O0Sg";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🎨 SISTEMA DE PALETAS DE COLORES
-  // ═══════════════════════════════════════════════════════════════════════════
-
   const THEMES = {
-    // 🌙 MODO OSCURO (Original)
     dark: {
-      bg: "#080c14",
-      bgSecondary: "#0d1321",
-      card: "#0d1321",
-      cardBorder: "#1a2235",
-      cardBorderHover: "#2a3550",
-      scrollbar: "#1e2535",
-      text: "#e8eaf0",
-      textSecondary: "#8b9ab0",
-      textMuted: "#4a5568",
-      accent: "#3b82f6",
-      success: "#10b981",
-      error: "#ef4444",
-      warning: "#facc15",
-      info: "#f97316",
-      overlayDark: "#000c",
-      overlayMedium: "#000b",
-      shadowSoft: "#0008",
-      shadowNormal: "#0009",
-      bgLight: "#1a0a0a",
-      bgLighter: "#2d1212",
-      bgNeutral: "#3a4255",
-      categoryColors: ["#60a5fa","#f472b6","#4ade80","#fb923c","#a78bfa","#facc15","#34d399","#f87171","#38bdf8","#e879f9"],
+      bg: "#080c14", card: "#0d1321", cardBorder: "#1a2235", text: "#e8eaf0",
+      textSecondary: "#8b9ab0", textMuted: "#4a5568", accent: "#3b82f6",
+      success: "#10b981", error: "#ef4444", warning: "#facc15",
+      overlayDark: "#000c", shadowSoft: "#0008", inputBg: "#080c14",
+      hoverCard: "#2a3550", scrollThumb: "#1e2535", btnSecondary: "#1a2235",
+      errorBg: "#1a0a0a", errorBorder: "#2d1212"
     },
-    // ☀️ MODO CÁLIDO (Nuevo)
     light: {
-      bg: "#faf8f3",
-      bgSecondary: "#f5f0ea",
-      card: "#ffffff",
-      cardBorder: "#e8dfd0",
-      cardBorderHover: "#d4c5b0",
-      scrollbar: "#d4c5b0",
-      text: "#3d2e1f",
-      textSecondary: "#6d5d4b",
-      textMuted: "#8b6f47",
-      accent: "#d4a574",
-      success: "#8ab17d",
-      error: "#d77a61",
-      warning: "#e9c46a",
-      info: "#e07a5f",
-      overlayDark: "rgba(61,46,31,0.75)",
-      overlayMedium: "rgba(61,46,31,0.70)",
-      shadowSoft: "rgba(139,92,46,0.15)",
-      shadowNormal: "rgba(139,92,46,0.18)",
-      bgLight: "#f5e6d3",
-      bgLighter: "#f0d5c8",
-      bgNeutral: "#b09b87",
-      categoryColors: ["#e07a5f","#f4a261","#e9c46a","#8ab17d","#81b29a","#c08552","#d4a574","#bc8a5f","#9b6b4e","#b5838d"],
+      bg: "#faf8f3", card: "#ffffff", cardBorder: "#e8dfd0", text: "#3d2e1f",
+      textSecondary: "#6d5d4b", textMuted: "#8b6f47", accent: "#d4a574",
+      success: "#8ab17d", error: "#d77a61", warning: "#e9c46a",
+      overlayDark: "rgba(61,46,31,0.75)", shadowSoft: "rgba(139,92,46,0.15)", inputBg: "#fdf6ed",
+      hoverCard: "#d4c5b0", scrollThumb: "#c8b89f", btnSecondary: "#f0e8dd",
+      errorBg: "#f5e5e1", errorBorder: "#e5c5bd"
     }
   };
-
-  // Función helper para obtener los colores según el tema
   const getColors = (isDark) => THEMES[isDark ? 'dark' : 'light'];
-
-  // Colores para categorías (se actualiza según tema en el componente)
-  const COLORS = THEMES.light.categoryColors;
-
-  // ═══════════════════════════════════════════════════════════════════════════
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const norm = (s) => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
@@ -124,7 +79,7 @@
   const fmt = (n) => n == null ? "—" : `$${Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const fmtDate = (d) => new Date(d + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "2-digit" });
   const todayISO = () => new Date().toISOString().split("T")[0];
-  const COLORS = ["#e07a5f","#f4a261","#e9c46a","#8ab17d","#81b29a","#c08552","#d4a574","#bc8a5f","#9b6b4e","#b5838d"];
+  const COLORS = ["#60a5fa","#f472b6","#4ade80","#fb923c","#a78bfa","#facc15","#34d399","#f87171","#38bdf8","#e879f9"];
   const alpha = (a, b, key="label") => (a[key]||"").localeCompare(b[key]||"", "es");
   const alphaStr = (a, b) => (a||"").localeCompare(b||"", "es");
   const fmtU = (u) => {
@@ -162,11 +117,11 @@
   const fmtCantRef=(p)=>{if(!p||!p.cantidadRef)return "";if(p.unidad==="m"&&p.rollosRef&&p.metrosRef)return `${p.rollosRef}x${p.metrosRef}m`;return `${p.cantidadRef}${p.unidad||""}`;};
 
   const DEFAULT_CATS = [
-    { id:"primario",   label:"Primario",   emoji:"🛒", color:"#e07a5f", subs:[] },
-    { id:"higiene",    label:"Higiene",    emoji:"🧴", color:"#f4a261", subs:[] },
-    { id:"verduleria", label:"Verdulería", emoji:"🥦", color:"#8ab17d", subs:[] },
-    { id:"carniceria", label:"Carnicería", emoji:"🥩", color:"#e9c46a", subs:[] },
-    { id:"secundario", label:"Secundario", emoji:"🍪", color:"#c08552", subs:[] },
+    { id:"primario",   label:"Primario",   emoji:"🛒", color:"#60a5fa", subs:[] },
+    { id:"higiene",    label:"Higiene",    emoji:"🧴", color:"#f472b6", subs:[] },
+    { id:"verduleria", label:"Verdulería", emoji:"🥦", color:"#4ade80", subs:[] },
+    { id:"carniceria", label:"Carnicería", emoji:"🥩", color:"#fb923c", subs:[] },
+    { id:"secundario", label:"Secundario", emoji:"🍪", color:"#a78bfa", subs:[] },
   ];
   const DEFAULT_PRODUCTOS = [];
   const UNASSIGNED_ID = "__sin_sub__";
@@ -317,21 +272,23 @@
   }
 
 
-  function Confirm({msg,onOk,onCancel,okLabel="Confirmar",okColor="#d4a574"}) {
+  function Confirm({colors,msg,onOk,onCancel,okLabel="Confirmar",okColor}) {
+    const finalOkColor=okColor||colors.accent;
+    const okTextColor=okColor===colors.error?"#fff":colors.bg;
     return (
-      <div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.70)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-        <div style={{background:"#ffffff",border:"1px solid #d4c5b0",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
-          <div style={{fontSize:15,lineHeight:1.5,marginBottom:20,color:"#3d2e1f"}}>{msg}</div>
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
+          <div style={{fontSize:15,lineHeight:1.5,marginBottom:20,color:colors.text}}>{msg}</div>
           <div style={{display:"flex",gap:10}}>
-            <button className="btn" onClick={onCancel} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",padding:12}}>Cancelar</button>
-            <button className="btn" onClick={onOk} style={{flex:1,background:okColor,color:okColor==="#d77a61"?"#fff":"#faf8f3",padding:12}}>{okLabel}</button>
+            <button className="btn" onClick={onCancel} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12}}>Cancelar</button>
+            <button className="btn" onClick={onOk} style={{flex:1,background:finalOkColor,color:okTextColor,padding:12}}>{okLabel}</button>
           </div>
         </div>
       </div>
     );
   }
 
-  function ItemSueltoModal({onClose,onSave}) {
+  function ItemSueltoModal({onClose,onSave,colors}) {
     const [nombre,setNombre]=useState("");
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState("1");
@@ -343,51 +300,51 @@
       onSave({nombre:nombre.trim(),precio:precioNum,cantidad:cantNum});
     };
     return (
-      <div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.75)",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px 40px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:"#ffffff",borderRadius:16,padding:"24px 20px",width:"100%",maxWidth:340,border:"1px solid #d4c5b0",boxShadow:"0 8px 32px rgba(139,92,46,0.15)"}}>
-          <div style={{fontWeight:700,fontSize:18,marginBottom:6,color:"#3d2e1f"}}>Item suelto</div>
-          <div style={{fontSize:12,color:"#8b6f47",marginBottom:20}}>Se suma al total del ticket, sin guardarse como producto</div>
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px 40px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{background:colors.card,borderRadius:16,padding:"24px 20px",width:"100%",maxWidth:340,border:`1px solid ${colors.hoverCard}`,boxShadow:`0 8px 32px ${colors.shadowSoft}`}}>
+          <div style={{fontWeight:700,fontSize:18,marginBottom:6,color:colors.text}}>Item suelto</div>
+          <div style={{fontSize:12,color:colors.textMuted,marginBottom:20}}>Se suma al total del ticket, sin guardarse como producto</div>
           <div className="field" style={{marginBottom:14}}><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. Bolsa de hielo" value={nombre} onChange={e=>setNombre(e.target.value)} autoFocus/></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
             <div className="field"><label>Precio $</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 500" value={precio} onChange={e=>setPrecio(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
             <div className="field"><label>Compré</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantidad} onChange={e=>setCantidad(e.target.value)}/></div>
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button className="btn" onClick={onClose} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",padding:13,fontSize:14}}>Cancelar</button>
-            <button className="btn" onClick={submit} style={{flex:2,background:"#d4a574",color:"#faf8f3",padding:13,fontSize:15,fontWeight:700}}>Agregar</button>
+            <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:13,fontSize:14}}>Cancelar</button>
+            <button className="btn" onClick={submit} style={{flex:2,background:colors.accent,color:colors.bg,padding:13,fontSize:15,fontWeight:700}}>Agregar</button>
           </div>
         </div>
       </div>
     );
   }
 
-  function ConfirmCompra({data,onOk,onCancel}) {
+  function ConfirmCompra({colors,data,onOk,onCancel}) {
     // data: {nombre, marca, cantDesc, precio, cantComprada, totalPagado, catColor}
     return (
-      <div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.70)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-        <div style={{background:"#ffffff",border:"1px solid #d4c5b0",borderRadius:16,maxWidth:320,width:"100%",overflow:"hidden"}}>
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,maxWidth:320,width:"100%",overflow:"hidden"}}>
           {/* Producto */}
-          <div style={{padding:"16px 20px",borderLeft:`4px solid ${data.catColor||"#d4a574"}`}}>
-            <div style={{fontWeight:700,fontSize:16,color:"#3d2e1f"}}>{data.nombre}</div>
-            <div style={{fontSize:13,color:"#8b6f47",marginTop:3}}>{[data.marca,data.cantDesc].filter(Boolean).join(" · ")}</div>
+          <div style={{padding:"16px 20px",borderLeft:`4px solid ${data.catColor||colors.accent}`}}>
+            <div style={{fontWeight:700,fontSize:16,color:colors.text}}>{data.nombre}</div>
+            <div style={{fontSize:13,color:colors.textMuted,marginTop:3}}>{[data.marca,data.cantDesc].filter(Boolean).join(" · ")}</div>
           </div>
           {/* Precio */}
-          <div style={{padding:"12px 20px",background:"#faf8f3",display:"flex",alignItems:"center",justifyContent:"space-between",borderTop:"1px solid #e8dfd0"}}>
-            <div style={{fontSize:13,color:"#8b6f47"}}>
-              <span className="mono" style={{color:"#3d2e1f",fontWeight:700}}>{fmt(data.precio)}</span>
-              <span style={{color:"#8b6f47"}}> × {data.cantComprada}</span>
+          <div style={{padding:"12px 20px",background:colors.inputBg,display:"flex",alignItems:"center",justifyContent:"space-between",borderTop:`1px solid ${colors.cardBorder}`}}>
+            <div style={{fontSize:13,color:colors.textMuted}}>
+              <span className="mono" style={{color:colors.text,fontWeight:700}}>{fmt(data.precio)}</span>
+              <span style={{color:colors.textMuted}}> × {data.cantComprada}</span>
             </div>
             <div style={{textAlign:"right"}}>
-              <div style={{fontSize:11,color:"#8b6f47",marginBottom:1}}>Total</div>
-              <div className="mono" style={{fontWeight:700,fontSize:16,color:"#3d2e1f"}}>{fmt(data.totalPagado||data.precio)}</div>
+              <div style={{fontSize:11,color:colors.textMuted,marginBottom:1}}>Total</div>
+              <div className="mono" style={{fontWeight:700,fontSize:16,color:colors.text}}>{fmt(data.totalPagado||data.precio)}</div>
             </div>
           </div>
           {/* Pregunta */}
-          <div style={{padding:"12px 20px",borderTop:"1px solid #e8dfd0"}}>
-            <div style={{fontSize:13,color:"#6d5d4b",marginBottom:14}}>¿Confirmar registro?</div>
+          <div style={{padding:"12px 20px",borderTop:`1px solid ${colors.cardBorder}`}}>
+            <div style={{fontSize:13,color:colors.textSecondary,marginBottom:14}}>¿Confirmar registro?</div>
             <div style={{display:"flex",gap:10}}>
-              <button className="btn" onClick={onCancel} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",padding:12}}>Cancelar</button>
-              <button className="btn" onClick={onOk} style={{flex:1,background:"#8ab17d",color:"#faf8f3",padding:12,fontWeight:700}}>Confirmar</button>
+              <button className="btn" onClick={onCancel} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12}}>Cancelar</button>
+              <button className="btn" onClick={onOk} style={{flex:1,background:colors.success,color:"#fff",padding:12,fontWeight:700}}>Confirmar</button>
             </div>
           </div>
         </div>
@@ -395,13 +352,14 @@
     );
   }
 
-  function AddModal({title,namePlaceholder,onClose,onSave,showColor=true,accentColor="#d4a574"}) {
-    const [label,setLabel]=useState(""); const [emoji,setEmoji]=useState("📦"); const [color,setColor]=useState(accentColor);
+  function AddModal({title,namePlaceholder,onClose,onSave,showColor=true,accentColor,colors}) {
+    const finalAccent=accentColor||colors.accent;
+    const [label,setLabel]=useState(""); const [emoji,setEmoji]=useState("📦"); const [color,setColor]=useState(finalAccent);
     const submit=()=>{if(!label.trim())return; onSave({label:label.trim(),emoji,color});};
     return (
-      <div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.70)",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px 40px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:"#ffffff",borderRadius:16,padding:24,width:"100%",maxWidth:400,border:"1px solid #d4c5b0",boxShadow:"0 8px 40px rgba(139,92,46,0.18)"}}>
-          <div style={{fontWeight:700,fontSize:18,marginBottom:20,color:"#3d2e1f"}}>{title}</div>
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px 40px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{background:colors.card,borderRadius:16,padding:24,width:"100%",maxWidth:400,border:`1px solid ${colors.hoverCard}`,boxShadow:`0 8px 40px ${colors.shadowSoft}`}}>
+          <div style={{fontWeight:700,fontSize:18,marginBottom:20,color:colors.text}}>{title}</div>
           {showColor?(
             <div style={{display:"grid",gridTemplateColumns:"64px 1fr",gap:10,marginBottom:16}}>
               <div className="field"><label>Emoji</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:22,padding:"10px 4px"}} autoFocus autoComplete="canasta-field-ignore"/></div>
@@ -412,21 +370,21 @@
           )}
           {showColor&&(
             <div style={{marginBottom:20}}>
-              <div style={{fontSize:11,fontWeight:600,color:"#8b6f47",textTransform:"uppercase",letterSpacing:".08em",marginBottom:10}}>Color</div>
+              <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10}}>Color</div>
               <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{COLORS.map(c=><div key={c} onClick={()=>setColor(c)} style={{width:32,height:32,borderRadius:"50%",background:c,cursor:"pointer",border:color===c?"3px solid #fff":"3px solid transparent",transition:"all .15s",flexShrink:0}}/>)}</div>
             </div>
           )}
           <div style={{display:"flex",gap:10,marginTop:4}}>
-            <button className="btn" onClick={onClose} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",padding:13,fontSize:14}}>Cancelar</button>
-            <button className="btn" onClick={submit} style={{flex:2,background:showColor?color:accentColor,color:"#faf8f3",padding:13,fontSize:15,fontWeight:700}}>Crear</button>
+            <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:13,fontSize:14}}>Cancelar</button>
+            <button className="btn" onClick={submit} style={{flex:2,background:showColor?color:finalAccent,color:colors.bg,padding:13,fontSize:15,fontWeight:700}}>Crear</button>
           </div>
         </div>
       </div>
     );
   }
 
-  function FloatingAdd({onClick}) {
-    return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:"#d4a574",color:"#faf8f3",fontSize:28,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:"0 4px 24px #d4a57455",zIndex:100,lineHeight:1}}>+</button>;
+  function FloatingAdd({onClick,colors}) {
+    return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:colors.accent,color:"#fff",fontSize:28,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:`0 4px 24px ${colors.shadowSoft}`,zIndex:100,lineHeight:1}}>+</button>;
   }
 
 
@@ -442,7 +400,7 @@
     const total=p&&!esSuelto?stockTotal(p):0;
     const meses=p&&!esSuelto?mesesRestantes(p):null;
     const mesesTxt=fmtMeses(meses,true);
-    const urgColor=meses===null?"#8b6f47":meses===0?"#d77a61":meses<1?"#e07a5f":meses<2?"#e9c46a":"#8ab17d";
+    const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
     const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
     const [nombre,setNombre]=useState(item.nombre||"");
     const [precio,setPrecio]=useState(String(item.precio||""));
@@ -471,8 +429,8 @@
       stockDelta:item.stockDelta?{...item.stockDelta,cantidad:cantCompradaNum}:item.stockDelta
     });
     return (
-      <div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.75)",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:"#ffffff",borderRadius:16,padding:"20px",width:"100%",maxWidth:400,border:`1px solid ${cat?.color||"#d4c5b0"}`,boxShadow:"0 8px 32px rgba(139,92,46,0.15)"}}>
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{background:colors.card,borderRadius:16,padding:"20px",width:"100%",maxWidth:400,border:`1px solid ${cat?.color||"#2a3550"}`,boxShadow:`0 8px 32px ${colors.shadowSoft}`}}>
           {esSuelto?(
             <div className="field" style={{marginBottom:12}}>
               <label>Nombre</label>
@@ -480,49 +438,49 @@
             </div>
           ):(
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-              <div style={{fontWeight:700,fontSize:17,color:"#3d2e1f"}}>{item.nombre}</div>
-              <div style={{fontSize:13,color:"#8b6f47",marginLeft:8}}>{item.marca||"—"}</div>
+              <div style={{fontWeight:700,fontSize:17,color:colors.text}}>{item.nombre}</div>
+              <div style={{fontSize:13,color:colors.textMuted,marginLeft:8}}>{item.marca||"—"}</div>
             </div>
           )}
           {!esSuelto&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div style={{fontSize:12,color:"#8b6f47"}}>{item.precioRef&&<span>Ref: <span style={{color:cat?.color||"#d4a574",fontWeight:700}}>{fmt(item.precioRef)}</span></span>}</div>
-            <div style={{fontSize:12,color:"#8b6f47",textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
+            <div style={{fontSize:12,color:colors.textMuted}}>{item.precioRef&&<span>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(item.precioRef)}</span></span>}</div>
+            <div style={{fontSize:12,color:colors.textMuted,textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
           </div>}
           {esSuelto?(
             <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginBottom:14,alignItems:"end"}}>
-              <div><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)}/></div>
-              <div style={{width:60}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
+              <div><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)}/></div>
+              <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
             </div>
           ):esM?(
             <div style={{marginBottom:14}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,alignItems:"end"}}>
-                <div><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)}/></div>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{rollosRefProd||"Rollos"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}}/></div>
-                <div style={{display:"flex",alignItems:"flex-end",paddingBottom:10,color:"#8b6f47",fontSize:14}}>×</div>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{metrosRefProd||"Metros"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{rollosRefProd||"Rollos"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{display:"flex",alignItems:"flex-end",paddingBottom:10,color:colors.textMuted,fontSize:14}}>×</div>
+                <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{metrosRefProd||"Metros"}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}}/></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:6,marginTop:6,alignItems:"end"}}>
                 <div/>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
               </div>
             </div>
           ):(
             <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,marginBottom:14,alignItems:"end"}}>
-              <div><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)}/></div>
-              <div style={{width:60}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{cantRefProd?`${cantRefProd}${item.unidad||"gr"}`:(item.unidad||"gr")}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{textAlign:"center"}}/></div>
-              <div style={{width:60}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
+              <div><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={precio} onChange={e=>setPrecio(e.target.value)}/></div>
+              <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{cantRefProd?`${cantRefProd}${item.unidad||"gr"}`:(item.unidad||"gr")}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{textAlign:"center"}}/></div>
+              <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
             </div>
           )}
-          <div style={{background:"#faf8f3",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:13,color:"#8b6f47"}}>Total</span>
+          <div style={{background:colors.inputBg,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:13,color:colors.textMuted}}>Total</span>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#d77a61":"#8ab17d"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
-              <span className="mono" style={{fontWeight:700,fontSize:16,color:totalPagado?"#3d2e1f":"#d4c5b0"}}>{totalPagado?fmt(totalPagado):"—"}</span>
+              {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
+              <span className="mono" style={{fontWeight:700,fontSize:16,color:totalPagado?colors.text:colors.hoverCard}}>{totalPagado?fmt(totalPagado):"—"}</span>
             </div>
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button className="btn" onClick={onClose} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",padding:"11px 0",fontSize:14}}>Cancelar</button>
-            <button className="btn" onClick={guardar} style={{flex:2,background:"#d4a574",color:"#faf8f3",padding:"11px 0",fontSize:14,fontWeight:700}}>Confirmar</button>
+            <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:"11px 0",fontSize:14}}>Cancelar</button>
+            <button className="btn" onClick={guardar} style={{flex:2,background:colors.accent,color:"#fff",padding:"11px 0",fontSize:14,fontWeight:700}}>Confirmar</button>
           </div>
         </div>
       </div>
@@ -545,7 +503,7 @@
     const totalPagadoConRef=ticket.filter(i=>!i.suelto&&(i.totalRef??0)>0).reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
     const diff=totalPagadoConRef-totalRef;
     const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
-    const eliminarItem=(idx)=>askConfirm("¿Eliminar este producto del ticket?",()=>setTicket(t=>t.filter((_,i)=>i!==idx)),"Eliminar","#d77a61");
+    const eliminarItem=(idx)=>askConfirm("¿Eliminar este producto del ticket?",()=>setTicket(t=>t.filter((_,i)=>i!==idx)),"Eliminar","#ef4444");
     const iniciarEdicion=(idx)=>{const item=ticket[idx];setEditCant(String(item.cantComprada||1));setEditPrecio(String(item.precio||""));setEditIdx(idx);};
     const guardarEdicion=()=>{
       const item=ticket[editIdx];
@@ -560,28 +518,28 @@
       setEditIdx(null);
     };
     return (<>
-      <div style={{position:"fixed",top:ticketOpen?0:"auto",bottom:64,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:"#ffffff",borderTop:"2px solid #8ab17d",borderRadius:ticketOpen?0:"16px 16px 0 0",boxShadow:"0 -8px 32px rgba(139,92,46,0.15)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{position:"fixed",top:ticketOpen?0:"auto",bottom:64,left:0,right:0,maxWidth:500,margin:"0 auto",zIndex:150,background:colors.card,borderTop:"2px solid #10b981",borderRadius:ticketOpen?0:"16px 16px 0 0",boxShadow:"0 -8px 32px #0008",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         {/* Header: siempre visible, clickeable */}
         <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",flexShrink:0,WebkitTapHighlightColor:"transparent"}} onClick={()=>setTicketOpen(o=>!o)}>
           <div style={{flex:1}}>
-            <div style={{fontSize:14,fontWeight:700,color:"#8ab17d"}}>🛒 Modo compras</div>
-            <div style={{color:"#6d5d4b",fontWeight:400,fontSize:12,marginTop:2}}>{ticket.length} producto{ticket.length!==1?"s":""}</div>
+            <div style={{fontSize:14,fontWeight:700,color:colors.success}}>🛒 Modo compras</div>
+            <div style={{color:colors.textSecondary,fontWeight:400,fontSize:12,marginTop:2}}>{ticket.length} producto{ticket.length!==1?"s":""}</div>
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{display:"flex",alignItems:"baseline",gap:5,justifyContent:"flex-end"}}>
-              <span style={{fontSize:10,color:"#8b6f47",fontWeight:600}}>Total</span>
-              <span className="mono" style={{fontWeight:700,fontSize:14,color:ticket.length>0?"#3d2e1f":"#d4c5b0"}}>{ticket.length>0?fmt(totalPagado):"$0,00"}</span>
+              <span style={{fontSize:10,color:colors.textMuted,fontWeight:600}}>Total</span>
+              <span className="mono" style={{fontWeight:700,fontSize:14,color:ticket.length>0?colors.text:colors.hoverCard}}>{ticket.length>0?fmt(totalPagado):"$0,00"}</span>
             </div>
-            {ticket.length>0&&diffPct!==null&&<div style={{fontSize:10,fontWeight:700,color:diff<=0?"#8ab17d":"#d77a61"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+            {ticket.length>0&&diffPct!==null&&<div style={{fontSize:10,fontWeight:700,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
           </div>
-          <span style={{color:"#8b6f47",fontSize:14}}>{ticketOpen?"▼":"▲"}</span>
+          <span style={{color:colors.textMuted,fontSize:14}}>{ticketOpen?"▼":"▲"}</span>
         </div>
 
         {/* Panel expandible: items + botones, ocupa casi toda la pantalla */}
         {ticketOpen&&(
-          <div style={{flex:1,display:"flex",flexDirection:"column",borderTop:"1px solid #e8dfd0",minHeight:0}}>
+          <div style={{flex:1,display:"flex",flexDirection:"column",borderTop:`1px solid ${colors.cardBorder}`,minHeight:0}}>
             <div style={{flex:1,overflowY:"auto"}}>
-              {ticket.length===0&&<div style={{padding:"40px 16px",textAlign:"center",color:"#8b6f47",fontSize:13}}>Todavía no agregaste productos</div>}
+              {ticket.length===0&&<div style={{padding:"40px 16px",textAlign:"center",color:colors.textMuted,fontSize:13}}>Todavía no agregaste productos</div>}
               {ticket.map((item,i)=>{
                 const p=productos.find(x=>x.id===item.prodId);
                 const cat=cats.find(c=>c.id===p?.catId);
@@ -591,14 +549,14 @@
                 return (<div key={i} style={{padding:"8px 16px"}}>
                   {isEditing?(
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                      <div style={{fontSize:13,fontWeight:600,color:"#3d2e1f"}}>{item.nombre}</div>
+                      <div style={{fontSize:13,fontWeight:600,color:colors.text}}>{item.nombre}</div>
                       <div style={{display:"flex",gap:8}}>
-                        <div style={{flex:1}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={editPrecio} onChange={e=>setEditPrecio(e.target.value)} style={{padding:"7px 10px",fontSize:14}} autoFocus/></div>
-                        <div style={{flex:1}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={editCant} onChange={e=>setEditCant(e.target.value)} style={{padding:"7px 10px",fontSize:14}}/></div>
+                        <div style={{flex:1}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={editPrecio} onChange={e=>setEditPrecio(e.target.value)} style={{padding:"7px 10px",fontSize:14}} autoFocus/></div>
+                        <div style={{flex:1}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={editCant} onChange={e=>setEditCant(e.target.value)} style={{padding:"7px 10px",fontSize:14}}/></div>
                       </div>
                       <div style={{display:"flex",gap:8}}>
-                        <button className="btn" onClick={()=>setEditIdx(null)} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",padding:"7px 0",fontSize:13}}>Cancelar</button>
-                        <button className="btn" onClick={guardarEdicion} style={{flex:2,background:"#d4a574",color:"#faf8f3",padding:"7px 0",fontSize:13}}>Guardar</button>
+                        <button className="btn" onClick={()=>setEditIdx(null)} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:"7px 0",fontSize:13}}>Cancelar</button>
+                        <button className="btn" onClick={guardarEdicion} style={{flex:2,background:colors.accent,color:"#fff",padding:"7px 0",fontSize:13}}>Guardar</button>
                       </div>
                     </div>
                   ):(
@@ -608,8 +566,8 @@
                   )}
                   {menuIdx===i&&editIdx!==i&&(
                     <div style={{display:"flex",gap:8,padding:"8px 0 2px 13px"}}>
-                      <button className="btn" onClick={()=>{abrirEdicionModal(i);setMenuIdx(null);}} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",border:"1px solid #d4c5b0",padding:"7px 0",fontSize:13}}>✏️ Editar</button>
-                      <button className="btn" onClick={()=>{eliminarItem(i);setMenuIdx(null);}} style={{flex:1,background:"#f5e6d3",color:"#d77a61",border:"1px solid #f0d5c8",padding:"7px 0",fontSize:13}}>✕ Eliminar</button>
+                      <button className="btn" onClick={()=>{abrirEdicionModal(i);setMenuIdx(null);}} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,border:`1px solid ${colors.hoverCard}`,padding:"7px 0",fontSize:13}}>✏️ Editar</button>
+                      <button className="btn" onClick={()=>{eliminarItem(i);setMenuIdx(null);}} style={{flex:1,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"7px 0",fontSize:13}}>✕ Eliminar</button>
                     </div>
                   )}
                 </div>);
@@ -617,14 +575,14 @@
 
             </div>
             {/* Botones de agregar */}
-            <div style={{padding:"10px 16px 0",display:"flex",gap:8,borderTop:"1px solid #e8dfd0",flexShrink:0}}>
-              <button className="btn" onClick={onAddSuelto} style={{flex:1,background:"#e8dfd0",color:"#d4a574",border:"1px solid #d4c5b0",padding:"9px 0",fontSize:13}}>+ Item suelto</button>
-              <button className="btn" onClick={onAddProducto} style={{flex:1,background:"#e8dfd0",color:"#d4a574",border:"1px solid #d4c5b0",padding:"9px 0",fontSize:13}}>+ Producto nuevo</button>
+            <div style={{padding:"10px 16px 0",display:"flex",gap:8,borderTop:`1px solid ${colors.cardBorder}`,flexShrink:0}}>
+              <button className="btn" onClick={onAddSuelto} style={{flex:1,background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:"9px 0",fontSize:13}}>+ Item suelto</button>
+              <button className="btn" onClick={onAddProducto} style={{flex:1,background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:"9px 0",fontSize:13}}>+ Producto nuevo</button>
             </div>
             {/* Botones solo visibles dentro del panel expandido */}
             <div style={{padding:"10px 16px 14px",display:"flex",gap:8,flexShrink:0}}>
-              <button className="btn" onClick={onCancelar} style={{flex:1,background:"#f5e6d3",color:"#d77a61",border:"1px solid #f0d5c8",padding:"11px 0",fontSize:14,fontWeight:600}}>Cancelar</button>
-              <button className="btn" onClick={ticket.length>0?onFinalizar:undefined} style={{flex:1,background:ticket.length>0?"#8ab17d":"#e8dfd0",color:ticket.length>0?"#fff":"#8b6f47",padding:"11px 0",fontSize:14,fontWeight:700,cursor:ticket.length>0?"pointer":"default"}}>Finalizar</button>
+              <button className="btn" onClick={onCancelar} style={{flex:1,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"11px 0",fontSize:14,fontWeight:600}}>Cancelar</button>
+              <button className="btn" onClick={ticket.length>0?onFinalizar:undefined} style={{flex:1,background:ticket.length>0?"#10b981":"#1a2235",color:ticket.length>0?"#fff":"#4a5568",padding:"11px 0",fontSize:14,fontWeight:700,cursor:ticket.length>0?"pointer":"default"}}>Finalizar</button>
             </div>
           </div>
         )}
@@ -644,14 +602,14 @@
     return (
       <div style={{padding:"5px 0"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontWeight:600,fontSize:13,color:"#3d2e1f",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.nombre}</div>
-          <div style={{fontSize:12,color:"#8b6f47",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",marginLeft:8}}>{fmt(item.precio)} × {item.cantComprada||1}</div>
+          <div style={{fontWeight:600,fontSize:13,color:colors.text,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.nombre}</div>
+          <div style={{fontSize:12,color:colors.textMuted,fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",marginLeft:8}}>{fmt(item.precio)} × {item.cantComprada||1}</div>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
-          <div style={{fontSize:11,color:"#8b6f47"}}>{item.marca||""}{cantLabel?` · ${cantLabel}`:""}</div>
+          <div style={{fontSize:11,color:colors.textMuted}}>{item.marca||""}{cantLabel?` · ${cantLabel}`:""}</div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-            {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#8ab17d":"#d77a61"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
-            <div className="mono" style={{fontSize:13,fontWeight:700,color:"#3d2e1f"}}>{fmt(totalPagado)}</div>
+            {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
+            <div className="mono" style={{fontSize:13,fontWeight:700,color:colors.text}}>{fmt(totalPagado)}</div>
           </div>
         </div>
       </div>
@@ -666,19 +624,19 @@
     const diff=totalPagadoConRef-totalRef;
     const diffPct=totalRef>0?((diff/totalRef)*100).toFixed(1):null;
     return (
-      <div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.75)",zIndex:2500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-        <div style={{background:"#ffffff",borderRadius:16,width:"100%",maxWidth:420,maxHeight:"85vh",display:"flex",flexDirection:"column",border:"1px solid #d4c5b0",boxShadow:"0 8px 32px rgba(139,92,46,0.15)"}}>
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:colors.card,borderRadius:16,width:"100%",maxWidth:420,maxHeight:"85vh",display:"flex",flexDirection:"column",border:`1px solid ${colors.hoverCard}`,boxShadow:`0 8px 32px ${colors.shadowSoft}`}}>
           {/* Header */}
-          <div style={{padding:"20px 20px 16px",borderBottom:"1px solid #e8dfd0",flexShrink:0}}>
-            <div style={{textAlign:"center",fontWeight:700,fontSize:17,color:"#3d2e1f",marginBottom:14}}>Compra finalizada</div>
+          <div style={{padding:"20px 20px 16px",borderBottom:"1px solid #1a2235",flexShrink:0}}>
+            <div style={{textAlign:"center",fontWeight:700,fontSize:17,color:colors.text,marginBottom:14}}>Compra finalizada</div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
               <div>
-                <div style={{fontSize:11,color:"#8b6f47"}}>{fmtFecha(ticket.fecha)}</div>
-                <div style={{fontSize:12,color:"#6d5d4b",marginTop:2}}>{ticket.items.length} producto{ticket.items.length!==1?"s":""}</div>
+                <div style={{fontSize:11,color:colors.textMuted}}>{fmtFecha(ticket.fecha)}</div>
+                <div style={{fontSize:12,color:colors.textSecondary,marginTop:2}}>{ticket.items.length} producto{ticket.items.length!==1?"s":""}</div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div className="mono" style={{fontWeight:700,fontSize:20,color:"#3d2e1f"}}>{fmt(totalPagado)}</div>
-                {diffPct!==null&&<div style={{fontSize:12,fontWeight:600,color:diff<=0?"#8ab17d":"#d77a61"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+                <div className="mono" style={{fontWeight:700,fontSize:20,color:colors.text}}>{fmt(totalPagado)}</div>
+                {diffPct!==null&&<div style={{fontSize:12,fontWeight:600,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
               </div>
             </div>
           </div>
@@ -687,9 +645,9 @@
             {ticket.items.map((item,j)=><TicketItemRow key={j} item={item}/>)}
           </div>
           {/* Botones */}
-          <div style={{padding:"14px 20px",borderTop:"1px solid #e8dfd0",display:"flex",gap:8,flexShrink:0}}>
-            {!soloVer&&onEliminar&&<button className="btn" onClick={()=>askConfirm("¿Eliminar esta compra?",onEliminar,"Eliminar","#d77a61")} style={{flex:1,background:"#f5e6d3",color:"#d77a61",border:"1px solid #f0d5c8",padding:"11px 0",fontSize:14}}>Eliminar</button>}
-            <button className="btn" onClick={onClose} style={{flex:1,background:soloVer?"#8ab17d":"#e8dfd0",color:soloVer?"#faf8f3":"#3d2e1f",padding:"11px 0",fontSize:14,fontWeight:soloVer?700:400}}>Cerrar</button>
+          <div style={{padding:"14px 20px",borderTop:`1px solid ${colors.cardBorder}`,display:"flex",gap:8,flexShrink:0}}>
+            {!soloVer&&onEliminar&&<button className="btn" onClick={()=>askConfirm("¿Eliminar esta compra?",onEliminar,"Eliminar",colors.error)} style={{flex:1,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"11px 0",fontSize:14}}>Eliminar</button>}
+            <button className="btn" onClick={onClose} style={{flex:1,background:soloVer?colors.success:colors.btnSecondary,color:soloVer?colors.bg:colors.text,padding:"11px 0",fontSize:14,fontWeight:soloVer?700:400}}>Cerrar</button>
           </div>
         </div>
       </div>
@@ -706,14 +664,14 @@
       try{await sb.from("tickets").delete().eq("id",id);}catch(e){console.warn(e);}
     };
     return (<>
-      <div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.75)",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:"#ffffff",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:500,border:"1px solid #e8dfd0",borderBottom:"none",maxHeight:"85vh",overflowY:"auto"}}>
-          <div style={{width:40,height:4,background:"#d4c5b0",borderRadius:2,margin:"0 auto 20px"}}/>
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{background:colors.card,borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:500,border:`1px solid ${colors.cardBorder}`,borderBottom:"none",maxHeight:"85vh",overflowY:"auto"}}>
+          <div style={{width:40,height:4,background:colors.hoverCard,borderRadius:2,margin:"0 auto 20px"}}/>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div style={{fontWeight:700,fontSize:18,color:"#3d2e1f"}}>🧾 Historial de compras</div>
-            <div style={{fontSize:12,color:"#8b6f47"}}>{tickets.length}/15</div>
+            <div style={{fontWeight:700,fontSize:18,color:colors.text}}>🧾 Historial de compras</div>
+            <div style={{fontSize:12,color:colors.textMuted}}>{tickets.length}/15</div>
           </div>
-          {tickets.length===0&&<div style={{color:"#8b6f47",fontSize:14,textAlign:"center",padding:"40px 0"}}>Sin compras registradas aún.</div>}
+          {tickets.length===0&&<div style={{color:colors.textMuted,fontSize:14,textAlign:"center",padding:"40px 0"}}>Sin compras registradas aún.</div>}
           {tickets.map((t)=>{
             const totalPagado=t.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
             const totalRef=t.items.filter(x=>!x.suelto&&(x.totalRef??0)>0).reduce((s,x)=>s+(x.totalRef??0),0);
@@ -723,27 +681,27 @@
             return (
               <div key={t.id} className="card" style={{padding:14,marginBottom:10}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                  <div><div style={{fontSize:12,color:"#8b6f47"}}>{fmtFecha(t.fecha)}</div><div style={{fontSize:11,color:"#6d5d4b",marginTop:2}}>{t.items.length} producto{t.items.length!==1?"s":""}</div></div>
+                  <div><div style={{fontSize:12,color:colors.textMuted}}>{fmtFecha(t.fecha)}</div><div style={{fontSize:11,color:colors.textSecondary,marginTop:2}}>{t.items.length} producto{t.items.length!==1?"s":""}</div></div>
                   <div style={{textAlign:"right"}}>
-                    <div className="mono" style={{fontWeight:700,color:"#3d2e1f"}}>{fmt(totalPagado)}</div>
-                    {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#8ab17d":"#d77a61",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}%</div>}
+                    <div className="mono" style={{fontWeight:700,color:colors.text}}>{fmt(totalPagado)}</div>
+                    {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}%</div>}
                   </div>
                 </div>
                 <div style={{marginTop:8}}>
                   {t.items.map((item,j)=>(
-                    <div key={j} style={{fontSize:12,color:"#6d5d4b",display:"flex",justifyContent:"space-between",padding:"3px 0",borderTop:"1px solid #e8dfd0"}}>
+                    <div key={j} style={{fontSize:12,color:colors.textSecondary,display:"flex",justifyContent:"space-between",padding:"3px 0",borderTop:`1px solid ${colors.cardBorder}`}}>
                       <span>{item.nombre}{item.cantComprada>1?` ×${item.cantComprada}`:""}</span>
-                      <span className="mono" style={{color:"#3d2e1f"}}>{fmt(item.totalPagado??item.precio)}</span>
+                      <span className="mono" style={{color:colors.text}}>{fmt(item.totalPagado??item.precio)}</span>
                     </div>
                   ))}
                 </div>
-                <div style={{marginTop:6,paddingTop:6,borderTop:"1px solid #e8dfd0",textAlign:"center"}}>
-                  <button onClick={()=>setTicketAbierto(t)} style={{background:"none",border:"none",color:"#8b6f47",fontSize:12,cursor:"pointer",padding:"2px 0"}}>Ver detalle</button>
+                <div style={{marginTop:6,paddingTop:6,borderTop:`1px solid ${colors.cardBorder}`,textAlign:"center"}}>
+                  <button onClick={()=>setTicketAbierto(t)} style={{background:"none",border:"none",color:colors.textMuted,fontSize:12,cursor:"pointer",padding:"2px 0"}}>Ver detalle</button>
                 </div>
               </div>
             );
           })}
-          <button className="btn" onClick={onClose} style={{width:"100%",background:"#e8dfd0",color:"#3d2e1f",padding:13,fontSize:14,marginTop:4}}>Cerrar</button>
+          <button className="btn" onClick={onClose} style={{width:"100%",background:colors.btnSecondary,color:colors.text,padding:13,fontSize:14,marginTop:4}}>Cerrar</button>
         </div>
       </div>
       {ticketAbierto&&<FacturaModal ticket={ticketAbierto} onClose={()=>setTicketAbierto(null)} onEliminar={()=>eliminarTicket(ticketAbierto.id)} askConfirm={askConfirm}/>}
@@ -769,7 +727,7 @@
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
     const mesesTxt=fmtMeses(meses,true);
-    const urgColor=meses===null?"#8b6f47":meses===0?"#d77a61":meses<1?"#e07a5f":meses<2?"#e9c46a":"#8ab17d";
+    const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
     const hist=p.historialCompra||[];
     const ultimoPrecio=hist.length>0?hist[hist.length-1].precio:null;
     const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
@@ -815,91 +773,91 @@
         <div style={{padding:"12px 14px",display:"flex",alignItems:"stretch",gap:10}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div style={{fontWeight:600,fontSize:15,color:"#3d2e1f",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,marginRight:8}}>{p.nombre}</div>
+              <div style={{fontWeight:600,fontSize:15,color:colors.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,marginRight:8}}>{p.nombre}</div>
               <div style={{fontSize:12,fontWeight:700,color:urgColor,flexShrink:0,textAlign:"right"}}>{mesesTxt}</div>
             </div>
-            <div style={{fontSize:12,color:"#8b6f47",marginTop:2,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:12,color:colors.textMuted,marginTop:2,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{fmtCantRef(p)}</span>}</span>
-              <span>Stock: <span className="mono" style={{fontWeight:700,color:"#3d2e1f",fontSize:13}}>{fmtTotal(total)}</span></span>
+              <span>Stock: <span className="mono" style={{fontWeight:700,color:colors.text,fontSize:13}}>{fmtTotal(total)}</span></span>
             </div>
             <div style={{marginTop:4,display:"flex",gap:10}}>
-              {p.precioRef&&<span style={{fontSize:12,color:"#8b6f47"}}>Ref: <span style={{color:cat?.color||"#d4a574",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
-              {ultimoPrecio&&<span style={{fontSize:12,color:"#8b6f47"}}>Último: <span style={{color:"#3d2e1f",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
+              {p.precioRef&&<span style={{fontSize:12,color:colors.textMuted}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
+              {ultimoPrecio&&<span style={{fontSize:12,color:colors.textMuted}}>Último: <span style={{color:colors.text,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
             </div>
           </div>
-          <button onClick={()=>setOpen(true)} style={{width:38,alignSelf:"center",height:38,borderRadius:10,background:"#d4a574",border:"none",color:"#faf8f3",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,flexShrink:0}}>+</button>
+          <button onClick={()=>setOpen(true)} style={{width:38,alignSelf:"center",height:38,borderRadius:10,background:colors.accent,border:"none",color:"#fff",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,flexShrink:0}}>+</button>
         </div>
       </div>
       {open&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.75)",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&setOpen(false)}>
-          <div style={{background:"#ffffff",borderRadius:16,padding:"20px",width:"100%",maxWidth:400,border:`1px solid ${cat?.color||"#d4c5b0"}`,boxShadow:"0 8px 32px rgba(139,92,46,0.15)"}}>
+        <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&setOpen(false)}>
+          <div style={{background:colors.card,borderRadius:16,padding:"20px",width:"100%",maxWidth:400,border:`1px solid ${cat?.color||"#2a3550"}`,boxShadow:`0 8px 32px ${colors.shadowSoft}`}}>
             {/* Header: nombre + marca + stock */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-              <div style={{fontWeight:700,fontSize:17,color:"#3d2e1f"}}>{p.nombre}</div>
-              <div style={{fontSize:13,color:"#8b6f47",textAlign:"right",marginLeft:8}}>{p.marca||"—"}</div>
+              <div style={{fontWeight:700,fontSize:17,color:colors.text}}>{p.nombre}</div>
+              <div style={{fontSize:13,color:colors.textMuted,textAlign:"right",marginLeft:8}}>{p.marca||"—"}</div>
             </div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <div style={{fontSize:12,color:"#8b6f47"}}>{p.precioRef&&<span>Ref: <span style={{color:cat?.color||"#d4a574",fontWeight:700}}>{fmt(p.precioRef)}</span></span>}</div>
-              <div style={{fontSize:12,color:"#8b6f47",textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
+              <div style={{fontSize:12,color:colors.textMuted}}>{p.precioRef&&<span>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(p.precioRef)}</span></span>}</div>
+              <div style={{fontSize:12,color:colors.textMuted,textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
             </div>
             {esM?(
               <div style={{marginBottom:14}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,alignItems:"end"}}>
-                  <div><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1000" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
+                  <div><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1000" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
                   <div style={{width:60}}>
-                    <div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{p.rollosRef||"Rollos"}</div>
+                    <div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{p.rollosRef||"Rollos"}</div>
                     <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.rollosRef?String(p.rollosRef):"3"} value={cantRollos} onChange={e=>setCantRollos(e.target.value)} style={{textAlign:"center"}}/>
                   </div>
-                  <div style={{display:"flex",alignItems:"flex-end",paddingBottom:10,color:"#8b6f47",fontSize:14}}>×</div>
+                  <div style={{display:"flex",alignItems:"flex-end",paddingBottom:10,color:colors.textMuted,fontSize:14}}>×</div>
                   <div style={{width:60}}>
-                    <div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{p.metrosRef||"Metros"}</div>
+                    <div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{p.metrosRef||"Metros"}</div>
                     <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.metrosRef?String(p.metrosRef):"40"} value={cantMetros} onChange={e=>setCantMetros(e.target.value)} style={{textAlign:"center"}}/>
                   </div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:6,marginTop:6,alignItems:"end"}}>
                   <div/>
-                  <div style={{width:60}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
+                  <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
                 </div>
               </div>
             ):(
               <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,marginBottom:14,alignItems:"end"}}>
-                <div><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1200" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{p.cantidadRef?`${p.cantidadRef}${p.unidad||"gr"}`:(p.unidad||"gr")}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{textAlign:"center"}}/></div>
-                <div style={{width:60}}><div style={{fontSize:10,color:"#8b6f47",marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase"}}>Precio $</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1200" value={precio} onChange={e=>setPrecio(e.target.value)} autoFocus/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>{p.cantidadRef?`${p.cantidadRef}${p.unidad||"gr"}`:(p.unidad||"gr")}</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={p.cantidadRef?String(p.cantidadRef):"cant."} value={cantidad} onChange={e=>setCantidad(e.target.value)} style={{textAlign:"center"}}/></div>
+                <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
               </div>
             )}
-            <div style={{background:"#faf8f3",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <span style={{fontSize:13,color:"#8b6f47"}}>Total</span>
+            <div style={{background:colors.inputBg,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{fontSize:13,color:colors.textMuted}}>Total</span>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#d77a61":"#8ab17d"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
-                <span className="mono" style={{fontWeight:700,fontSize:16,color:totalPagado?"#3d2e1f":"#d4c5b0"}}>{totalPagado?fmt(totalPagado):"—"}</span>
+                {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
+                <span className="mono" style={{fontWeight:700,fontSize:16,color:totalPagado?colors.text:colors.hoverCard}}>{totalPagado?fmt(totalPagado):"—"}</span>
               </div>
             </div>
             <div style={{display:"flex",gap:10}}>
-              <button className="btn" onClick={()=>setOpen(false)} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",padding:"11px 0",fontSize:14}}>Cancelar</button>
-              <button className="btn" onClick={doRegistrar} disabled={saving||!precioNum||precioNum<=0} style={{flex:2,background:precioNum>0?(cat?.color||"#8ab17d"):"#e8dfd0",color:precioNum>0?"#faf8f3":"#8b6f47",padding:"11px 0",fontSize:14,fontWeight:700}}>Confirmar</button>
+              <button className="btn" onClick={()=>setOpen(false)} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:"11px 0",fontSize:14}}>Cancelar</button>
+              <button className="btn" onClick={doRegistrar} disabled={saving||!precioNum||precioNum<=0} style={{flex:2,background:precioNum>0?(cat?.color||colors.success):colors.btnSecondary,color:precioNum>0?colors.bg:colors.textMuted,padding:"11px 0",fontSize:14,fontWeight:700}}>Confirmar</button>
             </div>
           </div>
         </div>
       )}
     </>);
   }
-  function BottomTabs({activeTab,setActiveTab,modoCompras,onTapCompras,ticketCount}) {
+  function BottomTabs({activeTab,setActiveTab,modoCompras,onTapCompras,ticketCount,colors}) {
     return (
-      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#ffffff",borderTop:"1px solid #e8dfd0",display:"flex",zIndex:200,maxWidth:500,margin:"0 auto",height:64,alignItems:"stretch"}}>
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:colors.card,borderTop:`1px solid ${colors.cardBorder}`,display:"flex",zIndex:200,maxWidth:500,margin:"0 auto",height:64,alignItems:"stretch"}}>
         {/* Precios */}
         <button onClick={()=>setActiveTab("productos")} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
           <span style={{fontSize:20}}>💲</span>
-          <span style={{fontSize:11,fontWeight:600,color:activeTab==="productos"&&!modoCompras?"#d4a574":"#8b6f47"}}>Precios</span>
-          {activeTab==="productos"&&!modoCompras&&<div style={{width:20,height:2,background:"#d4a574",borderRadius:1}}/>}
+          <span style={{fontSize:11,fontWeight:600,color:activeTab==="productos"&&!modoCompras?colors.accent:colors.textMuted}}>Precios</span>
+          {activeTab==="productos"&&!modoCompras&&<div style={{width:20,height:2,background:colors.accent,borderRadius:1}}/>}
         </button>
 
         {/* Compras — círculo que ocupa toda la altura */}
         <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"stretch",padding:"4px 0"}}>
-          <button onClick={onTapCompras} style={{position:"relative",aspectRatio:"1",background:"#ffffff",border:`3px solid ${modoCompras?"#8ab17d":"#d4c5b0"}`,borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
+          <button onClick={onTapCompras} style={{position:"relative",aspectRatio:"1",background:colors.card,border:`3px solid ${modoCompras?colors.success:colors.hoverCard}`,borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
             <span style={{fontSize:22}}>🛒</span>
             {ticketCount>0&&(
-              <div style={{position:"absolute",top:-2,right:-2,background:"#d77a61",borderRadius:"50%",minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#faf8f3",padding:"0 3px"}}>
+              <div style={{position:"absolute",top:-2,right:-2,background:colors.error,borderRadius:"50%",minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",padding:"0 3px"}}>
                 {ticketCount}
               </div>
             )}
@@ -909,8 +867,8 @@
         {/* Stock */}
         <button onClick={()=>setActiveTab("stock")} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
           <span style={{fontSize:20}}>📦</span>
-          <span style={{fontSize:11,fontWeight:600,color:activeTab==="stock"&&!modoCompras?"#d4a574":"#8b6f47"}}>Stock</span>
-          {activeTab==="stock"&&!modoCompras&&<div style={{width:20,height:2,background:"#d4a574",borderRadius:1}}/>}
+          <span style={{fontSize:11,fontWeight:600,color:activeTab==="stock"&&!modoCompras?colors.accent:colors.textMuted}}>Stock</span>
+          {activeTab==="stock"&&!modoCompras&&<div style={{width:20,height:2,background:colors.accent,borderRadius:1}}/>}
         </button>
       </div>
     );
@@ -919,10 +877,10 @@
   function TopBar({title,subtitle,onBack,right}) {
     return (
       <div style={{padding:"28px 0 12px",display:"flex",alignItems:"center",gap:12,minHeight:90}}>
-        {onBack&&<button className="btn" onClick={onBack} style={{background:"#ffffff",color:"#3d2e1f",border:"1px solid #e8dfd0",padding:"8px 12px",fontSize:14,flexShrink:0}}>←</button>}
+        {onBack&&<button className="btn" onClick={onBack} style={{background:colors.card,color:colors.text,border:`1px solid ${colors.cardBorder}`,padding:"8px 12px",fontSize:14,flexShrink:0}}>←</button>}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:700,fontSize:22,letterSpacing:"-.03em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#3d2e1f"}}>{title}</div>
-          <div style={{fontSize:12,color:"#8b6f47",marginTop:3,minHeight:18}}>{subtitle||""}</div>
+          <div style={{fontWeight:700,fontSize:22,letterSpacing:"-.03em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:colors.text}}>{title}</div>
+          <div style={{fontSize:12,color:colors.textMuted,marginTop:3,minHeight:18}}>{subtitle||""}</div>
         </div>
         {right}
       </div>
@@ -934,7 +892,7 @@
     return (
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" ref={inputRef} className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>onChange(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
-        <select value={sortValue} onChange={e=>onSort(e.target.value)} style={{background:"#ffffff",border:"1px solid #e8dfd0",color:"#6d5d4b",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
+        <select value={sortValue} onChange={e=>onSort(e.target.value)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
           {sortOptions}
         </select>
       </div>
@@ -945,20 +903,20 @@
     return <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)} style={{marginBottom:14}}/>;
   }
 
-  function ProdCard({p,cat,gastoMensual,push,selectMode,selected,onToggle}) {
+  function ProdCard({p,cat,gastoMensual,push,selectMode,selected,onToggle,colors}) {
     const gm=gastoMensual(p); const isSel=selected?.has(p.id);
     return (
-      <div className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#d4a574":cat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#ffffff",transition:"all .15s"}}
+      <div className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?colors.accent:cat?.color||"#444"}`,cursor:"pointer",background:isSel?`${colors.accent}22`:colors.card,transition:"all .15s"}}
         onClick={()=>selectMode?onToggle?.(p.id):push("detalle",{prodId:p.id})}>
-        {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#d4a574":"#d4c5b0"}`,background:isSel?"#d4a574":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#faf8f3",fontWeight:700}}>{isSel?"✓":""}</div>}
+        {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?colors.accent:colors.hoverCard}`,background:isSel?colors.accent:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#3d2e1f"}}>{p.nombre}</div>
-          <div style={{fontSize:12,color:"#8b6f47",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#b09b87"}}>{fmtCantRef(p)}</span>}</div>
+          <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:colors.text}}>{p.nombre}</div>
+          <div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:colors.textMuted}}>{fmtCantRef(p)}</span>}</div>
         </div>
         <div style={{textAlign:"right",flexShrink:0}}>
           {p.precioRef
-            ?<><div className="mono" style={{fontWeight:700,fontSize:16,color:"#3d2e1f"}}>{fmt(p.precioRef)}</div>{gm&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:cat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gm)}</div>}</>
-            :<div style={{fontSize:12,color:"#8b6f47"}}>Sin precio</div>}
+            ?<><div className="mono" style={{fontWeight:700,fontSize:16,color:colors.text}}>{fmt(p.precioRef)}</div>{gm&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:cat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gm)}</div>}</>
+            :<div style={{fontSize:12,color:colors.textMuted}}>Sin precio</div>}
         </div>
       </div>
     );
@@ -975,6 +933,7 @@
     const [toast,setToast]=useState(null);
     const [confirm,setConfirm]=useState(null);
     const [confirmCompra,setConfirmCompra]=useState(null);
+    const [isDarkMode,setIsDarkMode]=useState(()=>{try{return localStorage.getItem("canasta_dark_mode")!=="false";}catch{return true;}});
     const TICKET_KEY="canasta_ticket_draft";
     const ticketGuardado=()=>{try{const t=localStorage.getItem(TICKET_KEY);return t?JSON.parse(t):null;}catch{return null;}};
     const draft=ticketGuardado();
@@ -988,15 +947,8 @@
     const [showItemSuelto,setShowItemSuelto]=useState(false);
     const [showNuevoProdModal,setShowNuevoProdModal]=useState(false);
 
-    // Theme state
-    const [isDarkMode,setIsDarkMode]=useState(()=>{
-      try{return localStorage.getItem("canasta_dark_mode")==="true";}catch{return false;}
-    });
-    const toggleDarkMode=()=>{
-      const newMode=!isDarkMode;
-      setIsDarkMode(newMode);
-      try{localStorage.setItem("canasta_dark_mode",String(newMode));}catch(e){}
-    };
+    const toggleDarkMode=()=>{const newMode=!isDarkMode;setIsDarkMode(newMode);try{localStorage.setItem("canasta_dark_mode",String(newMode));}catch(e){}};
+    const colors=getColors(isDarkMode);
 
     // Guardar ticket en localStorage cada vez que cambia
     useEffect(()=>{
@@ -1005,6 +957,15 @@
         else localStorage.removeItem(TICKET_KEY);
       }catch(e){}
     },[ticket]);
+
+    // Aplicar CSS variables dinámicamente
+    useEffect(()=>{
+      const root=document.documentElement;
+      Object.entries(colors).forEach(([key,value])=>{
+        root.style.setProperty(`--${key}`,value);
+      });
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content",colors.bg);
+    },[colors]);
 
     const current=stack[stack.length-1];
     const push=(screen,params={})=>setStack(s=>[...s,{screen,...params}]);
@@ -1104,7 +1065,7 @@
     };
 
     const showToast=(msg,tipo="ok")=>{setToast({msg,tipo});setTimeout(()=>setToast(null),2400);};
-    const askConfirm=(msg,onOk,okLabel="Confirmar",okColor="#d4a574")=>setConfirm({msg,onOk,okLabel,okColor});
+    const askConfirm=(msg,onOk,okLabel="Confirmar",okColor="#3b82f6")=>setConfirm({msg,onOk,okLabel,okColor});
     const getCat=(id)=>cats.find(c=>c.id===id);
     const getSub=(catId,subId)=>getCat(catId)?.subs?.find(s=>s.id===subId);
     const gastoMensual=(p)=>(p.precioRef&&p.unidadesMes)?p.precioRef*p.unidadesMes:null;
@@ -1209,7 +1170,7 @@
             }
           } catch(e){console.warn("Ticket save error:",e);}
         })();
-      },"Finalizar","#8ab17d");
+      },"Finalizar","#10b981");
     };
 
     const cancelarCompra=()=>{
@@ -1217,22 +1178,22 @@
       askConfirm("¿Cancelar la compra? Se perderán los items del ticket.",()=>{
         setTicket([]);setTicketOpen(false);setModoCompras(false);
         try{localStorage.removeItem(TICKET_KEY);}catch(e){}
-      },"Cancelar compra","#d77a61");
+      },"Cancelar compra","#ef4444");
     };
 
-    if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#d4a574",fontFamily:"monospace"}}>Cargando…</div>;
+    if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:colors.accent,fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,toggleDarkMode,isDarkMode};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode};
 
     const isMenuScreen=["export","backup","import","config"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
 
     return (
-      <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",minHeight:"100vh",background:"#faf8f3",color:"#3d2e1f"}}>
-        {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:3000,background:toast.tipo==="err"?"#d77a61":"#8ab17d",color:"#faf8f3",padding:"9px 20px",borderRadius:10,fontWeight:600,fontSize:13,boxShadow:"0 8px 32px rgba(139,92,46,0.15)",whiteSpace:"nowrap",maxWidth:"90vw",textAlign:"center"}}>{toast.msg}</div>}
-        {confirm&&<Confirm msg={confirm.msg} onOk={()=>{confirm.onOk();setConfirm(null);}} onCancel={()=>setConfirm(null)} okLabel={confirm.okLabel} okColor={confirm.okColor}/>}
-        {confirmCompra&&<ConfirmCompra data={confirmCompra} onOk={()=>{confirmCompra.onOk();setConfirmCompra(null);}} onCancel={()=>setConfirmCompra(null)}/>}
+      <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",minHeight:"100vh",background:colors.bg,color:colors.text}}>
+        {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:3000,background:toast.tipo==="err"?colors.error:colors.success,color:"#fff",padding:"9px 20px",borderRadius:10,fontWeight:600,fontSize:13,boxShadow:`0 8px 32px ${colors.shadowSoft}`,whiteSpace:"nowrap",maxWidth:"90vw",textAlign:"center"}}>{toast.msg}</div>}
+        {confirm&&<Confirm colors={colors} msg={confirm.msg} onOk={()=>{confirm.onOk();setConfirm(null);}} onCancel={()=>setConfirm(null)} okLabel={confirm.okLabel} okColor={confirm.okColor}/>}
+        {confirmCompra&&<ConfirmCompra colors={colors} data={confirmCompra} onOk={()=>{confirmCompra.onOk();setConfirmCompra(null);}} onCancel={()=>setConfirmCompra(null)}/>}
         <div style={{maxWidth:500,margin:"0 auto",padding:`0 16px ${modoCompras?"180px":"100px"}`}}>
           {s==="home"        &&<HomeScreen {...shared} activeTab={activeTab}/>}
           {s==="subs"        &&<SubsScreen {...shared} catId={current.catId} activeTab={activeTab}/>}
@@ -1247,25 +1208,25 @@
           {s==="import"      &&<ImportScreen {...shared}/>}
         </div>
         {!isFormScreen&&!isMenuScreen&&(activeTab==="productos"||activeTab==="stock")&&!modoCompras&&(
-          <FloatingAdd onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
+          <FloatingAdd colors={colors} onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
         )}
         {modoCompras&&(
-          <TicketDrawer ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm} onAddSuelto={()=>setShowItemSuelto(true)} onAddProducto={()=>setShowNuevoProdModal(true)} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses}/>
+          <TicketDrawer colors={colors} ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm} onAddSuelto={()=>setShowItemSuelto(true)} onAddProducto={()=>setShowNuevoProdModal(true)} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses}/>
         )}
-        {showHistorial&&<HistorialTickets tickets={tickets} setTickets={setTickets} onClose={()=>setShowHistorial(false)} askConfirm={askConfirm}/>}
-        {ticketFinalizado&&<TicketFinalizadoModal ticket={ticketFinalizado} onClose={()=>setTicketFinalizado(null)}/>}
+        {showHistorial&&<HistorialTickets colors={colors} tickets={tickets} setTickets={setTickets} onClose={()=>setShowHistorial(false)} askConfirm={askConfirm}/>}
+        {ticketFinalizado&&<TicketFinalizadoModal colors={colors} ticket={ticketFinalizado} onClose={()=>setTicketFinalizado(null)}/>}
         {showIniciarCompra&&(
-          <Confirm msg="¿Iniciar compra?" onOk={()=>{setModoCompras(true);setShowIniciarCompra(false);}} onCancel={()=>setShowIniciarCompra(false)} okLabel="Iniciar" okColor="#8ab17d"/>
+          <Confirm colors={colors} msg="¿Iniciar compra?" onOk={()=>{setModoCompras(true);setShowIniciarCompra(false);}} onCancel={()=>setShowIniciarCompra(false)} okLabel="Iniciar" okColor={colors.success}/>
         )}
-        {showItemSuelto&&<ItemSueltoModal onClose={()=>setShowItemSuelto(false)} onSave={agregarItemSuelto}/>}
+        {showItemSuelto&&<ItemSueltoModal colors={colors} onClose={()=>setShowItemSuelto(false)} onSave={agregarItemSuelto}/>}
         {showNuevoProdModal&&(
-          <div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.75)",zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 0 80px"}} onClick={e=>e.target===e.currentTarget&&setShowNuevoProdModal(false)}>
-            <div style={{width:"100%",maxWidth:500,background:"#faf8f3"}}>
+          <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 0 80px"}} onClick={e=>e.target===e.currentTarget&&setShowNuevoProdModal(false)}>
+            <div style={{width:"100%",maxWidth:500,background:colors.inputBg}}>
               <NuevoProdScreen cats={cats} initCatId={current.catId||null} initSubId={null} productos={productos} guardar={guardar} pop={()=>setShowNuevoProdModal(false)} showToast={showToast} desdeCompras={true} agregarAlTicket={agregarAlTicket}/>
             </div>
           </div>
         )}
-        {!isFormScreen&&<BottomTabs activeTab={activeTab} setActiveTab={(t)=>{setActiveTab(t);if(modoCompras)setModoCompras(false);}} modoCompras={modoCompras} ticketCount={ticket.length} onTapCompras={()=>{
+        {!isFormScreen&&<BottomTabs colors={colors} activeTab={activeTab} setActiveTab={(t)=>{setActiveTab(t);if(modoCompras)setModoCompras(false);}} modoCompras={modoCompras} ticketCount={ticket.length} onTapCompras={()=>{
           if(modoCompras){}
           else if(ticket.length>0){ setModoCompras(true); }
           else { setShowIniciarCompra(true); }
@@ -1275,35 +1236,33 @@
   }
 
   // ── HomeScreen ───────────────────────────────────────────────────────────────
-  function HamburgerMenu({push,setShowHistorial,toggleDarkMode,isDarkMode}) {
+  function HamburgerMenu({push,setShowHistorial,colors,isDarkMode,toggleDarkMode}) {
     const [open,setOpen]=useState(false);
     return (
       <div style={{position:"relative"}}>
-        <button className="btn" onClick={()=>setOpen(o=>!o)} style={{background:"#ffffff",border:"1px solid #e8dfd0",color:"#3d2e1f",padding:"9px 13px",fontSize:18,lineHeight:1}}>☰</button>
+        <button className="btn" onClick={()=>setOpen(o=>!o)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:"9px 13px",fontSize:18,lineHeight:1}}>☰</button>
         {open&&<>
           <div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setOpen(false)}/>
-          <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:"#ffffff",border:"1px solid #e8dfd0",borderRadius:12,padding:8,zIndex:300,minWidth:180,boxShadow:"0 8px 32px #0006"}}>
-            <button className="btn" onClick={()=>{setOpen(false);push("import");}} style={{width:"100%",background:"none",color:"#3d2e1f",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📥 Importar</button>
-            <button className="btn" onClick={()=>{setOpen(false);push("export");}} style={{width:"100%",background:"none",color:"#3d2e1f",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📋 Exportar</button>
-            <button className="btn" onClick={()=>{setOpen(false);push("backup");}} style={{width:"100%",background:"none",color:"#3d2e1f",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>💾 Backup</button>
-            <div style={{borderTop:"1px solid #e8dfd0",margin:"4px 0"}}/>
-            <button className="btn" onClick={()=>{setOpen(false);setShowHistorial(true);}} style={{width:"100%",background:"none",color:"#3d2e1f",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>🧾 Historial de compras</button>
-            <div style={{borderTop:"1px solid #e8dfd0",margin:"4px 0"}}/>
-            <button className="btn" onClick={()=>{setOpen(false);push("config");}} style={{width:"100%",background:"none",color:"#3d2e1f",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📂 Editar categorías</button>
-            <div style={{borderTop:"1px solid #e8dfd0",margin:"4px 0"}}/>
-            <button className="btn" onClick={()=>{toggleDarkMode();setOpen(false);}} style={{width:"100%",background:"none",color:"#3d2e1f",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>
-              {isDarkMode?"☀️ Modo claro":"🌙 Modo oscuro"}
-            </button>
+          <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:colors.card,border:`1px solid ${colors.cardBorder}`,borderRadius:12,padding:8,zIndex:300,minWidth:180,boxShadow:`0 8px 32px ${colors.shadowSoft}`}}>
+            <button className="btn" onClick={()=>{setOpen(false);push("import");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📥 Importar</button>
+            <button className="btn" onClick={()=>{setOpen(false);push("export");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📋 Exportar</button>
+            <button className="btn" onClick={()=>{setOpen(false);push("backup");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>💾 Backup</button>
+            <div style={{borderTop:`1px solid ${colors.cardBorder}`,margin:"4px 0"}}/>
+            <button className="btn" onClick={()=>{setOpen(false);setShowHistorial(true);}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>🧾 Historial de compras</button>
+            <div style={{borderTop:`1px solid ${colors.cardBorder}`,margin:"4px 0"}}/>
+            <button className="btn" onClick={()=>{setOpen(false);push("config");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📂 Editar categorías</button>
+            <div style={{borderTop:`1px solid ${colors.cardBorder}`,margin:"4px 0"}}/>
+            <button className="btn" onClick={()=>{toggleDarkMode();setOpen(false);}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>{isDarkMode?"☀️ Modo cálido":"🌙 Modo oscuro"}</button>
           </div>
         </>}
       </div>
     );
   }
 
-  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial,setConfirmCompra,toggleDarkMode,isDarkMode}) {
+  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode}) {
     const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false); const [sortCats,setSortCats]=useState("nombre-az");
     const [menuOpen,setMenuOpen]=useState(false);
-    const isStock=activeTab==="stock"; 
+    const isStock=activeTab==="stock";
     const total=productos.reduce((s,p)=>s+(gastoMensual(p)||0),0);
     const addCat=async({label,emoji,color})=>{await guardar([...cats,{id:uid(),label,emoji,color,subs:[]}],null);setShowAddCat(false);showToast("✅ Categoría creada");};
     const sortedCats=[...cats].sort((a,b)=>{
@@ -1320,14 +1279,14 @@
     const results=q?productos.filter(p=>norm(p.nombre).includes(norm(q))||norm(p.marca||"").includes(norm(q))).filter(p=>!modoCompras||!ticketIdsQ.has(p.id)):[];
     return (<div className="fade">
       <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-        <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#3d2e1f"}}>🧺 Canasta</div>
-          <div style={{fontSize:12,color:"#8b6f47",marginTop:3}}>{productos.length} productos{!isStock&&!modoCompras&&<> · <span style={{color:"#d4a574",fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
+        <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:colors.text}}>🧺 Canasta</div>
+          <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{productos.length} productos{!isStock&&!modoCompras&&<> · <span style={{color:colors.accent,fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
         </div>
-        {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} toggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode}/>}
+        {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode}/>}
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
-        <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:"#ffffff",border:"1px solid #e8dfd0",color:"#6d5d4b",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
+        <select value={sortCats} onChange={e=>setSortCats(e.target.value)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
           {!isStock&&!modoCompras&&<><option value="gasto-desc">Gasto ↓</option><option value="gasto-asc">Gasto ↑</option></>}
@@ -1335,11 +1294,11 @@
       </div>
       {q?(
         <>
-          <div style={{fontSize:12,color:"#8b6f47",marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
+          <div style={{fontSize:12,color:colors.textMuted,marginBottom:10}}>{results.length} resultado{results.length!==1?"s":""} en toda la canasta</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>{[...results].sort((a,b)=>alphaStr(a.nombre,b.nombre)).map(p=>{const cat=cats.find(c=>c.id===p.catId);
-            if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} />;
-            if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} />;
-            return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push}/>;
+            if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} colors={colors}/>;
+            if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={cat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} colors={colors}/>;
+            return <ProdCard key={p.id} p={p} cat={cat} gastoMensual={gastoMensual} push={push} colors={colors}/>;
           })}</div>
         </>
       ):(
@@ -1350,19 +1309,19 @@
             return (<div key={cat.id} className="card row" style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14,borderLeft:`4px solid ${cat.color}`}}
               onClick={()=>cat.subs?.length?push("subs",{catId:cat.id}):push("lista",{catId:cat.id,subId:null})}>
               <div style={{fontSize:28}}>{cat.emoji}</div>
-              <div style={{flex:1}}><div style={{fontWeight:600,fontSize:16,color:"#3d2e1f"}}>{cat.label}</div><div style={{fontSize:12,color:"#8b6f47",marginTop:2}}>{cat.subs?.length?`${cat.subs.length} subcategorías · `:""}{catProds.length} productos</div></div>
-              <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#8b6f47"}}>/mes</span></div>}<div style={{fontSize:18,color:"#d4c5b0",marginTop:2}}>›</div></div>
+              <div style={{flex:1}}><div style={{fontWeight:600,fontSize:16,color:colors.text}}>{cat.label}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{cat.subs?.length?`${cat.subs.length} subcategorías · `:""}{catProds.length} productos</div></div>
+              <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:colors.textMuted}}>/mes</span></div>}<div style={{fontSize:18,color:colors.hoverCard,marginTop:2}}>›</div></div>
             </div>);
           })}
-          {!modoCompras&&<button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#d4a57411",border:"1px solid #d4a574",color:"#d4a574",padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar categoría</button>}
+          {!modoCompras&&<button className="btn" onClick={()=>setShowAddCat(true)} style={{background:`${colors.accent}11`,border:`1px solid ${colors.accent}`,color:colors.accent,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar categoría</button>}
         </div>
       )}
-      {showAddCat&&<AddModal title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={addCat} showColor={true}/>}
+      {showAddCat&&<AddModal colors={colors} title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={addCat} showColor={true}/>}
     </div>);
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,toggleDarkMode,isDarkMode}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
     const isStock=activeTab==="stock"; 
@@ -1377,7 +1336,7 @@
     const orphanGasto=orphans.reduce((s,p)=>s+(gastoMensual(p)||0),0);
 
     const SortSelect=()=>(
-      <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#ffffff",border:"1px solid #e8dfd0",color:"#6d5d4b",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
+      <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
         {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
         <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
@@ -1388,10 +1347,10 @@
     const resultsQ=q?productos.filter(p=>norm(p.nombre).includes(norm(q))||norm(p.marca||"").includes(norm(q))).filter(p=>!modoCompras||!ticketIdsQS.has(p.id)):[];
 
     return (<div className="fade">
-      <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:"#d4a574",fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
+      <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:colors.accent,fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
-          <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:"#ffffff",border:"1px solid #e8dfd0",color:"#6d5d4b",padding:"8px 11px",fontSize:12}}>Ver todos</button>
-          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} toggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode}/>}
+          <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 11px",fontSize:12}}>Ver todos</button>
+          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
         </div>}/>
       <SearchRow q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
@@ -1399,7 +1358,7 @@
         <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
       </>}/>
       {q?(<>
-        <div style={{fontSize:12,color:"#8b6f47",marginBottom:10}}>{resultsQ.length} resultado{resultsQ.length!==1?"s":""} en toda la canasta</div>
+        <div style={{fontSize:12,color:colors.textMuted,marginBottom:10}}>{resultsQ.length} resultado{resultsQ.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{resultsQ.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
           if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} />;
           if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} />;
@@ -1410,19 +1369,19 @@
           const subProds=productos.filter(p=>p.catId===catId&&p.subId===sub.id);
           const gasto=subProds.reduce((s,p)=>s+(gastoMensual(p)||0),0);
           return (<div key={sub.id} className="card row" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${cat.color}`}} onClick={()=>push("lista",{catId,subId:sub.id})}>
-            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:15,color:"#3d2e1f"}}>{sub.label}</div><div style={{fontSize:12,color:"#8b6f47",marginTop:2}}>{subProds.length} productos</div></div>
-            <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:"#8b6f47"}}>/mes</span></div>}<div style={{fontSize:18,color:"#d4c5b0"}}>›</div></div>
+            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:15,color:colors.text}}>{sub.label}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{subProds.length} productos</div></div>
+            <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:colors.textMuted}}>/mes</span></div>}<div style={{fontSize:18,color:colors.hoverCard}}>›</div></div>
           </div>);
         })}
         {orphans.length>0&&(
-          <div className="card row" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderLeft:"3px solid #8b6f47",opacity:0.85}} onClick={()=>push("lista",{catId,subId:"__sin_sub__"})}>
+          <div className="card row" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderLeft:"3px solid #4a5568",opacity:0.85}} onClick={()=>push("lista",{catId,subId:"__sin_sub__"})}>
             <div style={{flex:1}}>
-              <div style={{fontWeight:600,fontSize:15,color:"#6d5d4b"}}>Sin subcategoría</div>
-              <div style={{fontSize:12,color:"#8b6f47",marginTop:2}}>{orphans.length} producto{orphans.length!==1?"s":""} sin asignar · usá Selec. para moverlos</div>
+              <div style={{fontWeight:600,fontSize:15,color:colors.textSecondary}}>Sin subcategoría</div>
+              <div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{orphans.length} producto{orphans.length!==1?"s":""} sin asignar · usá Selec. para moverlos</div>
             </div>
             <div style={{textAlign:"right"}}>
-              {orphanGasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:"#6d5d4b"}}>{fmt(orphanGasto)}<span style={{fontSize:10,color:"#8b6f47"}}>/mes</span></div>}
-              <div style={{fontSize:18,color:"#d4c5b0"}}>›</div>
+              {orphanGasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:colors.textSecondary}}>{fmt(orphanGasto)}<span style={{fontSize:10,color:colors.textMuted}}>/mes</span></div>}
+              <div style={{fontSize:18,color:colors.hoverCard}}>›</div>
             </div>
           </div>
         )}
@@ -1431,7 +1390,7 @@
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
-  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,toggleDarkMode,isDarkMode}) {
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial}) {
     const [q,setQ]=useState("");
     const isStock=activeTab==="stock";
     const defaultSort="nombre-az";
@@ -1479,12 +1438,12 @@
     };
     const catGasto=productos.filter(p=>p.catId===catId).reduce((s,p)=>s+(gastoMensual(p)||0),0);
     const title=isUnassignedView?`${cat.emoji} Sin subcategoría`:sub?`${cat.emoji} ${sub.label}`:`${cat.emoji} ${cat.label}`;
-    const listSubtitle=sub?cat.label:isUnassignedView?cat.label:(!isStock&&!modoCompras&&catGasto>0)?<span style={{color:"#d4a574",fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined;
+    const listSubtitle=sub?cat.label:isUnassignedView?cat.label:(!isStock&&!modoCompras&&catGasto>0)?<span style={{color:colors.accent,fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined;
     return (<div className="fade">
-      {moveModal&&(<div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.70)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-        <div style={{background:"#ffffff",border:"1px solid #d4c5b0",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
-          <div style={{fontWeight:600,marginBottom:4,color:"#3d2e1f"}}>Mover {selected.size} producto{selected.size>1?"s":""}</div>
-          <div style={{fontSize:12,color:"#8b6f47",marginBottom:14}}>Elegí el destino</div>
+      {moveModal&&(<div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
+          <div style={{fontWeight:600,marginBottom:4,color:colors.text}}>Mover {selected.size} producto{selected.size>1?"s":""}</div>
+          <div style={{fontSize:12,color:colors.textMuted,marginBottom:14}}>Elegí el destino</div>
           <select className="inp" value={moveDest} onChange={e=>setMoveDest(e.target.value)} style={{marginBottom:16}}>
             <option value="">— Elegir —</option>
             {[...cats].sort((a,b)=>alpha(a,b)).map(c=>[
@@ -1493,44 +1452,44 @@
             ])}
           </select>
           <div style={{display:"flex",gap:10}}>
-            <button className="btn" onClick={()=>{setMoveModal(false);setMoveDest("");}} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",padding:12}}>Cancelar</button>
-            <button className="btn" onClick={doMove} style={{flex:1,background:"#d4a574",color:"#faf8f3",padding:12}} disabled={!moveDest}>Mover</button>
+            <button className="btn" onClick={()=>{setMoveModal(false);setMoveDest("");}} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12}}>Cancelar</button>
+            <button className="btn" onClick={doMove} style={{flex:1,background:colors.accent,color:"#fff",padding:12}} disabled={!moveDest}>Mover</button>
           </div>
         </div>
       </div>)}
       <TopBar title={title} subtitle={listSubtitle} onBack={()=>{cancelSelect();pop();}}
         right={selectMode&&!isStock&&!modoCompras
           ?<div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <div style={{fontSize:13,color:"#d4a574",fontWeight:600}}>{selected.size} sel.</div>
-              {selected.size>0&&<button className="btn" onClick={()=>setMoveModal(true)} style={{background:"#d4a574",color:"#faf8f3",padding:"8px 12px",fontSize:13}}>Mover</button>}
-              <button className="btn" onClick={cancelSelect} style={{background:"#e8dfd0",color:"#6d5d4b",padding:"8px 12px",fontSize:13}}>✕</button>
+              <div style={{fontSize:13,color:colors.accent,fontWeight:600}}>{selected.size} sel.</div>
+              {selected.size>0&&<button className="btn" onClick={()=>setMoveModal(true)} style={{background:colors.accent,color:"#fff",padding:"8px 12px",fontSize:13}}>Mover</button>}
+              <button className="btn" onClick={cancelSelect} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:"8px 12px",fontSize:13}}>✕</button>
             </div>
           :<div style={{display:"flex",gap:8}}>
-              {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#ffffff",border:"1px solid #e8dfd0",color:"#6d5d4b",padding:"8px 11px",fontSize:12}}>Selec.</button>}
-              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} toggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode}/>}
+              {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 11px",fontSize:12}}>Selec.</button>}
+              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
-        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:"#ffffff",border:"1px solid #e8dfd0",color:"#6d5d4b",borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
+        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
           <option value="nombre-az">A→Z</option>
           <option value="nombre-za">Z→A</option>
           {(isStock||modoCompras)&&<><option value="meses-asc">Meses ↑</option><option value="meses-desc">Meses ↓</option></>}
           {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option><option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
         </select>
       </div>
-      {q&&<div style={{fontSize:12,color:"#8b6f47",marginBottom:10}}>{lista.length} resultado{lista.length!==1?"s":""} en toda la canasta</div>}
-      {lista.length===0?<div style={{textAlign:"center",color:"#8b6f47",padding:"60px 0",fontSize:14}}>Sin productos aún.</div>
+      {q&&<div style={{fontSize:12,color:colors.textMuted,marginBottom:10}}>{lista.length} resultado{lista.length!==1?"s":""} en toda la canasta</div>}
+      {lista.length===0?<div style={{textAlign:"center",color:colors.textMuted,padding:"60px 0",fontSize:14}}>Sin productos aún.</div>
         :<div style={{display:"flex",flexDirection:"column",gap:8}}>
           {lista.map(p=>{
             const pcat=q?cats.find(c=>c.id===p.catId):cat;
             if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} onOpen={()=>handleStockOpen(p.id)} onClose={handleStockClose}/>;
             if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} />;
             const isSel=selected.has(p.id);
-            return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?"#d4a574":pcat?.color||"#444"}`,cursor:"pointer",background:isSel?"#0d1f3c":"#ffffff",transition:"all .15s"}}
+            return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?colors.accent:pcat?.color||"#444"}`,cursor:"pointer",background:isSel?`${colors.accent}22`:colors.card,transition:"all .15s"}}
               onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
-              {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#d4a574":"#d4c5b0"}`,background:isSel?"#d4a574":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#faf8f3",fontWeight:700}}>{isSel?"✓":""}</div>}
-              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#3d2e1f"}}>{p.nombre}</div><div style={{fontSize:12,color:"#8b6f47",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#b09b87"}}>{fmtCantRef(p)}</span>}</div></div>
-              <div style={{textAlign:"right",flexShrink:0}}>{p.precioRef?<><div className="mono" style={{fontWeight:700,fontSize:16,color:"#3d2e1f"}}>{fmt(p.precioRef)}</div>{gastoMensual(p)&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:pcat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gastoMensual(p))}</div>}</>:<div style={{fontSize:12,color:"#8b6f47"}}>Sin precio</div>}</div>
+              {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#3b82f6":"#2a3550"}`,background:isSel?"#3b82f6":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
+              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:colors.text}}>{p.nombre}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:colors.textMuted}}>{fmtCantRef(p)}</span>}</div></div>
+              <div style={{textAlign:"right",flexShrink:0}}>{p.precioRef?<><div className="mono" style={{fontWeight:700,fontSize:16,color:colors.text}}>{fmt(p.precioRef)}</div>{gastoMensual(p)&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:pcat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gastoMensual(p))}</div>}</>:<div style={{fontSize:12,color:colors.textMuted}}>Sin precio</div>}</div>
             </div>);
           })}
         </div>}
@@ -1553,7 +1512,7 @@
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
     const mesesTxt=fmtMeses(meses);
-    const urgColor=meses===null?"#8b6f47":meses===0?"#d77a61":meses<1?"#e07a5f":meses<2?"#e9c46a":"#8ab17d";
+    const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
 
     const handleOpen=()=>{const abriendo=!open;setOpen(abriendo);setShowAddDim(false);if(abriendo&&onOpen)onOpen();if(!abriendo&&onClose)onClose();};
 
@@ -1602,36 +1561,36 @@
       <div className="card" style={{borderLeft:`3px solid ${cat?.color||"#444"}`,overflow:"hidden"}}>
         <div style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={handleOpen}>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#3d2e1f"}}>{p.nombre}</div>
-            <div style={{fontSize:12,color:"#8b6f47",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:"#b09b87"}}>{fmtCantRef(p)}</span>}</div>
+            <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:colors.text}}>{p.nombre}</div>
+            <div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:colors.textMuted}}>{fmtCantRef(p)}</span>}</div>
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
-            <div style={{fontSize:12,color:"#8b6f47"}}>Stock: <span className="mono" style={{fontWeight:700,fontSize:16,color:"#3d2e1f"}}>{fmtTotal(total)}</span></div>
+            <div style={{fontSize:12,color:colors.textMuted}}>Stock: <span className="mono" style={{fontWeight:700,fontSize:16,color:colors.text}}>{fmtTotal(total)}</span></div>
             <div style={{fontSize:12,fontWeight:600,color:urgColor,marginTop:2}}>{mesesTxt}</div>
           </div>
-          <div style={{color:"#d4c5b0",fontSize:14,marginLeft:4}}>{open?"▲":"▼"}</div>
+          <div style={{color:colors.hoverCard,fontSize:14,marginLeft:4}}>{open?"▲":"▼"}</div>
         </div>
 
         {open&&(
-          <div style={{borderTop:"1px solid #e8dfd0",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{borderTop:`1px solid ${colors.cardBorder}`,padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
             {entradas.map((e,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{flex:1,fontSize:14,fontWeight:600,color:"#c8cfe0"}}>{fmtEntrada(e)}</div>
-                <button onClick={()=>cambiarStock(i,-1)} disabled={e.stock<=0} style={{width:34,height:34,borderRadius:8,background:e.stock<=0?"#ffffff":"#e8dfd0",border:"1px solid #d4c5b0",color:e.stock<=0?"#2a3570":"#3d2e1f",fontSize:20,cursor:e.stock<=0?"default":"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                <div style={{width:32,textAlign:"center",fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:16,color:"#3d2e1f"}}>{e.stock}</div>
-                <button onClick={()=>cambiarStock(i,1)} style={{width:34,height:34,borderRadius:8,background:"#e8dfd0",border:"1px solid #d4c5b0",color:"#3d2e1f",fontSize:20,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-                {!e.virtual&&entradasGuardadas.length>1&&<button onClick={()=>askConfirm("¿Eliminar esta medida?",()=>eliminarEntrada(i),"Eliminar","#d77a61")} style={{width:28,height:28,borderRadius:6,background:"#f5e6d3",border:"1px solid #f0d5c8",color:"#d77a61",fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>}
+                <div style={{flex:1,fontSize:14,fontWeight:600,color:colors.text}}>{fmtEntrada(e)}</div>
+                <button onClick={()=>cambiarStock(i,-1)} disabled={e.stock<=0} style={{width:34,height:34,borderRadius:8,background:e.stock<=0?"#0d1321":"#1a2235",border:`1px solid ${colors.hoverCard}`,color:e.stock<=0?"#2a3570":"#e8eaf0",fontSize:20,cursor:e.stock<=0?"default":"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                <div style={{width:32,textAlign:"center",fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:16,color:colors.text}}>{e.stock}</div>
+                <button onClick={()=>cambiarStock(i,1)} style={{width:34,height:34,borderRadius:8,background:colors.btnSecondary,border:`1px solid ${colors.hoverCard}`,color:colors.text,fontSize:20,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                {!e.virtual&&entradasGuardadas.length>1&&<button onClick={()=>askConfirm("¿Eliminar esta medida?",()=>eliminarEntrada(i),"Eliminar","#ef4444")} style={{width:28,height:28,borderRadius:6,background:"#1a0a0a",border:"1px solid #2d1212",color:colors.error,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>}
               </div>
             ))}
 
             {entradasGuardadas.length>1&&p.cantidadRef&&(
-              <div style={{fontSize:12,color:"#8b6f47",borderTop:"1px solid #e8dfd0",paddingTop:8}}>
-                Total: <span style={{color:"#3d2e1f",fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span> × {fmtCantRef(p)}
+              <div style={{fontSize:12,color:colors.textMuted,borderTop:`1px solid ${colors.cardBorder}`,paddingTop:8}}>
+                Total: <span style={{color:colors.text,fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span> × {fmtCantRef(p)}
               </div>
             )}
 
             {!showAddDim&&(
-              <button className="btn" onClick={()=>setShowAddDim(true)} style={{background:"#ffffff",border:"1px dashed #d4c5b0",color:"#8b6f47",padding:"7px 0",fontSize:13}}>
+              <button className="btn" onClick={()=>setShowAddDim(true)} style={{background:colors.card,border:"1px dashed #2a3550",color:colors.textMuted,padding:"7px 0",fontSize:13}}>
                 + Agregar otra medida
               </button>
             )}
@@ -1639,22 +1598,22 @@
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="3" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}} autoFocus/>
-                  <span style={{fontSize:12,color:"#8b6f47",flexShrink:0}}>rollos ×</span>
+                  <span style={{fontSize:12,color:colors.textMuted,flexShrink:0}}>rollos ×</span>
                   <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="40" value={newMetros} onChange={e=>setNewMetros(e.target.value)} style={{width:52,padding:"8px 8px",fontSize:14,textAlign:"center"}}/>
-                  <span style={{fontSize:12,color:"#8b6f47",flexShrink:0}}>m</span>
-                  <button className="btn" onClick={agregarDimension} style={{background:"#d4a574",color:"#faf8f3",padding:"8px 12px",fontSize:14}}>+</button>
-                  <button className="btn" onClick={()=>{setShowAddDim(false);setNewCantRef("");setNewMetros("");}} style={{background:"#e8dfd0",color:"#6d5d4b",padding:"8px 10px",fontSize:14}}>✕</button>
+                  <span style={{fontSize:12,color:colors.textMuted,flexShrink:0}}>m</span>
+                  <button className="btn" onClick={agregarDimension} style={{background:colors.accent,color:"#fff",padding:"8px 12px",fontSize:14}}>+</button>
+                  <button className="btn" onClick={()=>{setShowAddDim(false);setNewCantRef("");setNewMetros("");}} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:"8px 10px",fontSize:14}}>✕</button>
                 </div>
-                {parseFloat(newCantRef)>0&&parseFloat(newMetros)>0&&<div style={{fontSize:11,color:"#8b6f47"}}>= <span style={{color:"#d4a574",fontWeight:600}}>{parseFloat(newCantRef)*parseFloat(newMetros)} m</span> en total</div>}
+                {parseFloat(newCantRef)>0&&parseFloat(newMetros)>0&&<div style={{fontSize:11,color:colors.textMuted}}>= <span style={{color:colors.accent,fontWeight:600}}>{parseFloat(newCantRef)*parseFloat(newMetros)} m</span> en total</div>}
               </div>
             ):(
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 1500" value={newCantRef} onChange={e=>setNewCantRef(e.target.value)}
                   style={{flex:1,padding:"8px 12px",fontSize:14}} autoFocus
                   onKeyDown={e=>e.key==="Enter"&&agregarDimension()}/>
-                <span style={{fontSize:13,color:"#8b6f47",whiteSpace:"nowrap"}}>{p.unidad||"gr"}</span>
-                <button className="btn" onClick={agregarDimension} style={{background:"#d4a574",color:"#faf8f3",padding:"8px 14px",fontSize:14}}>+</button>
-                <button className="btn" onClick={()=>{setShowAddDim(false);setNewCantRef("");}} style={{background:"#e8dfd0",color:"#6d5d4b",padding:"8px 10px",fontSize:14}}>✕</button>
+                <span style={{fontSize:13,color:colors.textMuted,whiteSpace:"nowrap"}}>{p.unidad||"gr"}</span>
+                <button className="btn" onClick={agregarDimension} style={{background:colors.accent,color:"#fff",padding:"8px 14px",fontSize:14}}>+</button>
+                <button className="btn" onClick={()=>{setShowAddDim(false);setNewCantRef("");}} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:"8px 10px",fontSize:14}}>✕</button>
               </div>
             ))}
           </div>
@@ -1668,7 +1627,7 @@
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
     const mesesTxt=fmtMeses(meses);
-    const urgColor=meses===null?"#8b6f47":meses===0?"#d77a61":meses<1?"#e07a5f":meses<2?"#e9c46a":"#8ab17d";
+    const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
     const hist=p.historialCompra||[];
     const ultimoPrecio=hist.length>0?hist[hist.length-1].precio:null;
     const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
@@ -1676,25 +1635,25 @@
       <div className="card" style={{padding:"13px 16px",borderLeft:`3px solid ${cat?.color||"#444"}`}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"#3d2e1f"}}>{p.nombre}</div>
-            <div style={{fontSize:12,color:"#8b6f47",marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{fmtCantRef(p)}</span>}</div>
+            <div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:colors.text}}>{p.nombre}</div>
+            <div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6}}>{fmtCantRef(p)}</span>}</div>
             <div style={{marginTop:6,display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
               <span style={{fontSize:12,fontWeight:600,color:urgColor}}>{mesesTxt}</span>
-              <span style={{fontSize:11,color:"#8b6f47"}}>· Stock: <span style={{color:"#3d2e1f",fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span></span>
+              <span style={{fontSize:11,color:colors.textMuted}}>· Stock: <span style={{color:colors.text,fontWeight:600,fontFamily:"'DM Mono',monospace"}}>{fmtTotal(total)}</span></span>
             </div>
             <div style={{marginTop:4,display:"flex",gap:10,alignItems:"center"}}>
-              {p.precioRef&&<span style={{fontSize:12,color:"#8b6f47"}}>Ref: <span style={{color:cat?.color||"#d4a574",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
-              {ultimoPrecio&&<span style={{fontSize:12,color:"#8b6f47"}}>Último: <span style={{color:"#3d2e1f",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
+              {p.precioRef&&<span style={{fontSize:12,color:colors.textMuted}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
+              {ultimoPrecio&&<span style={{fontSize:12,color:colors.textMuted}}>Último: <span style={{color:colors.text,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
             </div>
           </div>
-          <button onClick={()=>push("nuevo-precio",{prodId:p.id})} style={{width:36,height:36,borderRadius:10,background:"#d4a574",border:"none",color:"#faf8f3",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,lineHeight:1,flexShrink:0}}>+</button>
+          <button onClick={()=>push("nuevo-precio",{prodId:p.id})} style={{width:36,height:36,borderRadius:10,background:colors.accent,border:"none",color:"#fff",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,lineHeight:1,flexShrink:0}}>+</button>
         </div>
       </div>
     );
   }
 
   // ── PriceChart (SVG puro) ──────────────────────────────────────────────────
-  function PriceChart({hist, precioRef, clr}) {
+  function PriceChart({hist, precioRef, clr, colors}) {
     const W=320, H=150, PL=52, PR=20, PT=14, PB=28;
     const iW=W-PL-PR, iH=H-PT-PB;
     if (!hist||hist.length<1) return null;
@@ -1708,11 +1667,13 @@
     const refY=precioRef!=null?toY(precioRef):null;
     const pts=hist.map((h,i)=>`${toX(i).toFixed(1)},${toY(h.precio).toFixed(1)}`).join(" ");
     const yTicks=[minV,(minV+maxV)/2,maxV];
+    const successColor=colors.success;
+    const errorColor=colors.error;
     return (
       <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{overflow:"visible",display:"block"}}>
         {yTicks.map((v,i)=>[
-          <line key={"g"+i} x1={PL} y1={toY(v)} x2={W-PR} y2={toY(v)} stroke="#e8dfd0" strokeWidth={1}/>,
-          <text key={"t"+i} x={PL-4} y={toY(v)+4} textAnchor="end" fontSize={9} fill="#8b6f47">${Math.round(v)}</text>
+          <line key={"g"+i} x1={PL} y1={toY(v)} x2={W-PR} y2={toY(v)} stroke={colors.cardBorder} strokeWidth={1}/>,
+          <text key={"t"+i} x={PL-4} y={toY(v)+4} textAnchor="end" fontSize={9} fill={colors.textMuted}>${Math.round(v)}</text>
         ])}
         {refY!=null&&(
           <line x1={PL} y1={refY} x2={W-PR} y2={refY} stroke={clr} strokeWidth={1.5} strokeDasharray="6 4" opacity={0.7}/>
@@ -1720,17 +1681,17 @@
         {refY!=null&&(
           <text x={W-PR+2} y={refY+4} fontSize={9} fill={clr} opacity={0.8}>ref</text>
         )}
-        {hist.length>1&&<polyline points={pts} fill="none" stroke="#8ab17d" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>}
+        {hist.length>1&&<polyline points={pts} fill="none" stroke={successColor} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>}
         {hist.map((h,i)=>{
           const x=toX(i), y=toY(h.precio);
-          const dotColor=refY!=null?(h.precio>precioRef?"#d77a61":"#8ab17d"):"#8ab17d";
+          const dotColor=refY!=null?(h.precio>precioRef?errorColor:successColor):successColor;
           const lblY=y>PT+20?y-8:y+16;
           const show=hist.length<=6||i===0||i===hist.length-1||i%Math.ceil(hist.length/5)===0;
           return (
             <g key={i}>
-              <circle cx={x} cy={y} r={5} fill={dotColor} stroke="#faf8f3" strokeWidth={1.5}/>
+              <circle cx={x} cy={y} r={5} fill={dotColor} stroke={colors.inputBg} strokeWidth={1.5}/>
               {show&&<text x={x} y={lblY} textAnchor="middle" fontSize={9} fill={dotColor}>{fmt(h.precio)}</text>}
-              <text x={x} y={H} textAnchor="middle" fontSize={8} fill="#8b6f47">{h.fecha?h.fecha.slice(5):""}</text>
+              <text x={x} y={H} textAnchor="middle" fontSize={8} fill={colors.textMuted}>{h.fecha?h.fecha.slice(5):""}</text>
             </g>
           );
         })}
@@ -1742,7 +1703,7 @@
   function DetalleScreen({prodId,productos,guardar,pop,showToast,askConfirm,push,gastoMensual,getCat,getSub}) {
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
     const cat=getCat(p.catId); const sub=p.subId?getSub(p.catId,p.subId):null;
-    const gm=gastoMensual(p); const clr=cat?.color||"#d4a574";
+    const gm=gastoMensual(p); const clr=cat?.color||"#3b82f6";
     const hist=p.historialCompra||[];
     const chartData=hist.map(h=>{
       let precioGrafico=h.equivalente||null;
@@ -1753,51 +1714,51 @@
       return {fecha:fmtDate(h.fecha),precio:precioGrafico||h.precio};
     });
     const variacion=hist.length>=2?((hist[hist.length-1].precio-hist[0].precio)/hist[0].precio*100).toFixed(1):null;
-    const del=()=>askConfirm(`¿Eliminar "${p.nombre}"?`,async()=>{await guardar(null,productos.filter(x=>x.id!==prodId),{deleteRemoved:true});showToast("🗑️ Eliminado");pop();},"Eliminar","#d77a61");
-    const delH=(hid)=>askConfirm("¿Eliminar este registro?",async()=>{await guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:x.historialCompra.filter(h=>h.id!==hid)}:x));showToast("Eliminado");},"Eliminar","#d77a61");
+    const del=()=>askConfirm(`¿Eliminar "${p.nombre}"?`,async()=>{await guardar(null,productos.filter(x=>x.id!==prodId),{deleteRemoved:true});showToast("🗑️ Eliminado");pop();},"Eliminar","#ef4444");
+    const delH=(hid)=>askConfirm("¿Eliminar este registro?",async()=>{await guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:x.historialCompra.filter(h=>h.id!==hid)}:x));showToast("Eliminado");},"Eliminar","#ef4444");
     return (<div className="fade">
       <TopBar title={p.nombre} subtitle={[cat?.label,sub?.label].filter(Boolean).join(" › ")} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
-          <button className="btn" onClick={()=>push("editar-prod",{prodId})} style={{background:"#e8dfd0",color:"#e5c9a8",border:"1px solid #d4c5b0",padding:"8px 12px",fontSize:13}}>Editar</button>
-          <button className="btn" onClick={del} style={{background:"#f5e6d3",color:"#d77a61",border:"1px solid #f0d5c8",padding:"8px 12px",fontSize:13}}>Eliminar</button>
+          <button className="btn" onClick={()=>push("editar-prod",{prodId})} style={{background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:"8px 12px",fontSize:13}}>Editar</button>
+          <button className="btn" onClick={del} style={{background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"8px 12px",fontSize:13}}>Eliminar</button>
         </div>}/>
       <div className="card" style={{padding:20,marginBottom:12,borderLeft:`4px solid ${clr}`}}>
         <div style={{display:"flex",gap:14}}>
           <div style={{fontSize:34}}>{cat?.emoji}</div>
-          <div style={{flex:1}}><div style={{fontWeight:700,fontSize:19,color:"#3d2e1f"}}>{p.nombre}</div><div style={{fontSize:13,color:"#8b6f47",marginTop:2}}>{p.marca||"—"}</div><div style={{marginTop:8}}><span style={{background:clr+"22",color:clr,borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:600}}>{cat?.label}{sub?` › ${sub.label}`:""}</span></div></div>
-          {p.cantidadRef&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:700,color:"#3d2e1f"}}>{fmtCantRef(p)}</div></div>}
+          <div style={{flex:1}}><div style={{fontWeight:700,fontSize:19,color:colors.text}}>{p.nombre}</div><div style={{fontSize:13,color:colors.textMuted,marginTop:2}}>{p.marca||"—"}</div><div style={{marginTop:8}}><span style={{background:clr+"22",color:clr,borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:600}}>{cat?.label}{sub?` › ${sub.label}`:""}</span></div></div>
+          {p.cantidadRef&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:18,fontWeight:700,color:colors.text}}>{fmtCantRef(p)}</div></div>}
         </div>
-        <div style={{marginTop:16,background:"#faf8f3",borderRadius:12,padding:"14px 16px"}}>
-          <div style={{fontSize:11,color:"#8b6f47",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Precio de referencia</div>
+        <div style={{marginTop:16,background:colors.inputBg,borderRadius:12,padding:"14px 16px"}}>
+          <div style={{fontSize:11,color:colors.textMuted,marginBottom:8,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Precio de referencia</div>
           <div className="mono" style={{fontSize:28,fontWeight:700,color:clr}}>{p.precioRef?fmt(p.precioRef):"—"}</div>
-          {p.precioRef&&p.unidadesMes&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10,padding:"9px 12px",background:"#ffffff",borderRadius:8}}>
-            <span className="mono" style={{fontSize:14,color:"#6d5d4b",fontWeight:500}}>{fmtU(p.unidadesMes)}</span>
-            <span style={{fontSize:13,color:"#8b6f47"}}>u/mes</span>
-            <span style={{fontSize:14,color:"#8b6f47",fontWeight:700}}>=</span>
+          {p.precioRef&&p.unidadesMes&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10,padding:"9px 12px",background:colors.card,borderRadius:8}}>
+            <span className="mono" style={{fontSize:14,color:colors.textSecondary,fontWeight:500}}>{fmtU(p.unidadesMes)}</span>
+            <span style={{fontSize:13,color:colors.textMuted}}>u/mes</span>
+            <span style={{fontSize:14,color:colors.textMuted,fontWeight:700}}>=</span>
             <span className="mono" style={{fontSize:15,fontWeight:700,color:clr}}>{fmt(gm)}</span>
           </div>)}
         </div>
-        {variacion!==null&&<div style={{marginTop:10,fontSize:12,color:parseFloat(variacion)>0?"#d77a61":"#8ab17d"}}>{parseFloat(variacion)>0?"▲":"▼"} {Math.abs(variacion)}% desde el primer registro</div>}
+        {variacion!==null&&<div style={{marginTop:10,fontSize:12,color:parseFloat(variacion)>0?"#ef4444":"#10b981"}}>{parseFloat(variacion)>0?"▲":"▼"} {Math.abs(variacion)}% desde el primer registro</div>}
       </div>
-      <button className="btn" onClick={()=>push("nuevo-precio",{prodId})} style={{width:"100%",background:clr,color:"#faf8f3",padding:13,fontSize:14,marginBottom:14}}>+ Registrar precio de compra</button>
+      <button className="btn" onClick={()=>push("nuevo-precio",{prodId})} style={{width:"100%",background:clr,color:"#080c14",padding:13,fontSize:14,marginBottom:14}}>+ Registrar precio de compra</button>
       {hist.length>=1&&(
       <div className="card" style={{padding:"18px 12px 10px",marginBottom:12}}>
-        <div style={{fontSize:13,fontWeight:600,marginBottom:8,paddingLeft:4,color:"#3d2e1f"}}>Evolución del precio de compra</div>
-        <PriceChart hist={chartData} precioRef={p.precioRef} clr={clr}/>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:8,paddingLeft:4,color:colors.text}}>Evolución del precio de compra</div>
+        <PriceChart hist={chartData} precioRef={p.precioRef} clr={clr} colors={colors}/>
       </div>
     )}
       {hist.length>0&&(<div className="card" style={{padding:16}}>
-        <div style={{fontSize:13,fontWeight:600,marginBottom:12,color:"#3d2e1f"}}>Historial de precios de compra</div>
-        {[...hist].reverse().map((h,i)=>(<div key={h.id} style={{padding:"10px 0",borderBottom:i<hist.length-1?"1px solid #e8dfd0":"none"}}>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:12,color:colors.text}}>Historial de precios de compra</div>
+        {[...hist].reverse().map((h,i)=>(<div key={h.id} style={{padding:"10px 0",borderBottom:i<hist.length-1?"1px solid #1a2235":"none"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <div style={{flex:1}}>
-              <div style={{display:"flex",alignItems:"baseline",gap:8}}><div className="mono" style={{fontWeight:700,fontSize:16,color:"#3d2e1f"}}>{fmt(h.precio)}</div>{h.cantidad&&p.unidad&&<div style={{fontSize:12,color:"#8b6f47"}}>{h.cantidad}{p.unidad}</div>}</div>
+              <div style={{display:"flex",alignItems:"baseline",gap:8}}><div className="mono" style={{fontWeight:700,fontSize:16,color:colors.text}}>{fmt(h.precio)}</div>{h.cantidad&&p.unidad&&<div style={{fontSize:12,color:colors.textMuted}}>{h.cantidad}{p.unidad}</div>}</div>
               <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3,flexWrap:"wrap"}}>
-                <div style={{fontSize:11,color:"#8b6f47"}}>{fmtDate(h.fecha)}</div>
+                <div style={{fontSize:11,color:colors.textMuted}}>{fmtDate(h.fecha)}</div>
                 {h.equivalente!=null&&p.cantidadRef&&(<div style={{fontSize:11,color:clr}}>≈ {fmt(h.equivalente)} por {fmtCantRef(p)}</div>)}
               </div>
             </div>
-            <button className="btn" onClick={()=>delH(h.id)} style={{background:"#f5e6d3",color:"#d77a61",border:"1px solid #f0d5c8",padding:"5px 10px",fontSize:12}}>✕</button>
+            <button className="btn" onClick={()=>delH(h.id)} style={{background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"5px 10px",fontSize:12}}>✕</button>
           </div>
         </div>))}
       </div>)}
@@ -1828,14 +1789,14 @@
       const total=r*m;
       return (
         <div>
-          <label style={{display:"block",fontSize:12,color:"#6d5d4b",marginBottom:6,fontWeight:600}}>Cantidad ref.</label>
+          <label style={{display:"block",fontSize:12,color:colors.textSecondary,marginBottom:6,fontWeight:600}}>Cantidad ref.</label>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="3" value={rollos} onChange={e=>handleRollos(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
-            <span style={{fontSize:12,color:"#8b6f47",flexShrink:0}}>×</span>
+            <span style={{fontSize:12,color:colors.textMuted,flexShrink:0}}>×</span>
             <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="40" value={metros} onChange={e=>handleMetros(e.target.value)} style={{width:52,padding:"9px 8px",textAlign:"center"}}/>
-            <span style={{fontSize:12,color:"#8b6f47",flexShrink:0}}>m</span>
+            <span style={{fontSize:12,color:colors.textMuted,flexShrink:0}}>m</span>
           </div>
-          {total>0&&<div style={{fontSize:11,color:"#8b6f47",marginTop:4}}>= <span style={{color:"#d4a574",fontWeight:600}}>{total} m</span> en total</div>}
+          {total>0&&<div style={{fontSize:11,color:colors.textMuted,marginTop:4}}>= <span style={{color:colors.accent,fontWeight:600}}>{total} m</span> en total</div>}
         </div>
       );
     }
@@ -1873,7 +1834,7 @@
             <select className="inp" value={form.subId} onChange={e=>setForm(f=>({...f,subId:e.target.value}))} style={{flex:1}}>
               <option value="">— Sin subcategoría —</option>{[...(selCat?.subs||[])].sort((a,b)=>alpha(a,b)).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
-            <button className="btn" onClick={()=>setShowAddSub(true)} style={{background:selCat?.color||"#d4a574",color:"#faf8f3",padding:"9px 14px",fontSize:18,flexShrink:0}}>+</button>
+            <button className="btn" onClick={()=>setShowAddSub(true)} style={{background:selCat?.color||"#3b82f6",color:"#fff",padding:"9px 14px",fontSize:18,flexShrink:0}}>+</button>
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -1886,11 +1847,11 @@
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
-          <button className="btn" onClick={pop} style={{flex:1,background:"#ffffff",border:"1px solid #e8dfd0",color:"#3d2e1f",padding:13}}>Cancelar</button>
-          <button className="btn" onClick={submit} style={{flex:2,background:"#d4a574",color:"#faf8f3",padding:13,fontSize:15}}>Guardar cambios</button>
+          <button className="btn" onClick={pop} style={{flex:1,background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:13}}>Cancelar</button>
+          <button className="btn" onClick={submit} style={{flex:2,background:colors.accent,color:"#fff",padding:13,fontSize:15}}>Guardar cambios</button>
         </div>
       </div>
-      {showAddSub&&<AddModal title={`Nueva subcategoría en ${selCat?.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={({label})=>createSub(label)} showColor={false} accentColor={selCat?.color||"#d4a574"}/>}
+      {showAddSub&&<AddModal title={`Nueva subcategoría en ${selCat?.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={({label})=>createSub(label)} showColor={false} accentColor={selCat?.color||"#3b82f6"}/>}
     </div>);
   }
 
@@ -1944,7 +1905,7 @@
     return (<div className="fade">
       <div style={{height:20}}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
-        <div style={{fontWeight:700,fontSize:18,color:"#3d2e1f",marginBottom:2}}>Nuevo producto</div>
+        <div style={{fontWeight:700,fontSize:18,color:colors.text,marginBottom:2}}>Nuevo producto</div>
         <div className="field"><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. Leche entera" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
         <div className="field"><label>Marca / detalle</label><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. La Serenísima" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
 
@@ -1955,7 +1916,7 @@
               <option value="">— Elegir categoría —</option>
               {[...cats].sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
             </select>
-            <button className="btn" onClick={()=>setShowAddCat(true)} style={{background:"#d4a574",color:"#faf8f3",padding:"9px 14px",fontSize:18,flexShrink:0}}>+</button>
+            <button className="btn" onClick={()=>setShowAddCat(true)} style={{background:colors.accent,color:"#fff",padding:"9px 14px",fontSize:18,flexShrink:0}}>+</button>
           </div>
         </div>
 
@@ -1966,12 +1927,12 @@
               <option value="">— Sin subcategoría —</option>
               {[...(selCat?.subs||[])].sort((a,b)=>alpha(a,b)).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
-            <button className="btn" onClick={()=>form.catId&&setShowAddSub(true)} style={{background:form.catId?(selCat?.color||"#d4a574"):"#e8dfd0",color:form.catId?"#fff":"#8b6f47",padding:"9px 14px",fontSize:18,flexShrink:0,cursor:form.catId?"pointer":"default"}}>+</button>
+            <button className="btn" onClick={()=>form.catId&&setShowAddSub(true)} style={{background:form.catId?(selCat?.color||"#3b82f6"):"#1a2235",color:form.catId?"#fff":"#4a5568",padding:"9px 14px",fontSize:18,flexShrink:0,cursor:form.catId?"pointer":"default"}}>+</button>
           </div>
         </div>
 
         {/* Modal agregar subcategoría */}
-        {showAddSub&&<AddModal title={`Nueva subcategoría en ${selCat?.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={({label})=>createSub(label)} showColor={false} accentColor={selCat?.color||"#d4a574"}/>}
+        {showAddSub&&<AddModal title={`Nueva subcategoría en ${selCat?.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={({label})=>createSub(label)} showColor={false} accentColor={selCat?.color||"#3b82f6"}/>}
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div className="field"><label>Unidades/mes</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 2 o 1/3" value={form.unidadesMes} onChange={e=>setForm(f=>({...f,unidadesMes:e.target.value}))}/></div>
@@ -1983,8 +1944,8 @@
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
-          <button className="btn" onClick={pop} style={{flex:1,background:"#ffffff",border:"1px solid #e8dfd0",color:"#3d2e1f",padding:13}}>Cancelar</button>
-          <button className="btn" onClick={submit} style={{flex:2,background:form.catId?"#d4a574":"#e8dfd0",color:form.catId?"#fff":"#8b6f47",padding:13,fontSize:15,cursor:form.catId?"pointer":"default"}}>Guardar</button>
+          <button className="btn" onClick={pop} style={{flex:1,background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:13}}>Cancelar</button>
+          <button className="btn" onClick={submit} style={{flex:2,background:form.catId?"#3b82f6":"#1a2235",color:form.catId?"#fff":"#4a5568",padding:13,fontSize:15,cursor:form.catId?"pointer":"default"}}>Guardar</button>
         </div>
       </div>
       {showAddCat&&<AddModal title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={createCat} showColor={true}/>}
@@ -1994,7 +1955,7 @@
   // ── NuevoPrecioScreen ─────────────────────────────────────────────────────────
   function NuevoPrecioScreen({prodId,productos,guardar,pop,showToast,getCat}) {
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
-    const cat=getCat(p.catId); const clr=cat?.color||"#d4a574";
+    const cat=getCat(p.catId); const clr=cat?.color||"#3b82f6";
     const cantRef=p.cantidadRef||null; const unidad=p.unidad||"gr";
     const [form,setForm]=useState({precio:"",cantidad:"",fecha:todayISO()});
     const [saving,setSaving]=useState(false);
@@ -2020,20 +1981,20 @@
     };
     return (<div className="fade"><TopBar title="Precio de compra" subtitle={`${p.nombre} · ${p.marca||""}`} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
-        <div style={{background:clr+"15",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#6d5d4b"}}>Precio de referencia: <span style={{color:clr,fontWeight:700}}>{p.precioRef?fmt(p.precioRef):"no definido"}</span>{cantRef&&<span style={{marginLeft:8,color:"#8b6f47"}}>· {cantRef}{unidad}</span>}</div>
+        <div style={{background:clr+"15",borderRadius:10,padding:"10px 14px",fontSize:13,color:colors.textSecondary}}>Precio de referencia: <span style={{color:clr,fontWeight:700}}>{p.precioRef?fmt(p.precioRef):"no definido"}</span>{cantRef&&<span style={{marginLeft:8,color:colors.textMuted}}>· {cantRef}{unidad}</span>}</div>
         <div className="field"><label>Precio que pagué ($)</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 1200" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} autoFocus/></div>
         <div className="field"><label>Cantidad comprada ({unidad})</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder={cantRef?String(cantRef):unidad==="m"?"ej. 6x50":unidad==="un"?"ej. 50":"ej. 100"} value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))}/></div>
-        {equivalente!=null&&(<div style={{background:"#faf8f3",borderRadius:10,padding:"12px 14px"}}>
-          <div style={{fontSize:11,color:"#8b6f47",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Equivalente a {cantRef}{unidad}</div>
+        {equivalente!=null&&(<div style={{background:colors.inputBg,borderRadius:10,padding:"12px 14px"}}>
+          <div style={{fontSize:11,color:colors.textMuted,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em",fontWeight:600}}>Equivalente a {cantRef}{unidad}</div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <div className="mono" style={{fontSize:22,fontWeight:700,color:clr}}>{fmt(equivalente)}</div>
-            {diff!=null&&(<div style={{fontSize:13,fontWeight:600,color:diff>0?"#d77a61":"#8ab17d",background:diff>0?"#d77a6118":"#8ab17d18",padding:"3px 10px",borderRadius:6}}>{diff>0?"▲":"▼"} {Math.abs(diff).toFixed(1)}% {diff>0?"más caro":"más barato"}</div>)}
+            {diff!=null&&(<div style={{fontSize:13,fontWeight:600,color:diff>0?"#ef4444":"#10b981",background:diff>0?"#ef444418":"#10b98118",padding:"3px 10px",borderRadius:6}}>{diff>0?"▲":"▼"} {Math.abs(diff).toFixed(1)}% {diff>0?"más caro":"más barato"}</div>)}
           </div>
         </div>)}
         <div className="field"><label>Fecha</label><input className="inp" type="date" value={form.fecha} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))}/></div>
         <div style={{display:"flex",gap:10,marginTop:4}}>
-          <button className="btn" onClick={pop} disabled={saving} style={{flex:1,background:"#ffffff",border:"1px solid #e8dfd0",color:"#3d2e1f",padding:13}}>Cancelar</button>
-          <button className="btn" onClick={submit} disabled={saving} style={{flex:2,background:saving?"#e8dfd0":clr,color:saving?"#8b6f47":"#faf8f3",padding:13,fontSize:15,transition:"all .2s"}}>
+          <button className="btn" onClick={pop} disabled={saving} style={{flex:1,background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:13}}>Cancelar</button>
+          <button className="btn" onClick={submit} disabled={saving} style={{flex:2,background:saving?"#1a2235":clr,color:saving?"#4a5568":"#080c14",padding:13,fontSize:15,transition:"all .2s"}}>
             {saving?"Guardando…":"Confirmar"}
           </button>
         </div>
@@ -2051,14 +2012,14 @@
       const key=`${catId}-${subId}`;
       const isOpen=openKey===key;
       const text=buildExportText(cats,productos,catId,subId);
-      return (<div style={{borderTop:"1px solid #e8dfd0"}}>
+      return (<div style={{borderTop:`1px solid ${colors.cardBorder}`}}>
         <div className="row" style={{padding:`10px 16px 10px ${indent?44:16}px`,display:"flex",alignItems:"center",gap:10,cursor:"pointer",WebkitTapHighlightColor:"transparent"}} onClick={()=>toggle(key)}>
-          <div style={{flex:1,fontSize:indent?13:14,color:indent?"#c8cfe0":"#3d2e1f",fontWeight:indent?400:600}}>{label}</div>
-          <div style={{fontSize:12,color:"#8b6f47"}}>{isOpen?"▼":"▶"}</div>
+          <div style={{flex:1,fontSize:indent?13:14,color:indent?"#c8cfe0":"#e8eaf0",fontWeight:indent?400:600}}>{label}</div>
+          <div style={{fontSize:12,color:colors.textMuted}}>{isOpen?"▼":"▶"}</div>
         </div>
         {isOpen&&<div style={{position:"relative"}}>
-          <button onClick={e=>doCopy(text,e)} style={{position:"absolute",top:8,right:12,background:"#d4a574",border:"none",borderRadius:8,color:"#faf8f3",padding:"4px 10px",fontSize:12,cursor:"pointer",zIndex:1}}>📋 Copiar</button>
-          <pre style={{fontSize:12,color:"#c8cfe0",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:"#faf8f3",padding:"32px 16px 12px",margin:0,borderTop:"1px solid #e8dfd0"}}>{text||"Sin productos."}</pre>
+          <button onClick={e=>doCopy(text,e)} style={{position:"absolute",top:8,right:12,background:colors.accent,border:"none",borderRadius:8,color:"#fff",padding:"4px 10px",fontSize:12,cursor:"pointer",zIndex:1}}>📋 Copiar</button>
+          <pre style={{fontSize:12,color:colors.text,lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:colors.inputBg,padding:"32px 16px 12px",margin:0,borderTop:`1px solid ${colors.cardBorder}`}}>{text||"Sin productos."}</pre>
         </div>}
       </div>);
     };
@@ -2067,7 +2028,7 @@
       <div className="card" style={{overflow:"hidden",marginBottom:8}}>
         <SectionRow label="Toda la canasta" catId={null} subId={null}/>
       </div>
-      <div style={{fontSize:11,fontWeight:600,color:"#8b6f47",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,marginTop:4}}>Por sección</div>
+      <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,marginTop:4}}>Por sección</div>
       {[...cats].sort((a,b)=>alpha(a,b)).map(cat=>{
         const cp=productos.filter(p=>p.catId===cat.id);
         const validS=new Set(cat.subs.map(s=>s.id));
@@ -2076,7 +2037,7 @@
         return (<div key={cat.id} className="card" style={{marginBottom:8,overflow:"hidden",borderLeft:`3px solid ${cat.color}`}}>
           <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:18}}>{cat.emoji}</span>
-            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:14,color:"#3d2e1f"}}>{cat.label}</div><div style={{fontSize:11,color:"#8b6f47"}}>{cp.length} productos</div></div>
+            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:14,color:colors.text}}>{cat.label}</div><div style={{fontSize:11,color:colors.textMuted}}>{cp.length} productos</div></div>
           </div>
           <SectionRow label={cat.label} catId={cat.id} subId={null}/>
           {hasSubs&&[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
@@ -2103,12 +2064,12 @@
       <TopBar title="💾 Backup" subtitle="Formato importable — copia de seguridad completa" onBack={pop}/>
       <div className="card" style={{padding:16,marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <div style={{fontSize:13,color:"#8b6f47"}}>{productos.length} productos · {cats.length} categorías</div>
-          <button className="btn" onClick={doCopy} style={{background:copied?"#8ab17d":"#d4a574",color:"#faf8f3",padding:"7px 16px",fontSize:13,transition:"background .3s"}}>
+          <div style={{fontSize:13,color:colors.textMuted}}>{productos.length} productos · {cats.length} categorías</div>
+          <button className="btn" onClick={doCopy} style={{background:copied?"#10b981":"#3b82f6",color:"#fff",padding:"7px 16px",fontSize:13,transition:"background .3s"}}>
             {copied?"✅ Copiado":"Copiar todo"}
           </button>
         </div>
-        <pre style={{fontSize:12,color:"#c8cfe0",lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:"#faf8f3",borderRadius:8,padding:12,maxHeight:400,overflowY:"auto"}}>{text||"Sin productos."}</pre>
+        <pre style={{fontSize:12,color:colors.text,lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:colors.inputBg,borderRadius:8,padding:12,maxHeight:400,overflowY:"auto"}}>{text||"Sin productos."}</pre>
       </div>
     </div>);
   }
@@ -2127,7 +2088,7 @@
       let cat=updatedCats.find(c=>matchStr(c.label,b.catLabel));
       if(!cat){
         // Create new category
-        const CATCOLORS=["#60a5fa","#f472b6","#8ab17d","#fb923c","#a78bfa","#e9c46a","#34d399","#f87171","#38bdf8","#e879f9"];
+        const CATCOLORS=["#60a5fa","#f472b6","#4ade80","#fb923c","#a78bfa","#facc15","#34d399","#f87171","#38bdf8","#e879f9"];
         cat={id:uid(),label:b.catLabel,emoji:"📦",color:CATCOLORS[updatedCats.length%CATCOLORS.length],subs:[]};
         updatedCats=[...updatedCats,cat];
       }
@@ -2172,32 +2133,32 @@
     return (<div className="fade"><TopBar title="📥 Importar lista" onBack={pop}/>
       {step==="input"&&(<div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div className="card" style={{padding:16}}>
-          <div style={{fontSize:13,color:"#6d5d4b",marginBottom:10,lineHeight:1.6}}>Formato por bloque (separá bloques con línea en blanco):<pre style={{marginTop:8,fontSize:12,color:"#4a90d9",background:"#faf8f3",borderRadius:8,padding:10,lineHeight:1.8}}>{`---Higiene---\nPersonal\nShampoo-Dove-400-mL-4500$-1\nJabón-Dove-90-gr-1180$-4\n\nLimpieza hogar\nDetergente-Magistral-500-mL-2371$-1\n\n---Primario---\nLeche-Carrefour-1-L-1182$-9`}</pre></div>
-          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Pegá tu lista acá…" style={{width:"100%",minHeight:200,background:"#faf8f3",border:"1px solid #e8dfd0",color:"#3d2e1f",borderRadius:10,padding:"11px 14px",fontSize:13,fontFamily:"'DM Mono',monospace",outline:"none",resize:"vertical",lineHeight:1.7}}/>
+          <div style={{fontSize:13,color:colors.textSecondary,marginBottom:10,lineHeight:1.6}}>Formato por bloque (separá bloques con línea en blanco):<pre style={{marginTop:8,fontSize:12,color:"#4a90d9",background:colors.inputBg,borderRadius:8,padding:10,lineHeight:1.8}}>{`---Higiene---\nPersonal\nShampoo-Dove-400-mL-4500$-1\nJabón-Dove-90-gr-1180$-4\n\nLimpieza hogar\nDetergente-Magistral-500-mL-2371$-1\n\n---Primario---\nLeche-Carrefour-1-L-1182$-9`}</pre></div>
+          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Pegá tu lista acá…" style={{width:"100%",minHeight:200,background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,color:colors.text,borderRadius:10,padding:"11px 14px",fontSize:13,fontFamily:"'DM Mono',monospace",outline:"none",resize:"vertical",lineHeight:1.7}}/>
         </div>
-        <div style={{display:"flex",gap:10}}><button className="btn" onClick={pop} style={{flex:1,background:"#ffffff",border:"1px solid #e8dfd0",color:"#3d2e1f",padding:13}}>Cancelar</button><button className="btn" onClick={doParse} style={{flex:2,background:"#d4a574",color:"#faf8f3",padding:13,fontSize:15}} disabled={!text.trim()}>Importar</button></div>
+        <div style={{display:"flex",gap:10}}><button className="btn" onClick={pop} style={{flex:1,background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:13}}>Cancelar</button><button className="btn" onClick={doParse} style={{flex:2,background:colors.accent,color:"#fff",padding:13,fontSize:15}} disabled={!text.trim()}>Importar</button></div>
       </div>)}
       {step==="preview"&&(<div style={{display:"flex",flexDirection:"column",gap:12}}>
-        <div style={{fontSize:13,color:"#8b6f47",marginBottom:4}}>Se van a importar {parsed.reduce((s,b)=>s+b.products.length,0)} productos:</div>
-        {parsed.map((block,bi)=>{const cat=cats.find(c=>c.id===block.catId);return(<div key={bi} className="card" style={{padding:14,borderLeft:`3px solid ${cat?.color||"#8b6f47"}`}}>
-          <div style={{fontWeight:600,fontSize:14,marginBottom:2,color:"#3d2e1f"}}>{cat?.emoji} {block.catLabel}{block.subLabel?` › ${block.subLabel}`:""}</div>
-          {block.autoCreated&&<div style={{fontSize:12,color:"#8ab17d",marginBottom:6}}>✅ Categoría nueva creada</div>}
-          {block.autoCreatedSub&&<div style={{fontSize:12,color:"#8ab17d",marginBottom:6}}>✅ Subcategoría nueva creada</div>}
-          <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>{block.products.map((p,pi)=>(<div key={pi} style={{fontSize:13,color:p.error?"#d77a61":"#c8cfe0",display:"flex",justifyContent:"space-between"}}><span>{p.error?`⚠️ ${p.error}`:`${p.nombre} · `}<span style={{color:"#8b6f47"}}>{p.marca}</span></span><span className="mono" style={{color:"#60a5fa"}}>{p.precioRef?fmt(p.precioRef):"—"}</span></div>))}</div>
+        <div style={{fontSize:13,color:colors.textMuted,marginBottom:4}}>Se van a importar {parsed.reduce((s,b)=>s+b.products.length,0)} productos:</div>
+        {parsed.map((block,bi)=>{const cat=cats.find(c=>c.id===block.catId);return(<div key={bi} className="card" style={{padding:14,borderLeft:`3px solid ${cat?.color||"#4a5568"}`}}>
+          <div style={{fontWeight:600,fontSize:14,marginBottom:2,color:colors.text}}>{cat?.emoji} {block.catLabel}{block.subLabel?` › ${block.subLabel}`:""}</div>
+          {block.autoCreated&&<div style={{fontSize:12,color:"#4ade80",marginBottom:6}}>✅ Categoría nueva creada</div>}
+          {block.autoCreatedSub&&<div style={{fontSize:12,color:"#4ade80",marginBottom:6}}>✅ Subcategoría nueva creada</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>{block.products.map((p,pi)=>(<div key={pi} style={{fontSize:13,color:p.error?"#ef4444":"#c8cfe0",display:"flex",justifyContent:"space-between"}}><span>{p.error?`⚠️ ${p.error}`:`${p.nombre} · `}<span style={{color:colors.textMuted}}>{p.marca}</span></span><span className="mono" style={{color:"#60a5fa"}}>{p.precioRef?fmt(p.precioRef):"—"}</span></div>))}</div>
         </div>);})}
-        <div style={{display:"flex",gap:10,marginTop:4}}><button className="btn" onClick={()=>setStep("input")} style={{flex:1,background:"#ffffff",border:"1px solid #e8dfd0",color:"#3d2e1f",padding:13}}>Volver</button><button className="btn" onClick={checkConflicts} style={{flex:2,background:"#d4a574",color:"#faf8f3",padding:13,fontSize:15}}>Importar</button></div>
+        <div style={{display:"flex",gap:10,marginTop:4}}><button className="btn" onClick={()=>setStep("input")} style={{flex:1,background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:13}}>Volver</button><button className="btn" onClick={checkConflicts} style={{flex:2,background:colors.accent,color:"#fff",padding:13,fontSize:15}}>Importar</button></div>
       </div>)}
       {step==="conflicts"&&(<div style={{display:"flex",flexDirection:"column",gap:12}}>
-        <div style={{fontSize:13,color:"#e9c46a",marginBottom:4}}>⚠️ {conflicts.length} producto{conflicts.length!==1?"s":""} ya existe{conflicts.length===1?"":"n"}.</div>
+        <div style={{fontSize:13,color:colors.warning,marginBottom:4}}>⚠️ {conflicts.length} producto{conflicts.length!==1?"s":""} ya existe{conflicts.length===1?"":"n"}.</div>
         {conflicts.map((c,i)=>(<div key={i} className="card" style={{padding:14}}>
-          <div style={{fontWeight:600,fontSize:14,marginBottom:8,color:"#3d2e1f"}}>{c.existing.nombre}</div>
-          <div style={{fontSize:12,color:"#8b6f47",marginBottom:10}}>Actual: {fmt(c.existing.precioRef)} · Nuevo: {fmt(c.incoming.precioRef)}</div>
+          <div style={{fontWeight:600,fontSize:14,marginBottom:8,color:colors.text}}>{c.existing.nombre}</div>
+          <div style={{fontSize:12,color:colors.textMuted,marginBottom:10}}>Actual: {fmt(c.existing.precioRef)} · Nuevo: {fmt(c.incoming.precioRef)}</div>
           <div style={{display:"flex",gap:8}}>
-            <button className="btn" onClick={()=>setResolutions(r=>({...r,[c.existing.id]:"skip"}))} style={{flex:1,padding:"9px 0",fontSize:13,background:resolutions[c.existing.id]==="skip"?"#e8dfd0":"#ffffff",color:resolutions[c.existing.id]==="skip"?"#3d2e1f":"#8b6f47",border:`1px solid ${resolutions[c.existing.id]==="skip"?"#d4a574":"#e8dfd0"}`}}>Mantener</button>
-            <button className="btn" onClick={()=>setResolutions(r=>({...r,[c.existing.id]:"overwrite"}))} style={{flex:1,padding:"9px 0",fontSize:13,background:resolutions[c.existing.id]==="overwrite"?"#d4a57422":"#ffffff",color:resolutions[c.existing.id]==="overwrite"?"#d4a574":"#8b6f47",border:`1px solid ${resolutions[c.existing.id]==="overwrite"?"#d4a574":"#e8dfd0"}`}}>Sobreescribir</button>
+            <button className="btn" onClick={()=>setResolutions(r=>({...r,[c.existing.id]:"skip"}))} style={{flex:1,padding:"9px 0",fontSize:13,background:resolutions[c.existing.id]==="skip"?"#1a2235":"#0d1321",color:resolutions[c.existing.id]==="skip"?"#e8eaf0":"#4a5568",border:`1px solid ${resolutions[c.existing.id]==="skip"?"#3b82f6":"#1a2235"}`}}>Mantener</button>
+            <button className="btn" onClick={()=>setResolutions(r=>({...r,[c.existing.id]:"overwrite"}))} style={{flex:1,padding:"9px 0",fontSize:13,background:resolutions[c.existing.id]==="overwrite"?"#3b82f622":"#0d1321",color:resolutions[c.existing.id]==="overwrite"?"#3b82f6":"#4a5568",border:`1px solid ${resolutions[c.existing.id]==="overwrite"?"#3b82f6":"#1a2235"}`}}>Sobreescribir</button>
           </div>
         </div>))}
-        <div style={{display:"flex",gap:10,marginTop:4}}><button className="btn" onClick={()=>setStep("preview")} style={{flex:1,background:"#ffffff",border:"1px solid #e8dfd0",color:"#3d2e1f",padding:13}}>Volver</button><button className="btn" onClick={doImport} style={{flex:2,background:"#d4a574",color:"#faf8f3",padding:13,fontSize:15}}>Confirmar</button></div>
+        <div style={{display:"flex",gap:10,marginTop:4}}><button className="btn" onClick={()=>setStep("preview")} style={{flex:1,background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:13}}>Volver</button><button className="btn" onClick={doImport} style={{flex:2,background:colors.accent,color:"#fff",padding:13,fontSize:15}}>Confirmar</button></div>
       </div>)}
     </div>);
   }
@@ -2208,33 +2169,33 @@
     const [newSubInputs,setNewSubInputs]=useState({}); const [movingSub,setMovingSub]=useState(null); const [moveTarget,setMoveTarget]=useState("");
     useEffect(()=>{setLocalCats(cats);},[cats]);
     const save=async(next)=>{setLocalCats(next);await guardar(next,null);};
-    const deleteCat=(id)=>askConfirm("¿Eliminar esta categoría?",async()=>{if(productos.some(p=>p.catId===id))return showToast("Eliminá los productos primero","err");save(localCats.filter(c=>c.id!==id));showToast("Categoría eliminada");setOpenId(null);},"Eliminar","#d77a61");
+    const deleteCat=(id)=>askConfirm("¿Eliminar esta categoría?",async()=>{if(productos.some(p=>p.catId===id))return showToast("Eliminá los productos primero","err");save(localCats.filter(c=>c.id!==id));showToast("Categoría eliminada");setOpenId(null);},"Eliminar","#ef4444");
     const addSub=(catId)=>askConfirm(`¿Crear subcategoría "${(newSubInputs[catId]||"").trim()}"?`,async()=>{const label=(newSubInputs[catId]||"").trim();if(!label)return;save(localCats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c));setNewSubInputs(f=>({...f,[catId]:""}));showToast("✅ Subcategoría creada");},"Crear");
-    const deleteSub=(catId,subId)=>askConfirm("¿Eliminar esta subcategoría?",async()=>{if(productos.some(p=>p.catId===catId&&p.subId===subId))return showToast("Eliminá los productos primero","err");save(localCats.map(c=>c.id===catId?{...c,subs:c.subs.filter(s=>s.id!==subId)}:c));},"Eliminar","#d77a61");
+    const deleteSub=(catId,subId)=>askConfirm("¿Eliminar esta subcategoría?",async()=>{if(productos.some(p=>p.catId===catId&&p.subId===subId))return showToast("Eliminá los productos primero","err");save(localCats.map(c=>c.id===catId?{...c,subs:c.subs.filter(s=>s.id!==subId)}:c));},"Eliminar","#ef4444");
     const doMoveSub=async()=>{if(!moveTarget||!movingSub)return;const sub=localCats.find(c=>c.id===movingSub.catId)?.subs?.find(s=>s.id===movingSub.subId);if(!sub)return;const nc=localCats.map(c=>{if(c.id===movingSub.catId)return{...c,subs:c.subs.filter(s=>s.id!==movingSub.subId)};if(c.id===moveTarget)return{...c,subs:[...c.subs,sub]};return c;});const np=productos.map(p=>p.catId===movingSub.catId&&p.subId===movingSub.subId?{...p,catId:moveTarget}:p);await guardar(nc,np);setMovingSub(null);setMoveTarget("");showToast("✅ Subcategoría movida");};
     return (<div className="fade"><TopBar title="📂 Configuración" subtitle="Categorías y subcategorías" onBack={pop}/>
-      {movingSub&&(<div style={{position:"fixed",inset:0,background:"rgba(61,46,31,0.70)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-        <div style={{background:"#ffffff",border:"1px solid #d4c5b0",borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
-          <div style={{fontWeight:600,marginBottom:4,color:"#3d2e1f"}}>Mover "{movingSub.label}"</div>
-          <div style={{fontSize:12,color:"#8b6f47",marginBottom:14}}>Elegí la categoría destino:</div>
+      {movingSub&&(<div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
+          <div style={{fontWeight:600,marginBottom:4,color:colors.text}}>Mover "{movingSub.label}"</div>
+          <div style={{fontSize:12,color:colors.textMuted,marginBottom:14}}>Elegí la categoría destino:</div>
           <select className="inp" value={moveTarget} onChange={e=>setMoveTarget(e.target.value)} style={{marginBottom:16}}><option value="">— Elegir —</option>{localCats.filter(c=>c.id!==movingSub.catId).sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}</select>
-          <div style={{display:"flex",gap:10}}><button className="btn" onClick={()=>{setMovingSub(null);setMoveTarget("");}} style={{flex:1,background:"#e8dfd0",color:"#6d5d4b",padding:12}}>Cancelar</button><button className="btn" onClick={doMoveSub} style={{flex:1,background:"#d4a574",color:"#faf8f3",padding:12}} disabled={!moveTarget}>Mover</button></div>
+          <div style={{display:"flex",gap:10}}><button className="btn" onClick={()=>{setMovingSub(null);setMoveTarget("");}} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12}}>Cancelar</button><button className="btn" onClick={doMoveSub} style={{flex:1,background:colors.accent,color:"#fff",padding:12}} disabled={!moveTarget}>Mover</button></div>
         </div>
       </div>)}
       {[...localCats].sort((a,b)=>alpha(a,b)).map(cat=>(<div key={cat.id} className="card" style={{marginBottom:10,overflow:"hidden",borderTop:`3px solid ${cat.color}`}}>
         <div style={{padding:"14px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setOpenId(openId===cat.id?null:cat.id)}>
-          <span style={{fontSize:20}}>{cat.emoji}</span><span style={{fontWeight:600,flex:1,color:"#3d2e1f"}}>{cat.label}</span><span style={{fontSize:12,color:"#8b6f47"}}>{cat.subs.length} sub</span><span style={{color:"#8b6f47",fontSize:13,marginLeft:4}}>{openId===cat.id?"▲":"▼"}</span>
+          <span style={{fontSize:20}}>{cat.emoji}</span><span style={{fontWeight:600,flex:1,color:colors.text}}>{cat.label}</span><span style={{fontSize:12,color:colors.textMuted}}>{cat.subs.length} sub</span><span style={{color:colors.textMuted,fontSize:13,marginLeft:4}}>{openId===cat.id?"▲":"▼"}</span>
         </div>
-        {openId===cat.id&&(<div style={{padding:"0 16px 16px",borderTop:"1px solid #e8dfd0"}}>
+        {openId===cat.id&&(<div style={{padding:"0 16px 16px",borderTop:`1px solid ${colors.cardBorder}`}}>
           <CatEditFields cat={cat} onSave={(changes)=>askConfirm("¿Guardar cambios?",()=>save(localCats.map(c=>c.id===cat.id?{...c,...changes}:c)),"Guardar")}/>
           <div style={{marginTop:14}}>
-            <div style={{fontSize:11,fontWeight:600,color:"#8b6f47",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Subcategorías</div>
+            <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Subcategorías</div>
             {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>(<SubEditRow key={sub.id} sub={sub} catColor={cat.color}
               onSave={(label)=>askConfirm("¿Guardar cambios?",()=>save(localCats.map(c=>c.id===cat.id?{...c,subs:c.subs.map(s=>s.id===sub.id?{...s,label}:s)}:c)),"Guardar")}
               onDelete={()=>deleteSub(cat.id,sub.id)} onMove={()=>{setMovingSub({catId:cat.id,subId:sub.id,label:sub.label});setMoveTarget("");}}/>))}
-            <div style={{display:"flex",gap:8,marginTop:6}}><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="+ Nueva subcategoría…" value={newSubInputs[cat.id]||""} onChange={e=>setNewSubInputs(f=>({...f,[cat.id]:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&addSub(cat.id)} style={{flex:1,borderStyle:"dashed",padding:"8px 12px",fontSize:13}}/><button className="btn" onClick={()=>addSub(cat.id)} style={{background:cat.color,color:"#faf8f3",padding:"7px 14px",fontSize:14}}>+</button></div>
+            <div style={{display:"flex",gap:8,marginTop:6}}><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="+ Nueva subcategoría…" value={newSubInputs[cat.id]||""} onChange={e=>setNewSubInputs(f=>({...f,[cat.id]:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&addSub(cat.id)} style={{flex:1,borderStyle:"dashed",padding:"8px 12px",fontSize:13}}/><button className="btn" onClick={()=>addSub(cat.id)} style={{background:cat.color,color:"#080c14",padding:"7px 14px",fontSize:14}}>+</button></div>
           </div>
-          <button className="btn" onClick={()=>deleteCat(cat.id)} style={{marginTop:14,width:"100%",background:"#f5e6d3",color:"#d77a61",border:"1px solid #f0d5c8",padding:10,fontSize:13}}>Eliminar categoría</button>
+          <button className="btn" onClick={()=>deleteCat(cat.id)} style={{marginTop:14,width:"100%",background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:10,fontSize:13}}>Eliminar categoría</button>
         </div>)}
       </div>))}
     </div>);
@@ -2247,19 +2208,19 @@
         <div className="field"><label>Emoji</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:18,padding:"8px 4px"}}/></div>
         <div className="field"><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={label} onChange={e=>setLabel(e.target.value)}/></div>
       </div>
-      <div style={{marginTop:10}}><div style={{fontSize:11,fontWeight:600,color:"#8b6f47",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Color</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{COLORS.map(c=><div key={c} onClick={()=>setColor(c)} style={{width:26,height:26,borderRadius:"50%",background:c,cursor:"pointer",border:color===c?"3px solid #fff":"3px solid transparent",transition:"all .15s"}}/>)}</div></div>
-      <button className="btn" onClick={()=>onSave({emoji,label,color})} style={{marginTop:10,width:"100%",background:"#e8dfd0",color:"#e5c9a8",padding:10,fontSize:13}}>Guardar cambios categoría</button>
+      <div style={{marginTop:10}}><div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Color</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{COLORS.map(c=><div key={c} onClick={()=>setColor(c)} style={{width:26,height:26,borderRadius:"50%",background:c,cursor:"pointer",border:color===c?"3px solid #fff":"3px solid transparent",transition:"all .15s"}}/>)}</div></div>
+      <button className="btn" onClick={()=>onSave({emoji,label,color})} style={{marginTop:10,width:"100%",background:colors.btnSecondary,color:colors.accent,padding:10,fontSize:13}}>Guardar cambios categoría</button>
     </div>);
   }
 
   function SubEditRow({sub,catColor,onSave,onDelete,onMove}) {
     const [label,setLabel]=useState(sub.label);
-    return (<div style={{background:"#faf8f3",borderRadius:8,padding:"8px 10px",marginBottom:6}}>
+    return (<div style={{background:colors.inputBg,borderRadius:8,padding:"8px 10px",marginBottom:6}}>
       <input type="search" autoComplete="canasta-field-ignore" className="inp" value={label} onChange={e=>setLabel(e.target.value)} style={{marginBottom:6,padding:"7px 10px",fontSize:13}}/>
       <div style={{display:"flex",gap:6}}>
-        <button className="btn" onClick={()=>onSave(label)} style={{flex:1,background:"#e8dfd0",color:"#e5c9a8",padding:"6px 0",fontSize:12}}>Guardar</button>
-        <button className="btn" onClick={onMove} style={{flex:1,background:"#e8dfd0",color:"#e9c46a",padding:"6px 0",fontSize:12}}>Mover</button>
-        <button className="btn" onClick={onDelete} style={{flex:1,background:"#f5e6d3",color:"#d77a61",border:"1px solid #f0d5c8",padding:"6px 0",fontSize:12}}>Eliminar</button>
+        <button className="btn" onClick={()=>onSave(label)} style={{flex:1,background:colors.btnSecondary,color:colors.accent,padding:"6px 0",fontSize:12}}>Guardar</button>
+        <button className="btn" onClick={onMove} style={{flex:1,background:colors.btnSecondary,color:colors.warning,padding:"6px 0",fontSize:12}}>Mover</button>
+        <button className="btn" onClick={onDelete} style={{flex:1,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"6px 0",fontSize:12}}>Eliminar</button>
       </div>
     </div>);
   }
