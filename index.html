@@ -1321,7 +1321,7 @@
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
     const isStock=activeTab==="stock"; 
@@ -1350,7 +1350,7 @@
       <TopBar colors={colors} title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:colors.accent,fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 11px",fontSize:12}}>Ver todos</button>
-          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
+          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode}/>}
         </div>}/>
       <SearchRow colors={colors} q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
@@ -1390,7 +1390,7 @@
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
-  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors}) {
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode}) {
     const [q,setQ]=useState("");
     const isStock=activeTab==="stock";
     const defaultSort="nombre-az";
@@ -1466,7 +1466,7 @@
             </div>
           :<div style={{display:"flex",gap:8}}>
               {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 11px",fontSize:12}}>Selec.</button>}
-              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
+              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode}/>}
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
