@@ -13,22 +13,28 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#080c14;font-family:'DM Sans','Segoe UI',sans-serif}
-    #root{min-height:100vh}
-    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#1e2535}
+    body{font-family:'DM Sans','Segoe UI',sans-serif;transition:background-color .3s ease,color .3s ease}
+    #root{min-height:100vh;transition:color .3s ease}
+    ::-webkit-scrollbar{width:3px}
+    ::-webkit-scrollbar-thumb{background:#1e2535;transition:background .3s ease}
+    body.light-theme ::-webkit-scrollbar-thumb{background:#d1d5db}
     .btn{cursor:pointer;border:none;font-family:inherit;font-weight:600;transition:all .15s;border-radius:10px}
     .btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
     .btn:active{transform:translateY(0);filter:brightness(.95)}
-    .card{background:#0d1321;border:1px solid #1a2235;border-radius:14px}
-    .field{display:flex;flex-direction:column;gap:6px}
-    .field label{font-size:11px;font-weight:600;color:#4a5568;text-transform:uppercase;letter-spacing:.08em}
-    .inp{background:#080c14;border:1px solid #1a2235;color:#e8eaf0;border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
-    .inp:focus{border-color:#3b82f6}
     .mono{font-family:'DM Mono',monospace}
     .fade{animation:fi .22s ease}
     @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
     .row{cursor:pointer;transition:all .15s}
+    .card{background:#0d1321;border:1px solid #1a2235;border-radius:14px;transition:all .3s ease}
+    body.light-theme .card{background:#ffffff;border-color:#e5e7eb}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:11px;font-weight:600;color:#4a5568;text-transform:uppercase;letter-spacing:.08em;transition:color .3s ease}
+    body.light-theme .field label{color:#6b7280}
+    .inp{background:#080c14;border:1px solid #1a2235;color:#e8eaf0;border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;transition:all .3s ease;width:100%}
+    .inp:focus{border-color:#3b82f6}
+    body.light-theme .inp{background:#ffffff;border-color:#d1d5db;color:#1f2937}
     .row:hover{transform:translateX(3px);border-color:#2a3550!important}
+    body.light-theme .row:hover{border-color:#e5e7eb!important}
   </style>
 </head>
 <body>
@@ -95,6 +101,46 @@
   };
   // Muestra "3x40m" si hay display guardado, sino "120m"
   const fmtCantRef=(p)=>{if(!p||!p.cantidadRef)return "";if(p.unidad==="m"&&p.rollosRef&&p.metrosRef)return `${p.rollosRef}x${p.metrosRef}m`;return `${p.cantidadRef}${p.unidad||""}`;};
+
+  // ── Theme System ──────────────────────────────────────────────────────────────
+  const THEMES = {
+    dark: {
+      bg: "#080c14",
+      bgSecondary: "#0d1321",
+      card: "#0d1321",
+      cardBorder: "#1a2235",
+      text: "#e8eaf0",
+      textSecondary: "#8b9ab0",
+      textMuted: "#4a5568",
+      input: "#080c14",
+      inputBorder: "#1a2235",
+      hover: "#2a3550",
+      scrollbar: "#1e2535",
+      overlay: "#000c",
+      overlayLight: "#000b",
+      shadow: "#0008",
+      divider: "#1a2235",
+      accent: "#3b82f6"
+    },
+    light: {
+      bg: "#f8f9fa",
+      bgSecondary: "#ffffff",
+      card: "#ffffff",
+      cardBorder: "#e5e7eb",
+      text: "#1f2937",
+      textSecondary: "#6b7280",
+      textMuted: "#9ca3af",
+      input: "#ffffff",
+      inputBorder: "#d1d5db",
+      hover: "#e5e7eb",
+      scrollbar: "#d1d5db",
+      overlay: "#0006",
+      overlayLight: "#0004",
+      shadow: "#0002",
+      divider: "#e5e7eb",
+      accent: "#3b82f6"
+    }
+  };
 
   const DEFAULT_CATS = [
     { id:"primario",   label:"Primario",   emoji:"🛒", color:"#60a5fa", subs:[] },
@@ -901,6 +947,17 @@
 
   // ── App ─────────────────────────────────────────────────────────────────────
   function App() {
+    // Theme state
+    const [theme,setTheme]=useState(()=>{
+      try{return localStorage.getItem("canasta_theme")||"dark";}catch{return "dark";}
+    });
+    const colors=THEMES[theme];
+    const toggleTheme=()=>{
+      const newTheme=theme==="dark"?"light":"dark";
+      setTheme(newTheme);
+      try{localStorage.setItem("canasta_theme",newTheme);}catch(e){}
+    };
+
     const [cats,setCats]=useState(DEFAULT_CATS);
     const [productos,setProductos]=useState([]);
     const [stock,setStock]=useState({});
@@ -1148,13 +1205,13 @@
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#3b82f6",fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,theme,toggleTheme};
 
     const isMenuScreen=["export","backup","import","config"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
 
     return (
-      <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",minHeight:"100vh",background:"#080c14",color:"#e8eaf0"}}>
+      <div className={theme==="light"?"light-theme":""} style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",minHeight:"100vh",background:theme==="dark"?"#080c14":"#f8f9fa",color:theme==="dark"?"#e8eaf0":"#1f2937"}}>
         {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:3000,background:toast.tipo==="err"?"#ef4444":"#10b981",color:"#fff",padding:"9px 20px",borderRadius:10,fontWeight:600,fontSize:13,boxShadow:"0 8px 32px #0008",whiteSpace:"nowrap",maxWidth:"90vw",textAlign:"center"}}>{toast.msg}</div>}
         {confirm&&<Confirm msg={confirm.msg} onOk={()=>{confirm.onOk();setConfirm(null);}} onCancel={()=>setConfirm(null)} okLabel={confirm.okLabel} okColor={confirm.okColor}/>}
         {confirmCompra&&<ConfirmCompra data={confirmCompra} onOk={()=>{confirmCompra.onOk();setConfirmCompra(null);}} onCancel={()=>setConfirmCompra(null)}/>}
@@ -1200,28 +1257,32 @@
   }
 
   // ── HomeScreen ───────────────────────────────────────────────────────────────
-  function HamburgerMenu({push,setShowHistorial}) {
+  function HamburgerMenu({push,setShowHistorial,colors,theme,toggleTheme}) {
     const [open,setOpen]=useState(false);
     return (
       <div style={{position:"relative"}}>
-        <button className="btn" onClick={()=>setOpen(o=>!o)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#e8eaf0",padding:"9px 13px",fontSize:18,lineHeight:1}}>☰</button>
+        <button className="btn" onClick={()=>setOpen(o=>!o)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:"9px 13px",fontSize:18,lineHeight:1}}>☰</button>
         {open&&<>
           <div style={{position:"fixed",inset:0,zIndex:299}} onClick={()=>setOpen(false)}/>
-          <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:"#0d1321",border:"1px solid #1a2235",borderRadius:12,padding:8,zIndex:300,minWidth:180,boxShadow:"0 8px 32px #0006"}}>
-            <button className="btn" onClick={()=>{setOpen(false);push("import");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📥 Importar</button>
-            <button className="btn" onClick={()=>{setOpen(false);push("export");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📋 Exportar</button>
-            <button className="btn" onClick={()=>{setOpen(false);push("backup");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>💾 Backup</button>
-            <div style={{borderTop:"1px solid #1a2235",margin:"4px 0"}}/>
-            <button className="btn" onClick={()=>{setOpen(false);setShowHistorial(true);}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>🧾 Historial de compras</button>
-            <div style={{borderTop:"1px solid #1a2235",margin:"4px 0"}}/>
-            <button className="btn" onClick={()=>{setOpen(false);push("config");}} style={{width:"100%",background:"none",color:"#e8eaf0",padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📂 Editar categorías</button>
+          <div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:colors.card,border:`1px solid ${colors.cardBorder}`,borderRadius:12,padding:8,zIndex:300,minWidth:180,boxShadow:`0 8px 32px ${colors.shadow}`}}>
+            <button className="btn" onClick={()=>{toggleTheme();setOpen(false);}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>
+              {theme==="dark"?"☀️ Modo claro":"🌙 Modo oscuro"}
+            </button>
+            <div style={{borderTop:`1px solid ${colors.divider}`,margin:"4px 0"}}/>
+            <button className="btn" onClick={()=>{setOpen(false);push("import");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📥 Importar</button>
+            <button className="btn" onClick={()=>{setOpen(false);push("export");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📋 Exportar</button>
+            <button className="btn" onClick={()=>{setOpen(false);push("backup");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>💾 Backup</button>
+            <div style={{borderTop:`1px solid ${colors.divider}`,margin:"4px 0"}}/>
+            <button className="btn" onClick={()=>{setOpen(false);setShowHistorial(true);}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>🧾 Historial de compras</button>
+            <div style={{borderTop:`1px solid ${colors.divider}`,margin:"4px 0"}}/>
+            <button className="btn" onClick={()=>{setOpen(false);push("config");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📂 Editar categorías</button>
           </div>
         </>}
       </div>
     );
   }
 
-  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial,setConfirmCompra}) {
+  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial,setConfirmCompra,colors,theme,toggleTheme}) {
     const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false); const [sortCats,setSortCats]=useState("nombre-az");
     const [menuOpen,setMenuOpen]=useState(false);
     const isStock=activeTab==="stock"; 
@@ -1244,7 +1305,7 @@
         <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:"#e8eaf0"}}>🧺 Canasta</div>
           <div style={{fontSize:12,color:"#4a5568",marginTop:3}}>{productos.length} productos{!isStock&&!modoCompras&&<> · <span style={{color:"#3b82f6",fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
         </div>
-        {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
+        {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} theme={theme} toggleTheme={toggleTheme}/>}
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
@@ -1283,7 +1344,7 @@
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,theme,toggleTheme}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
     const isStock=activeTab==="stock"; 
@@ -1312,7 +1373,7 @@
       <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:"#3b82f6",fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Ver todos</button>
-          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
+          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} theme={theme} toggleTheme={toggleTheme}/>}
         </div>}/>
       <SearchRow q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
@@ -1352,7 +1413,7 @@
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
-  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial}) {
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,theme,toggleTheme}) {
     const [q,setQ]=useState("");
     const isStock=activeTab==="stock";
     const defaultSort="nombre-az";
@@ -1428,7 +1489,7 @@
             </div>
           :<div style={{display:"flex",gap:8}}>
               {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:"#0d1321",border:"1px solid #1a2235",color:"#8b9ab0",padding:"8px 11px",fontSize:12}}>Selec.</button>}
-              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
+              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} theme={theme} toggleTheme={toggleTheme}/>}
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
