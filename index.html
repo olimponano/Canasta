@@ -389,7 +389,7 @@
 
 
 
-  function EditItemModal({item,productos,cats,stock,stockTotal,mesesRestantes,fmtMeses,onClose,onSave}) {
+  function EditItemModal({item,productos,cats,stock,stockTotal,mesesRestantes,fmtMeses,onClose,onSave,colors}) {
     const esSuelto=item.suelto===true;
     const p=productos.find(x=>x.id===item.prodId);
     const cat=cats.find(c=>c.id===p?.catId);
@@ -487,7 +487,7 @@
     );
   }
 
-  function TicketDrawer({ticket,setTicket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,askConfirm,onAddSuelto,onAddProducto,stock,stockTotal,mesesRestantes,fmtMeses}) {
+  function TicketDrawer({ticket,setTicket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,askConfirm,onAddSuelto,onAddProducto,stock,stockTotal,mesesRestantes,fmtMeses,colors}) {
     const [editIdx,setEditIdx]=useState(null);
     const [editCant,setEditCant]=useState("");
     const [editPrecio,setEditPrecio]=useState("");
@@ -561,7 +561,7 @@
                     </div>
                   ):(
                     <div style={{cursor:"pointer"}} onClick={()=>setMenuIdx(menuIdx===i?null:i)}>
-                      <TicketItemRow item={item}/>
+                      <TicketItemRow item={item} colors={colors}/>
                     </div>
                   )}
                   {menuIdx===i&&editIdx!==i&&(
@@ -587,11 +587,11 @@
           </div>
         )}
       </div>
-      {editModalIdx!==null&&<EditItemModal item={ticket[editModalIdx]} productos={productos} cats={cats} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} onClose={()=>setEditModalIdx(null)} onSave={(updates)=>{setTicket(t=>t.map((x,i)=>i===editModalIdx?{...x,...updates}:x));setEditModalIdx(null);}}/>}
+      {editModalIdx!==null&&<EditItemModal item={ticket[editModalIdx]} productos={productos} cats={cats} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} onClose={()=>setEditModalIdx(null)} onSave={(updates)=>{setTicket(t=>t.map((x,i)=>i===editModalIdx?{...x,...updates}:x));setEditModalIdx(null);}} colors={colors}/>}
     </>);
   }
 
-  function TicketItemRow({item}) {
+  function TicketItemRow({item,colors}) {
     const totalPagado=item.totalPagado??item.precio??0;
     const totalRef=item.totalRef??null;
     const diffItem=totalRef>0?totalPagado-totalRef:null;
@@ -616,7 +616,7 @@
     );
   }
 
-  function FacturaModal({ticket,onClose,onEliminar,soloVer=false,askConfirm}) {
+  function FacturaModal({ticket,onClose,onEliminar,soloVer=false,askConfirm,colors}) {
     const fmtFecha=(f)=>new Date(f).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"});
     const totalPagado=ticket.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
     const totalRef=ticket.items.filter(x=>!x.suelto&&(x.totalRef??0)>0).reduce((s,x)=>s+(x.totalRef??0),0);
@@ -642,7 +642,7 @@
           </div>
           {/* Items */}
           <div style={{overflowY:"auto",flex:1,padding:"0 20px"}}>
-            {ticket.items.map((item,j)=><TicketItemRow key={j} item={item}/>)}
+            {ticket.items.map((item,j)=><TicketItemRow key={j} item={item} colors={colors}/>)}
           </div>
           {/* Botones */}
           <div style={{padding:"14px 20px",borderTop:`1px solid ${colors.cardBorder}`,display:"flex",gap:8,flexShrink:0}}>
@@ -654,7 +654,7 @@
     );
   }
 
-  function HistorialTickets({tickets,setTickets,onClose,askConfirm}) {
+  function HistorialTickets({tickets,setTickets,onClose,askConfirm,colors}) {
     const [ticketAbierto,setTicketAbierto]=useState(null);
     const fmtFecha=(f)=>new Date(f).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit"});
     const eliminarTicket=async(id)=>{
@@ -704,16 +704,16 @@
           <button className="btn" onClick={onClose} style={{width:"100%",background:colors.btnSecondary,color:colors.text,padding:13,fontSize:14,marginTop:4}}>Cerrar</button>
         </div>
       </div>
-      {ticketAbierto&&<FacturaModal ticket={ticketAbierto} onClose={()=>setTicketAbierto(null)} onEliminar={()=>eliminarTicket(ticketAbierto.id)} askConfirm={askConfirm}/>}
+      {ticketAbierto&&<FacturaModal ticket={ticketAbierto} onClose={()=>setTicketAbierto(null)} onEliminar={()=>eliminarTicket(ticketAbierto.id)} askConfirm={askConfirm} colors={colors}/>}
     </>);
   }
 
-  function TicketFinalizadoModal({ticket,onClose}) {
-    return <FacturaModal ticket={ticket} onClose={onClose} soloVer={true}/>;
+  function TicketFinalizadoModal({ticket,onClose,colors}) {
+    return <FacturaModal ticket={ticket} onClose={onClose} soloVer={true} colors={colors}/>;
   }
 
   // ── ComprasCardInline ─────────────────────────────────────────────────────────
-  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket}) {
+  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket,colors}) {
     const [open,setOpen]=useState(false);
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
@@ -874,7 +874,7 @@
     );
   }
 
-  function TopBar({title,subtitle,onBack,right}) {
+  function TopBar({title,subtitle,onBack,right,colors}) {
     return (
       <div style={{padding:"28px 0 12px",display:"flex",alignItems:"center",gap:12,minHeight:90}}>
         {onBack&&<button className="btn" onClick={onBack} style={{background:colors.card,color:colors.text,border:`1px solid ${colors.cardBorder}`,padding:"8px 12px",fontSize:14,flexShrink:0}}>←</button>}
@@ -887,7 +887,7 @@
     );
   }
 
-  function SearchRow({q,onChange,sortValue,onSort,sortOptions}) {
+  function SearchRow({q,onChange,sortValue,onSort,sortOptions,colors}) {
     const inputRef=useRef(null);
     return (
       <div style={{display:"flex",gap:8,marginBottom:14}}>
@@ -1222,7 +1222,7 @@
         {showNuevoProdModal&&(
           <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 0 80px"}} onClick={e=>e.target===e.currentTarget&&setShowNuevoProdModal(false)}>
             <div style={{width:"100%",maxWidth:500,background:colors.inputBg}}>
-              <NuevoProdScreen cats={cats} initCatId={current.catId||null} initSubId={null} productos={productos} guardar={guardar} pop={()=>setShowNuevoProdModal(false)} showToast={showToast} desdeCompras={true} agregarAlTicket={agregarAlTicket}/>
+              <NuevoProdScreen cats={cats} initCatId={current.catId||null} initSubId={null} productos={productos} guardar={guardar} pop={()=>setShowNuevoProdModal(false)} showToast={showToast} desdeCompras={true} agregarAlTicket={agregarAlTicket} colors={colors}/>
             </div>
           </div>
         )}
@@ -1321,7 +1321,7 @@
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
     const isStock=activeTab==="stock"; 
@@ -1347,12 +1347,12 @@
     const resultsQ=q?productos.filter(p=>norm(p.nombre).includes(norm(q))||norm(p.marca||"").includes(norm(q))).filter(p=>!modoCompras||!ticketIdsQS.has(p.id)):[];
 
     return (<div className="fade">
-      <TopBar title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:colors.accent,fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
+      <TopBar colors={colors} title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:colors.accent,fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 11px",fontSize:12}}>Ver todos</button>
           {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial}/>}
         </div>}/>
-      <SearchRow q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
+      <SearchRow colors={colors} q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
         {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
         <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
@@ -1360,8 +1360,8 @@
       {q?(<>
         <div style={{fontSize:12,color:colors.textMuted,marginBottom:10}}>{resultsQ.length} resultado{resultsQ.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{resultsQ.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
-          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} />;
-          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} />;
+          if(isStock&&!modoCompras)return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} colors={colors}/>;
+          if(modoCompras)return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} colors={colors}/>;
           return <ProdCard key={p.id} p={p} cat={pcat} gastoMensual={gastoMensual} push={push}/>;
         })}</div>
       </>):(<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -1390,7 +1390,7 @@
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
-  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial}) {
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors}) {
     const [q,setQ]=useState("");
     const isStock=activeTab==="stock";
     const defaultSort="nombre-az";
@@ -1457,7 +1457,7 @@
           </div>
         </div>
       </div>)}
-      <TopBar title={title} subtitle={listSubtitle} onBack={()=>{cancelSelect();pop();}}
+      <TopBar colors={colors} title={title} subtitle={listSubtitle} onBack={()=>{cancelSelect();pop();}}
         right={selectMode&&!isStock&&!modoCompras
           ?<div style={{display:"flex",gap:8,alignItems:"center"}}>
               <div style={{fontSize:13,color:colors.accent,fontWeight:600}}>{selected.size} sel.</div>
@@ -1482,8 +1482,8 @@
         :<div style={{display:"flex",flexDirection:"column",gap:8}}>
           {lista.map(p=>{
             const pcat=q?cats.find(c=>c.id===p.catId):cat;
-            if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} onOpen={()=>handleStockOpen(p.id)} onClose={handleStockClose}/>;
-            if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} />;
+            if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} onOpen={()=>handleStockOpen(p.id)} onClose={handleStockClose} colors={colors}/>;
+            if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} colors={colors}/>;
             const isSel=selected.has(p.id);
             return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?colors.accent:pcat?.color||"#444"}`,cursor:"pointer",background:isSel?`${colors.accent}22`:colors.card,transition:"all .15s"}}
               onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
@@ -1498,7 +1498,7 @@
 
 
   // ── StockCard ─────────────────────────────────────────────────────────────────
-  function StockCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,askConfirm,onOpen,onClose}) {
+  function StockCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,askConfirm,onOpen,onClose,colors}) {
     const [open,setOpen]=useState(false);
     const [showAddDim,setShowAddDim]=useState(false);
     const [newCantRef,setNewCantRef]=useState("");
@@ -1623,7 +1623,7 @@
   }
 
   // ── ComprasCard ───────────────────────────────────────────────────────────────
-  function ComprasCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,push}) {
+  function ComprasCard({p,cat,stock,stockTotal,mesesRestantes,fmtMeses,push,colors}) {
     const total=stockTotal(p);
     const meses=mesesRestantes(p);
     const mesesTxt=fmtMeses(meses);
@@ -1700,7 +1700,7 @@
   }
 
   // ── DetalleScreen ─────────────────────────────────────────────────────────────
-  function DetalleScreen({prodId,productos,guardar,pop,showToast,askConfirm,push,gastoMensual,getCat,getSub}) {
+  function DetalleScreen({prodId,productos,guardar,pop,showToast,askConfirm,push,gastoMensual,getCat,getSub,colors}) {
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
     const cat=getCat(p.catId); const sub=p.subId?getSub(p.catId,p.subId):null;
     const gm=gastoMensual(p); const clr=cat?.color||"#3b82f6";
@@ -1717,7 +1717,7 @@
     const del=()=>askConfirm(`¿Eliminar "${p.nombre}"?`,async()=>{await guardar(null,productos.filter(x=>x.id!==prodId),{deleteRemoved:true});showToast("🗑️ Eliminado");pop();},"Eliminar","#ef4444");
     const delH=(hid)=>askConfirm("¿Eliminar este registro?",async()=>{await guardar(null,productos.map(x=>x.id===prodId?{...x,historialCompra:x.historialCompra.filter(h=>h.id!==hid)}:x));showToast("Eliminado");},"Eliminar","#ef4444");
     return (<div className="fade">
-      <TopBar title={p.nombre} subtitle={[cat?.label,sub?.label].filter(Boolean).join(" › ")} onBack={pop}
+      <TopBar colors={colors} title={p.nombre} subtitle={[cat?.label,sub?.label].filter(Boolean).join(" › ")} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
           <button className="btn" onClick={()=>push("editar-prod",{prodId})} style={{background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:"8px 12px",fontSize:13}}>Editar</button>
           <button className="btn" onClick={del} style={{background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"8px 12px",fontSize:13}}>Eliminar</button>
@@ -1766,7 +1766,7 @@
   }
 
   // ── CantidadRefField ──────────────────────────────────────────────────────────
-  function CantidadRefField({unidad, cantidadRef, rollosRef, metrosRef, onChange}) {
+  function CantidadRefField({unidad, cantidadRef, rollosRef, metrosRef, onChange, colors}) {
     const initRollos = rollosRef ? String(rollosRef) : "";
     const initMetros = metrosRef ? String(metrosRef) : "";
     const [rollos, setRollos] = useState(initRollos);
@@ -1809,7 +1809,7 @@
   }
 
   // ── EditarProdScreen ──────────────────────────────────────────────────────────
-  function EditarProdScreen({prodId,cats,productos,guardar,pop,showToast,askConfirm}) {
+  function EditarProdScreen({prodId,cats,productos,guardar,pop,showToast,askConfirm,colors}) {
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
     const [form,setForm]=useState({nombre:p.nombre,marca:p.marca||"",catId:p.catId,subId:p.subId||"",unidadesMes:p.unidadesMes!=null?String(p.unidadesMes):"",precioRef:p.precioRef!=null?String(p.precioRef):"",cantidadRef:p.cantidadRef,rollosRef:p.rollosRef||null,metrosRef:p.metrosRef||null,unidad:p.unidad||"gr"});
     const [showAddSub,setShowAddSub]=useState(false);
@@ -1823,7 +1823,7 @@
       await guardar(null,productos.map(x=>x.id===prodId?{...x,...form,precioRef:pr,unidadesMes:um,cantidadRef:cr,rollosRef:form.rollosRef||null,metrosRef:form.metrosRef||null,subId:form.subId||null}:x));
       showToast("✅ Guardado");pop();
     },"Guardar cambios");
-    return (<div className="fade"><TopBar title="Editar producto" subtitle={p.nombre} onBack={pop}/>
+    return (<div className="fade"><TopBar colors={colors} title="Editar producto" subtitle={p.nombre} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div className="field"><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))}/></div>
         <div className="field"><label>Marca / detalle</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={form.marca} onChange={e=>setForm(f=>({...f,marca:e.target.value}))}/></div>
@@ -1842,7 +1842,7 @@
           <div className="field"><label>Precio ref. ($)</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 1200" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} rollosRef={form.rollosRef} metrosRef={form.metrosRef} onChange={({valor,rollosRef,metrosRef})=>setForm(f=>({...f,cantidadRef:valor,rollosRef:rollosRef||null,metrosRef:metrosRef||null}))}/>
+          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} rollosRef={form.rollosRef} metrosRef={form.metrosRef} onChange={({valor,rollosRef,metrosRef})=>setForm(f=>({...f,cantidadRef:valor,rollosRef:rollosRef||null,metrosRef:metrosRef||null}))} colors={colors}/>
           <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:null,rollosRef:null,metrosRef:null}))}>
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
@@ -1856,7 +1856,7 @@
   }
 
   // ── NuevoProdScreen ───────────────────────────────────────────────────────────
-  function NuevoProdScreen({cats,initCatId,initSubId,productos,guardar,pop,showToast,desdeCompras,agregarAlTicket}) {
+  function NuevoProdScreen({cats,initCatId,initSubId,productos,guardar,pop,showToast,desdeCompras,agregarAlTicket,colors}) {
     const [form,setForm]=useState({
       nombre:"",marca:"",
       catId:initCatId||"", // sin default
@@ -1939,7 +1939,7 @@
           <div className="field"><label>Precio ref. ($)</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="Opcional" value={form.precioRef} onChange={e=>setForm(f=>({...f,precioRef:e.target.value}))}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} rollosRef={form.rollosRef} metrosRef={form.metrosRef} onChange={({valor,rollosRef,metrosRef})=>setForm(f=>({...f,cantidadRef:valor,rollosRef:rollosRef||null,metrosRef:metrosRef||null}))}/>
+          <CantidadRefField unidad={form.unidad} cantidadRef={form.cantidadRef} rollosRef={form.rollosRef} metrosRef={form.metrosRef} onChange={({valor,rollosRef,metrosRef})=>setForm(f=>({...f,cantidadRef:valor,rollosRef:rollosRef||null,metrosRef:metrosRef||null}))} colors={colors}/>
           <div className="field"><label>Unidad</label><select className="inp" value={form.unidad} onChange={e=>setForm(f=>({...f,unidad:e.target.value,cantidadRef:null,rollosRef:null,metrosRef:null}))}>
             <option value="gr">gr</option><option value="kg">kg</option><option value="mL">mL</option><option value="L">L</option><option value="m">m</option><option value="un">un</option></select></div>
         </div>
@@ -1953,7 +1953,7 @@
   }
 
   // ── NuevoPrecioScreen ─────────────────────────────────────────────────────────
-  function NuevoPrecioScreen({prodId,productos,guardar,pop,showToast,getCat}) {
+  function NuevoPrecioScreen({prodId,productos,guardar,pop,showToast,getCat,colors}) {
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
     const cat=getCat(p.catId); const clr=cat?.color||"#3b82f6";
     const cantRef=p.cantidadRef||null; const unidad=p.unidad||"gr";
@@ -1979,7 +1979,7 @@
         setSaving(false);
       }
     };
-    return (<div className="fade"><TopBar title="Precio de compra" subtitle={`${p.nombre} · ${p.marca||""}`} onBack={pop}/>
+    return (<div className="fade"><TopBar colors={colors} title="Precio de compra" subtitle={`${p.nombre} · ${p.marca||""}`} onBack={pop}/>
       <div className="card" style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
         <div style={{background:clr+"15",borderRadius:10,padding:"10px 14px",fontSize:13,color:colors.textSecondary}}>Precio de referencia: <span style={{color:clr,fontWeight:700}}>{p.precioRef?fmt(p.precioRef):"no definido"}</span>{cantRef&&<span style={{marginLeft:8,color:colors.textMuted}}>· {cantRef}{unidad}</span>}</div>
         <div className="field"><label>Precio que pagué ($)</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 1200" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} autoFocus/></div>
@@ -2003,7 +2003,7 @@
   }
 
   // ── ExportScreen ──────────────────────────────────────────────────────────────
-  function ExportScreen({cats,productos,pop,showToast}) {
+  function ExportScreen({cats,productos,pop,showToast,colors}) {
     const [openKey,setOpenKey]=useState(null);
     const toggle=(key)=>setOpenKey(k=>k===key?null:key);
     const doCopy=async(text,e)=>{e.stopPropagation();const ok=await copyToClipboard(text);showToast(ok?"📋 Copiado":"No se pudo copiar",ok?null:"err");};
@@ -2024,7 +2024,7 @@
       </div>);
     };
 
-    return (<div className="fade"><TopBar title="📋 Exportar lista" subtitle="Tocá una sección para ver y copiar" onBack={pop}/>
+    return (<div className="fade"><TopBar colors={colors} title="📋 Exportar lista" subtitle="Tocá una sección para ver y copiar" onBack={pop}/>
       <div className="card" style={{overflow:"hidden",marginBottom:8}}>
         <SectionRow label="Toda la canasta" catId={null} subId={null}/>
       </div>
@@ -2052,7 +2052,7 @@
   }
 
   // ── BackupScreen ──────────────────────────────────────────────────────────────
-  function BackupScreen({cats,productos,pop,showToast}) {
+  function BackupScreen({cats,productos,pop,showToast,colors}) {
     const [copied,setCopied]=useState(false);
     const text=buildBackupText(cats,productos);
     const doCopy=async()=>{
@@ -2061,7 +2061,7 @@
       else showToast("No se pudo copiar","err");
     };
     return (<div className="fade">
-      <TopBar title="💾 Backup" subtitle="Formato importable — copia de seguridad completa" onBack={pop}/>
+      <TopBar colors={colors} title="💾 Backup" subtitle="Formato importable — copia de seguridad completa" onBack={pop}/>
       <div className="card" style={{padding:16,marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <div style={{fontSize:13,color:colors.textMuted}}>{productos.length} productos · {cats.length} categorías</div>
@@ -2075,7 +2075,7 @@
   }
 
   // ── ImportScreen ──────────────────────────────────────────────────────────────
-  function ImportScreen({cats,productos,guardar,pop,showToast}) {
+  function ImportScreen({cats,productos,guardar,pop,showToast,colors}) {
     const [step,setStep]=useState("input"); const [text,setText]=useState(""); const [parsed,setParsed]=useState([]);
     const [conflicts,setConflicts]=useState([]); const [resolutions,setResolutions]=useState({});
     const [catsParaImport,setCatsParaImport]=useState(null);
@@ -2130,7 +2130,7 @@
       pop();
     };
     const checkConflicts=()=>{const found=[];parsed.forEach(block=>{if(!block.catId)return;block.products.forEach(p=>{const ex=productos.find(x=>x.nombre.toLowerCase()===p.nombre.toLowerCase()&&x.catId===block.catId);if(ex)found.push({existing:ex,incoming:p,block});});});if(found.length){setConflicts(found);const def={};found.forEach(c=>{def[c.existing.id]="skip";});setResolutions(def);setStep("conflicts");}else doImport();};
-    return (<div className="fade"><TopBar title="📥 Importar lista" onBack={pop}/>
+    return (<div className="fade"><TopBar colors={colors} title="📥 Importar lista" onBack={pop}/>
       {step==="input"&&(<div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div className="card" style={{padding:16}}>
           <div style={{fontSize:13,color:colors.textSecondary,marginBottom:10,lineHeight:1.6}}>Formato por bloque (separá bloques con línea en blanco):<pre style={{marginTop:8,fontSize:12,color:"#4a90d9",background:colors.inputBg,borderRadius:8,padding:10,lineHeight:1.8}}>{`---Higiene---\nPersonal\nShampoo-Dove-400-mL-4500$-1\nJabón-Dove-90-gr-1180$-4\n\nLimpieza hogar\nDetergente-Magistral-500-mL-2371$-1\n\n---Primario---\nLeche-Carrefour-1-L-1182$-9`}</pre></div>
@@ -2164,7 +2164,7 @@
   }
 
   // ── ConfigScreen ──────────────────────────────────────────────────────────────
-  function ConfigScreen({cats,productos,guardar,pop,showToast,askConfirm,openCatId}) {
+  function ConfigScreen({cats,productos,guardar,pop,showToast,askConfirm,openCatId,colors}) {
     const [openId,setOpenId]=useState(openCatId||null); const [localCats,setLocalCats]=useState(cats);
     const [newSubInputs,setNewSubInputs]=useState({}); const [movingSub,setMovingSub]=useState(null); const [moveTarget,setMoveTarget]=useState("");
     useEffect(()=>{setLocalCats(cats);},[cats]);
@@ -2173,7 +2173,7 @@
     const addSub=(catId)=>askConfirm(`¿Crear subcategoría "${(newSubInputs[catId]||"").trim()}"?`,async()=>{const label=(newSubInputs[catId]||"").trim();if(!label)return;save(localCats.map(c=>c.id===catId?{...c,subs:[...c.subs,{id:uid(),label}]}:c));setNewSubInputs(f=>({...f,[catId]:""}));showToast("✅ Subcategoría creada");},"Crear");
     const deleteSub=(catId,subId)=>askConfirm("¿Eliminar esta subcategoría?",async()=>{if(productos.some(p=>p.catId===catId&&p.subId===subId))return showToast("Eliminá los productos primero","err");save(localCats.map(c=>c.id===catId?{...c,subs:c.subs.filter(s=>s.id!==subId)}:c));},"Eliminar","#ef4444");
     const doMoveSub=async()=>{if(!moveTarget||!movingSub)return;const sub=localCats.find(c=>c.id===movingSub.catId)?.subs?.find(s=>s.id===movingSub.subId);if(!sub)return;const nc=localCats.map(c=>{if(c.id===movingSub.catId)return{...c,subs:c.subs.filter(s=>s.id!==movingSub.subId)};if(c.id===moveTarget)return{...c,subs:[...c.subs,sub]};return c;});const np=productos.map(p=>p.catId===movingSub.catId&&p.subId===movingSub.subId?{...p,catId:moveTarget}:p);await guardar(nc,np);setMovingSub(null);setMoveTarget("");showToast("✅ Subcategoría movida");};
-    return (<div className="fade"><TopBar title="📂 Configuración" subtitle="Categorías y subcategorías" onBack={pop}/>
+    return (<div className="fade"><TopBar colors={colors} title="📂 Configuración" subtitle="Categorías y subcategorías" onBack={pop}/>
       {movingSub&&(<div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
         <div style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
           <div style={{fontWeight:600,marginBottom:4,color:colors.text}}>Mover "{movingSub.label}"</div>
@@ -2187,12 +2187,12 @@
           <span style={{fontSize:20}}>{cat.emoji}</span><span style={{fontWeight:600,flex:1,color:colors.text}}>{cat.label}</span><span style={{fontSize:12,color:colors.textMuted}}>{cat.subs.length} sub</span><span style={{color:colors.textMuted,fontSize:13,marginLeft:4}}>{openId===cat.id?"▲":"▼"}</span>
         </div>
         {openId===cat.id&&(<div style={{padding:"0 16px 16px",borderTop:`1px solid ${colors.cardBorder}`}}>
-          <CatEditFields cat={cat} onSave={(changes)=>askConfirm("¿Guardar cambios?",()=>save(localCats.map(c=>c.id===cat.id?{...c,...changes}:c)),"Guardar")}/>
+          <CatEditFields cat={cat} onSave={(changes)=>askConfirm("¿Guardar cambios?",()=>save(localCats.map(c=>c.id===cat.id?{...c,...changes}:c)),"Guardar")} colors={colors}/>
           <div style={{marginTop:14}}>
             <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Subcategorías</div>
             {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>(<SubEditRow key={sub.id} sub={sub} catColor={cat.color}
               onSave={(label)=>askConfirm("¿Guardar cambios?",()=>save(localCats.map(c=>c.id===cat.id?{...c,subs:c.subs.map(s=>s.id===sub.id?{...s,label}:s)}:c)),"Guardar")}
-              onDelete={()=>deleteSub(cat.id,sub.id)} onMove={()=>{setMovingSub({catId:cat.id,subId:sub.id,label:sub.label});setMoveTarget("");}}/>))}
+              onDelete={()=>deleteSub(cat.id,sub.id)} onMove={()=>{setMovingSub({catId:cat.id,subId:sub.id,label:sub.label});setMoveTarget("");}} colors={colors}/>))}
             <div style={{display:"flex",gap:8,marginTop:6}}><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="+ Nueva subcategoría…" value={newSubInputs[cat.id]||""} onChange={e=>setNewSubInputs(f=>({...f,[cat.id]:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&addSub(cat.id)} style={{flex:1,borderStyle:"dashed",padding:"8px 12px",fontSize:13}}/><button className="btn" onClick={()=>addSub(cat.id)} style={{background:cat.color,color:"#080c14",padding:"7px 14px",fontSize:14}}>+</button></div>
           </div>
           <button className="btn" onClick={()=>deleteCat(cat.id)} style={{marginTop:14,width:"100%",background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:10,fontSize:13}}>Eliminar categoría</button>
@@ -2201,7 +2201,7 @@
     </div>);
   }
 
-  function CatEditFields({cat,onSave}) {
+  function CatEditFields({cat,onSave,colors}) {
     const [emoji,setEmoji]=useState(cat.emoji); const [label,setLabel]=useState(cat.label); const [color,setColor]=useState(cat.color);
     return (<div style={{marginTop:12}}>
       <div style={{display:"grid",gridTemplateColumns:"64px 1fr",gap:8}}>
@@ -2213,7 +2213,7 @@
     </div>);
   }
 
-  function SubEditRow({sub,catColor,onSave,onDelete,onMove}) {
+  function SubEditRow({sub,catColor,onSave,onDelete,onMove,colors}) {
     const [label,setLabel]=useState(sub.label);
     return (<div style={{background:colors.inputBg,borderRadius:8,padding:"8px 10px",marginBottom:6}}>
       <input type="search" autoComplete="canasta-field-ignore" className="inp" value={label} onChange={e=>setLabel(e.target.value)} style={{marginBottom:6,padding:"7px 10px",fontSize:13}}/>
