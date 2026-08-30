@@ -923,11 +923,82 @@
   }
 
   // ── App ─────────────────────────────────────────────────────────────────────
-  function App() {
+  // ── Auth: login / registro ──────────────────────────────────────────────
+  function AuthScreen({colors,inviteInfo,onAuthed}) {
+    const [modo,setModo]=useState("login"); // login | registro
+    const [email,setEmail]=useState("");
+    const [password,setPassword]=useState("");
+    const [nombre,setNombre]=useState("");
+    const [loading,setLoading]=useState(false);
+    const [error,setError]=useState("");
+    const [checkEmail,setCheckEmail]=useState(false);
+
+    const submit=async()=>{
+      setError("");
+      if(!email||!password){setError("Completá email y contraseña.");return;}
+      setLoading(true);
+      try{
+        if(modo==="registro"){
+          const {data,error:err}=await sb.auth.signUp({email:email.trim(),password,options:{data:{nombre:nombre.trim()}}});
+          if(err){setError(err.message);setLoading(false);return;}
+          if(!data.session){
+            setCheckEmail(true);setLoading(false);return;
+          }
+          onAuthed();
+        } else {
+          const {error:err}=await sb.auth.signInWithPassword({email:email.trim(),password});
+          if(err){setError(err.message==="Invalid login credentials"?"Email o contraseña incorrectos.":err.message);setLoading(false);return;}
+          onAuthed();
+        }
+      }catch(e){setError(e.message||"Error inesperado.");setLoading(false);}
+    };
+
+    if(checkEmail){
+      return (<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:colors.bg}}>
+        <div className="card fade" style={{padding:28,maxWidth:380,width:"100%",textAlign:"center"}}>
+          <div style={{fontSize:38,marginBottom:12}}>📬</div>
+          <div style={{fontSize:16,fontWeight:700,color:colors.text,marginBottom:8}}>Revisá tu email</div>
+          <div style={{fontSize:13,color:colors.textMuted,lineHeight:1.5}}>Te enviamos un link de confirmación a <b>{email}</b>. Abrilo para activar tu cuenta.</div>
+        </div>
+      </div>);
+    }
+
+    return (
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:colors.bg}}>
+        <div className="card fade" style={{padding:28,maxWidth:380,width:"100%"}}>
+          <div style={{textAlign:"center",marginBottom:22}}>
+            <div style={{fontSize:30,marginBottom:6}}>🧺</div>
+            <div style={{fontSize:19,fontWeight:700,color:colors.text}}>Canasta</div>
+          </div>
+          {inviteInfo&&<div style={{background:colors.btnSecondary,border:`1px solid ${colors.cardBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12.5,color:colors.text,marginBottom:16,lineHeight:1.4}}>
+            👨‍👩‍👧 Te invitaron a unirte a <b>{inviteInfo.nombre}</b>. Iniciá sesión o creá una cuenta para sumarte.
+          </div>}
+          <div style={{display:"flex",gap:8,marginBottom:18,background:colors.inputBg,borderRadius:10,padding:4}}>
+            <button className="btn" onClick={()=>{setModo("login");setError("");}} style={{flex:1,padding:"8px 0",fontSize:13,background:modo==="login"?colors.card:"none",color:modo==="login"?colors.accent:colors.textMuted}}>Iniciar sesión</button>
+            <button className="btn" onClick={()=>{setModo("registro");setError("");}} style={{flex:1,padding:"8px 0",fontSize:13,background:modo==="registro"?colors.card:"none",color:modo==="registro"?colors.accent:colors.textMuted}}>Crear cuenta</button>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {modo==="registro"&&<div className="field"><label>Nombre</label><input className="inp" autoComplete="canasta-field-ignore" value={nombre} onChange={e=>setNombre(e.target.value)}/></div>}
+            <div className="field"><label>Email</label><input type="email" className="inp" autoComplete="canasta-field-ignore" value={email} onChange={e=>setEmail(e.target.value)}/></div>
+            <div className="field"><label>Contraseña</label><input type="password" className="inp" autoComplete="canasta-field-ignore" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}}/></div>
+          </div>
+          {error&&<div style={{color:colors.error,fontSize:12.5,marginTop:10}}>{error}</div>}
+          <button className="btn" disabled={loading} onClick={submit} style={{width:"100%",marginTop:18,padding:12,background:colors.accent,color:"#fff",fontSize:14,opacity:loading?.6:1}}>
+            {loading?"Un momento…":modo==="login"?"Entrar":"Crear cuenta"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function App({session,pendingInvite,onInviteHandled}) {
+    const userId=session.user.id;
     const [cats,setCats]=useState(DEFAULT_CATS);
     const [productos,setProductos]=useState([]);
     const [stock,setStock]=useState({});
     const [loaded,setLoaded]=useState(false);
+    const [grupoId,setGrupoId]=useState(null);
+    const [grupoInfo,setGrupoInfo]=useState(null); // {id,nombre,codigo_invitacion,rol,miembros:[]}
     const [activeTab,setActiveTab]=useState("productos");
     const [stack,setStack]=useState([{screen:"home"}]);
     const [toast,setToast]=useState(null);
@@ -971,9 +1042,29 @@
     const push=(screen,params={})=>setStack(s=>[...s,{screen,...params}]);
     const pop=()=>setStack(s=>s.length>1?s.slice(0,-1):s);
 
+    // Busca el grupo del usuario o le crea uno personal si es la primera vez
+    const ensureMiGrupo=async()=>{
+      const {data:gm}=await sb.from("grupo_miembros").select("grupo_id,rol").eq("user_id",userId).maybeSingle();
+      if(gm) return gm.grupo_id;
+      const {data:nuevoGrupo,error:errG}=await sb.from("grupos").insert({nombre:"Mi grupo",creado_por:userId}).select().single();
+      if(errG){console.error("Error creando grupo:",errG);return null;}
+      await sb.from("grupo_miembros").insert({grupo_id:nuevoGrupo.id,user_id:userId,rol:"admin",email:session.user.email});
+      return nuevoGrupo.id;
+    };
+
+    const cargarInfoGrupo=async(gId)=>{
+      const {data:g}=await sb.from("grupos").select("*").eq("id",gId).maybeSingle();
+      const {data:miembros}=await sb.from("grupo_miembros").select("user_id,rol,email").eq("grupo_id",gId).order("created_at");
+      const miGm=(miembros||[]).find(m=>m.user_id===userId);
+      setGrupoInfo({id:gId,nombre:g?.nombre||"Mi grupo",codigo_invitacion:g?.codigo_invitacion,rol:miGm?.rol||"miembro",miembros:miembros||[]});
+    };
+
     useEffect(()=>{
       (async()=>{
         try {
+          const gId=await ensureMiGrupo();
+          setGrupoId(gId);
+          if(gId) cargarInfoGrupo(gId);
           const [{ data: catRows }, { data: prodRows }] = await Promise.all([
             sb.from("categorias").select("*"),
             sb.from("productos").select("*")
@@ -1013,7 +1104,7 @@
             } catch(e){ console.warn("Tabla tickets no disponible:", e); }
           } else {
             // First time: seed default cats
-            const inserts = DEFAULT_CATS.map(c=>({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs}));
+            const inserts = DEFAULT_CATS.map(c=>({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs,grupo_id:gId}));
             await sb.from("categorias").insert(inserts);
             setCats(DEFAULT_CATS); setProductos([]);
           }
@@ -1028,7 +1119,7 @@
       try {
         if (nextCats) {
           const catRes=await sb.from("categorias").upsert(
-            nc.map(c=>({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs}))
+            nc.map(c=>({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs,grupo_id:grupoId}))
           );
           if(catRes.error) { console.error("Error guardando cats:",catRes.error); showToast("Error guardando categorías","err"); return; }
           const ncIds = nc.map(c=>c.id);
@@ -1049,7 +1140,7 @@
                 }
                 return {id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
                   precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:cr||null,rollos_ref:p.rollosRef||null,metros_ref:p.metrosRef||null,
-                  unidad:p.unidad||"gr",historial_compra:p.historialCompra||[]};
+                  unidad:p.unidad||"gr",historial_compra:p.historialCompra||[],grupo_id:grupoId};
               })
             );
             if(res.error){ console.error(`Error en chunk ${i}-${i+CHUNK}:`,res.error); showToast("Error guardando productos","err"); return; }
@@ -1073,8 +1164,76 @@
     const guardarStock=async(prodId,nuevasEntradas)=>{
       setStock(s=>({...s,[prodId]:nuevasEntradas}));
       try {
-        await sb.from("stock").upsert({producto_id:prodId,entradas:nuevasEntradas,actualizado:new Date().toISOString()},{onConflict:"producto_id"});
+        await sb.from("stock").upsert({producto_id:prodId,entradas:nuevasEntradas,actualizado:new Date().toISOString(),grupo_id:grupoId},{onConflict:"producto_id"});
       } catch(e){console.error("Stock save error:",e);}
+    };
+
+    // Unirse a un grupo por código de invitación (llega por link #join/CODIGO)
+    useEffect(()=>{
+      if(!grupoId||!pendingInvite) return;
+      (async()=>{
+        const {data:target}=await sb.from("grupos").select("id,nombre").eq("codigo_invitacion",pendingInvite).maybeSingle();
+        if(onInviteHandled) onInviteHandled();
+        if(!target){showToast("El link de invitación no es válido","err");return;}
+        if(target.id===grupoId){showToast("Ya formás parte de este grupo");return;}
+        askConfirm(
+          `¿Salir de "${grupoInfo?.nombre||"tu grupo"}" y unirte a "${target.nombre}"? Vas a empezar a compartir la base de datos de ese grupo.`,
+          async()=>{
+            await sb.from("grupo_miembros").delete().eq("user_id",userId);
+            await sb.from("grupo_miembros").insert({grupo_id:target.id,user_id:userId,rol:"miembro",email:session.user.email});
+            showToast("Te uniste a "+target.nombre);
+            setTimeout(()=>window.location.reload(),700);
+          },"Unirme","#3b82f6"
+        );
+      })();
+    },[grupoId,pendingInvite]);
+
+    const salirDelGrupo=()=>{
+      askConfirm(
+        "¿Salir del grupo? Vas a pasar a tener tu propia base de datos individual, con una copia de los productos y categorías actuales. Los demás miembros del grupo no se ven afectados.",
+        async()=>{
+          try{
+            const {data:nuevoGrupo,error:errG}=await sb.from("grupos").insert({nombre:"Mi grupo",creado_por:userId}).select().single();
+            if(errG) throw errG;
+            // Copiar categorías y productos actuales al nuevo grupo personal
+            if(cats.length) await sb.from("categorias").insert(cats.map(c=>({id:crypto.randomUUID?crypto.randomUUID():(c.id+"_"+Date.now()),label:c.label,emoji:c.emoji,color:c.color,subs:c.subs,grupo_id:nuevoGrupo.id})));
+            await sb.from("grupo_miembros").delete().eq("user_id",userId);
+            await sb.from("grupo_miembros").insert({grupo_id:nuevoGrupo.id,user_id:userId,rol:"admin",email:session.user.email});
+            showToast("Saliste del grupo");
+            setTimeout(()=>window.location.reload(),700);
+          }catch(e){console.error(e);showToast("Error al salir del grupo","err");}
+        },"Salir del grupo","#ef4444"
+      );
+    };
+
+    const expulsarMiembro=(memberUserId)=>{
+      askConfirm("¿Expulsar a este miembro del grupo? Va a pasar a tener su propia base de datos individual.",async()=>{
+        try{
+          await sb.from("grupo_miembros").delete().eq("user_id",memberUserId).eq("grupo_id",grupoId);
+          showToast("Miembro expulsado");
+          cargarInfoGrupo(grupoId);
+        }catch(e){console.error(e);showToast("Error al expulsar","err");}
+      },"Expulsar","#ef4444");
+    };
+
+    const regenerarCodigo=async()=>{
+      const nuevoCodigo=Math.random().toString(36).slice(2,10);
+      const {error:err}=await sb.from("grupos").update({codigo_invitacion:nuevoCodigo}).eq("id",grupoId);
+      if(err){showToast("Error al generar nuevo código","err");return;}
+      showToast("Nuevo link generado");
+      cargarInfoGrupo(grupoId);
+    };
+
+    const renombrarGrupo=async(nuevoNombre)=>{
+      if(!nuevoNombre||!nuevoNombre.trim())return;
+      const {error:err}=await sb.from("grupos").update({nombre:nuevoNombre.trim()}).eq("id",grupoId);
+      if(err){showToast("Error al renombrar","err");return;}
+      cargarInfoGrupo(grupoId);
+    };
+
+    const cerrarSesion=async()=>{
+      await sb.auth.signOut();
+      window.location.reload();
     };
 
     // Calcula total en unidades de referencia del producto
@@ -1163,7 +1322,7 @@
             guardarStock(item.prodId,nuevas);
           }
           try {
-            await sb.from("tickets").upsert({id:nuevoTicket.id,fecha:nuevoTicket.fecha,items:nuevoTicket.items});
+            await sb.from("tickets").upsert({id:nuevoTicket.id,fecha:nuevoTicket.fecha,items:nuevoTicket.items,grupo_id:grupoId});
             if(tickets.length>=15){
               const aEliminar=tickets.slice(14).map(t=>t.id);
               if(aEliminar.length) await sb.from("tickets").delete().in("id",aEliminar);
@@ -1184,9 +1343,9 @@
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:colors.accent,fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion};
 
-    const isMenuScreen=["export","backup","import","config"].includes(s);
+    const isMenuScreen=["export","backup","import","config","cuenta","grupo"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
 
     return (
@@ -1206,6 +1365,8 @@
           {s==="export"      &&<ExportScreen {...shared}/>}
           {s==="backup"      &&<BackupScreen {...shared}/>}
           {s==="import"      &&<ImportScreen {...shared}/>}
+          {s==="cuenta"      &&<CuentaScreen {...shared}/>}
+          {s==="grupo"       &&<GrupoFamiliarScreen {...shared}/>}
         </div>
         {!isFormScreen&&!isMenuScreen&&(activeTab==="productos"||activeTab==="stock")&&!modoCompras&&(
           <FloatingAdd colors={colors} onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
@@ -1236,7 +1397,7 @@
   }
 
   // ── HomeScreen ───────────────────────────────────────────────────────────────
-  function HamburgerMenu({push,setShowHistorial,colors,isDarkMode,toggleDarkMode}) {
+  function HamburgerMenu({push,setShowHistorial,colors,isDarkMode,toggleDarkMode,session}) {
     const [open,setOpen]=useState(false);
     return (
       <div style={{position:"relative"}}>
@@ -1253,13 +1414,16 @@
             <button className="btn" onClick={()=>{setOpen(false);push("config");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📂 Editar categorías</button>
             <div style={{borderTop:`1px solid ${colors.cardBorder}`,margin:"4px 0"}}/>
             <button className="btn" onClick={()=>{toggleDarkMode();setOpen(false);}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>{isDarkMode?"☀️ Modo cálido":"🌙 Modo oscuro"}</button>
+            <div style={{borderTop:`1px solid ${colors.cardBorder}`,margin:"4px 0"}}/>
+            <button className="btn" onClick={()=>{setOpen(false);push("grupo");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>👨‍👩‍👧 Grupo Familiar</button>
+            <button className="btn" onClick={()=>{setOpen(false);push("cuenta");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>👤 Cuenta</button>
           </div>
         </>}
       </div>
     );
   }
 
-  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode}) {
+  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session}) {
     const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false); const [sortCats,setSortCats]=useState("nombre-az");
     const [menuOpen,setMenuOpen]=useState(false);
     const isStock=activeTab==="stock";
@@ -1282,7 +1446,7 @@
         <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:colors.text}}>🧺 Canasta</div>
           <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{productos.length} productos{!isStock&&!modoCompras&&<> · <span style={{color:colors.accent,fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
         </div>
-        {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode}/>}
+        {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} session={session}/>}
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="🔍 Buscar en toda la canasta…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
@@ -1321,7 +1485,7 @@
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode,session}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
     const isStock=activeTab==="stock"; 
@@ -1350,7 +1514,7 @@
       <TopBar colors={colors} title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:colors.accent,fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
         right={<div style={{display:"flex",gap:8}}>
           <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 11px",fontSize:12}}>Ver todos</button>
-          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode}/>}
+          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} session={session}/>}
         </div>}/>
       <SearchRow colors={colors} q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
@@ -1390,7 +1554,7 @@
       {showAddSub&&<AddModal title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
     </div>);
   }
-  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode}) {
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode,session}) {
     const [q,setQ]=useState("");
     const isStock=activeTab==="stock";
     const defaultSort="nombre-az";
@@ -1466,7 +1630,7 @@
             </div>
           :<div style={{display:"flex",gap:8}}>
               {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 11px",fontSize:12}}>Selec.</button>}
-              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode}/>}
+              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} session={session}/>}
             </div>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
@@ -2003,6 +2167,106 @@
   }
 
   // ── ExportScreen ──────────────────────────────────────────────────────────────
+  // ── CuentaScreen ─────────────────────────────────────────────────────────────
+  function CuentaScreen({session,pop,showToast,colors,cerrarSesion,askConfirm}) {
+    const [nombre,setNombre]=useState(session.user.user_metadata?.nombre||"");
+    const [password,setPassword]=useState("");
+    const [saving,setSaving]=useState(false);
+
+    const guardarCambios=async()=>{
+      setSaving(true);
+      try{
+        const payload={data:{nombre:nombre.trim()}};
+        if(password.trim()) payload.password=password.trim();
+        const {error:err}=await sb.auth.updateUser(payload);
+        if(err){showToast(err.message,"err");setSaving(false);return;}
+        showToast("Cambios guardados");
+        setPassword("");
+      }catch(e){showToast("Error al guardar","err");}
+      setSaving(false);
+    };
+
+    return (<div className="fade">
+      <TopBar colors={colors} title="👤 Cuenta" onBack={pop}/>
+      <div className="card" style={{padding:16,marginBottom:12}}>
+        <div className="field" style={{marginBottom:14}}><label>Email</label>
+          <div style={{fontSize:14,color:colors.text,padding:"11px 0"}}>{session.user.email}</div>
+        </div>
+        <div className="field" style={{marginBottom:14}}><label>Nombre</label>
+          <input className="inp" autoComplete="canasta-field-ignore" value={nombre} onChange={e=>setNombre(e.target.value)}/>
+        </div>
+        <div className="field" style={{marginBottom:6}}><label>Nueva contraseña</label>
+          <input type="password" className="inp" autoComplete="canasta-field-ignore" placeholder="Dejar vacío para no cambiarla" value={password} onChange={e=>setPassword(e.target.value)}/>
+        </div>
+        <button className="btn" disabled={saving} onClick={guardarCambios} style={{width:"100%",marginTop:14,padding:11,background:colors.accent,color:"#fff",fontSize:13,opacity:saving?.6:1}}>{saving?"Guardando…":"Guardar cambios"}</button>
+      </div>
+      <button className="btn" onClick={()=>askConfirm("¿Cerrar sesión?",cerrarSesion,"Cerrar sesión","#ef4444")} style={{width:"100%",padding:12,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,fontSize:13}}>Cerrar sesión</button>
+    </div>);
+  }
+
+  // ── GrupoFamiliarScreen ──────────────────────────────────────────────────────
+  function GrupoFamiliarScreen({grupoInfo,session,pop,showToast,colors,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,askConfirm}) {
+    const [editNombre,setEditNombre]=useState(false);
+    const [nombre,setNombre]=useState(grupoInfo?.nombre||"");
+    const esAdmin=grupoInfo?.rol==="admin";
+    const link=grupoInfo?.codigo_invitacion?`${window.location.origin}${window.location.pathname}#join/${grupoInfo.codigo_invitacion}`:"";
+
+    const copiarLink=async()=>{
+      const ok=await copyToClipboard(link);
+      showToast(ok?"🔗 Link copiado, compartilo con quien quieras sumar":"No se pudo copiar",ok?null:"err");
+    };
+
+    if(!grupoInfo) return (<div className="fade"><TopBar colors={colors} title="👨‍👩‍👧 Grupo Familiar" onBack={pop}/><div style={{color:colors.textMuted,fontSize:13,padding:"20px 0"}}>Cargando…</div></div>);
+
+    return (<div className="fade">
+      <TopBar colors={colors} title="👨‍👩‍👧 Grupo Familiar" onBack={pop}/>
+
+      <div className="card" style={{padding:16,marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Nombre del grupo</div>
+        {editNombre?(
+          <div style={{display:"flex",gap:8}}>
+            <input className="inp" autoComplete="canasta-field-ignore" value={nombre} onChange={e=>setNombre(e.target.value)} style={{flex:1}}/>
+            <button className="btn" onClick={()=>{renombrarGrupo(nombre);setEditNombre(false);}} style={{background:colors.accent,color:"#fff",padding:"0 16px",fontSize:13}}>OK</button>
+          </div>
+        ):(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:15,fontWeight:600,color:colors.text}}>{grupoInfo.nombre}</div>
+            {esAdmin&&<button className="btn" onClick={()=>{setNombre(grupoInfo.nombre);setEditNombre(true);}} style={{background:colors.btnSecondary,color:colors.accent,padding:"6px 12px",fontSize:12}}>Editar</button>}
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{padding:16,marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10}}>Miembros ({grupoInfo.miembros?.length||0})</div>
+        {(grupoInfo.miembros||[]).map(m=>(
+          <div key={m.user_id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderTop:`1px solid ${colors.cardBorder}`}}>
+            <div>
+              <div style={{fontSize:13.5,color:colors.text}}>{m.email||"—"}{m.user_id===session.user.id&&<span style={{color:colors.textMuted}}> (vos)</span>}</div>
+              <div style={{fontSize:11,color:colors.textMuted,textTransform:"capitalize"}}>{m.rol}</div>
+            </div>
+            {esAdmin&&m.user_id!==session.user.id&&(
+              <button className="btn" onClick={()=>expulsarMiembro(m.user_id)} style={{background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"6px 10px",fontSize:11}}>Expulsar</button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {esAdmin&&(
+        <div className="card" style={{padding:16,marginBottom:12}}>
+          <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Invitar</div>
+          <div style={{fontSize:12.5,color:colors.textMuted,marginBottom:10,lineHeight:1.4}}>Compartí este link con quien quieras sumar a tu grupo. Van a ver y compartir la misma base de datos.</div>
+          <div style={{display:"flex",gap:8}}>
+            <div className="mono" style={{flex:1,background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12,color:colors.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{link}</div>
+            <button className="btn" onClick={copiarLink} style={{background:colors.accent,color:"#fff",padding:"0 14px",fontSize:12}}>Copiar</button>
+          </div>
+          <button className="btn" onClick={()=>askConfirm("¿Generar un nuevo link? El link anterior dejará de funcionar.",regenerarCodigo,"Generar nuevo","#f59e0b")} style={{marginTop:10,background:"none",color:colors.textMuted,padding:"6px 0",fontSize:12,textDecoration:"underline"}}>Generar nuevo link</button>
+        </div>
+      )}
+
+      <button className="btn" onClick={salirDelGrupo} style={{width:"100%",padding:12,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,fontSize:13}}>Salir del grupo</button>
+    </div>);
+  }
+
   function ExportScreen({cats,productos,pop,showToast,colors}) {
     const [openKey,setOpenKey]=useState(null);
     const toggle=(key)=>setOpenKey(k=>k===key?null:key);
@@ -2225,9 +2489,43 @@
     </div>);
   }
 
+  // ── Root: gate de sesión + captura de invitación por link ──────────────────────
+  function Root() {
+    const [session,setSession]=useState(undefined); // undefined=cargando, null=sin sesión
+    const [inviteInfo,setInviteInfo]=useState(null);
+    const [inviteChecked,setInviteChecked]=useState(false);
+    const [pendingInvite,setPendingInvite]=useState(null);
+    const isDarkModeAuth=(()=>{try{return localStorage.getItem("canasta_dark_mode")!=="false";}catch{return true;}})();
+    const colorsAuth=getColors(isDarkModeAuth);
+
+    useEffect(()=>{
+      const m=(window.location.hash||"").match(/^#join\/([a-zA-Z0-9]+)/);
+      if(m){
+        setPendingInvite(m[1]);
+        sb.from("grupos").select("nombre,codigo_invitacion").eq("codigo_invitacion",m[1]).maybeSingle()
+          .then(({data})=>{setInviteInfo(data||null);setInviteChecked(true);})
+          .catch(()=>setInviteChecked(true));
+      } else setInviteChecked(true);
+    },[]);
+
+    useEffect(()=>{
+      sb.auth.getSession().then(({data})=>setSession(data.session||null));
+      const {data:listener}=sb.auth.onAuthStateChange((_evt,s)=>setSession(s));
+      return ()=>listener.subscription.unsubscribe();
+    },[]);
+
+    if(session===undefined||!inviteChecked){
+      return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#3b82f6",fontFamily:"monospace"}}>Cargando…</div>;
+    }
+    if(!session){
+      return <AuthScreen colors={colorsAuth} inviteInfo={inviteInfo} onAuthed={()=>{}}/>;
+    }
+    return <App session={session} pendingInvite={pendingInvite} onInviteHandled={()=>setPendingInvite(null)}/>;
+  }
+
   // ── Mount ────────────────────────────────────────────────────────────────────
   const root = ReactDOM.createRoot(document.getElementById("root"));
-  root.render(<App/>);
+  root.render(<Root/>);
 
 })();
 </script>
