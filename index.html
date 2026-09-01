@@ -1068,11 +1068,13 @@
 
     // Busca el grupo del usuario o le crea uno personal si es la primera vez
     const ensureMiGrupo=async()=>{
-      const {data:gm}=await sb.from("grupo_miembros").select("grupo_id,rol").eq("user_id",userId).maybeSingle();
+      const {data:gm,error:errGm}=await sb.from("grupo_miembros").select("grupo_id,rol").eq("user_id",userId).maybeSingle();
+      if(errGm){console.error("Error leyendo membresía de grupo:",errGm);return null;}
       if(gm) return gm.grupo_id;
       const {data:nuevoGrupo,error:errG}=await sb.from("grupos").insert({nombre:"Mi grupo",creado_por:userId}).select().single();
       if(errG){console.error("Error creando grupo:",errG);return null;}
-      await sb.from("grupo_miembros").insert({grupo_id:nuevoGrupo.id,user_id:userId,rol:"admin",email:session.user.email});
+      const {error:errGm2}=await sb.from("grupo_miembros").insert({grupo_id:nuevoGrupo.id,user_id:userId,rol:"admin",email:session.user.email});
+      if(errGm2){console.error("Error asignando membresía:",errGm2);return null;}
       return nuevoGrupo.id;
     };
 
