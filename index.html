@@ -1077,10 +1077,17 @@
     };
 
     const cargarInfoGrupo=async(gId)=>{
-      const {data:g}=await sb.from("grupos").select("*").eq("id",gId).maybeSingle();
-      const {data:miembros}=await sb.from("grupo_miembros").select("user_id,rol,email").eq("grupo_id",gId).order("created_at");
-      const miGm=(miembros||[]).find(m=>m.user_id===userId);
-      setGrupoInfo({id:gId,nombre:g?.nombre||"Mi grupo",codigo_invitacion:g?.codigo_invitacion,rol:miGm?.rol||"miembro",miembros:miembros||[]});
+      try{
+        const {data:g,error:errG}=await sb.from("grupos").select("*").eq("id",gId).maybeSingle();
+        if(errG) console.error("Error cargando grupo:",errG);
+        const {data:miembros,error:errM}=await sb.from("grupo_miembros").select("user_id,rol,email").eq("grupo_id",gId).order("created_at");
+        if(errM) console.error("Error cargando miembros:",errM);
+        const miGm=(miembros||[]).find(m=>m.user_id===userId);
+        setGrupoInfo({id:gId,nombre:g?.nombre||"Mi grupo",codigo_invitacion:g?.codigo_invitacion,rol:miGm?.rol||"admin",miembros:miembros||[]});
+      }catch(e){
+        console.error("Error inesperado cargando grupo:",e);
+        setGrupoInfo({id:gId,nombre:"Mi grupo",codigo_invitacion:null,rol:"admin",miembros:[],error:true});
+      }
     };
 
     useEffect(()=>{
@@ -1127,10 +1134,8 @@
               if (ticketRows) setTickets(ticketRows);
             } catch(e){ console.warn("Tabla tickets no disponible:", e); }
           } else {
-            // First time: seed default cats
-            const inserts = DEFAULT_CATS.map(c=>({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs,grupo_id:gId}));
-            await sb.from("categorias").insert(inserts);
-            setCats(DEFAULT_CATS); setProductos([]);
+            // Primera vez con este grupo: arranca completamente vacío, sin categorías por defecto
+            setCats([]); setProductos([]);
           }
         } catch(e) { console.error(e); setProductos(DEFAULT_PRODUCTOS); }
         setLoaded(true);
@@ -1367,7 +1372,7 @@
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:colors.accent,fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion};
 
     const isMenuScreen=["export","backup","import","config","cuenta","grupo"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
@@ -2276,18 +2281,50 @@
   }
 
   // ── GrupoFamiliarScreen ──────────────────────────────────────────────────────
-  function GrupoFamiliarScreen({grupoInfo,session,pop,showToast,colors,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,askConfirm}) {
+  function GrupoFamiliarScreen({grupoInfo,grupoId,cargarInfoGrupo,session,pop,showToast,colors,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,askConfirm}) {
     const [editNombre,setEditNombre]=useState(false);
     const [nombre,setNombre]=useState(grupoInfo?.nombre||"");
+    const [tardando,setTardando]=useState(false);
     const esAdmin=grupoInfo?.rol==="admin";
     const link=grupoInfo?.codigo_invitacion?`${window.location.origin}${window.location.pathname}#join/${grupoInfo.codigo_invitacion}`:"";
+
+    useEffect(()=>{
+      if(grupoInfo)return;
+      const t=setTimeout(()=>setTardando(true),4000);
+      return ()=>clearTimeout(t);
+    },[grupoInfo]);
 
     const copiarLink=async()=>{
       const ok=await copyToClipboard(link);
       showToast(ok?"🔗 Link copiado, compartilo con quien quieras sumar":"No se pudo copiar",ok?null:"err");
     };
 
-    if(!grupoInfo) return (<div className="fade"><TopBar colors={colors} title="👨‍👩‍👧 Grupo Familiar" onBack={pop}/><div style={{color:colors.textMuted,fontSize:13,padding:"20px 0"}}>Cargando…</div></div>);
+    if(!grupoInfo) return (<div className="fade"><TopBar colors={colors} title="👨‍👩‍👧 Grupo Familiar" onBack={pop}/>
+      <div style={{color:colors.textMuted,fontSize:13,padding:"20px 0"}}>Cargando…</div>
+      {tardando&&grupoId&&<button className="btn" onClick={()=>{setTardando(false);cargarInfoGrupo(grupoId);}} style={{background:colors.btnSecondary,color:colors.accent,padding:"10px 16px",fontSize:13}}>Está tardando más de lo normal. Reintentar</button>}
+    </div>);
+
+    const soloVos=(grupoInfo.miembros?.length||0)<=1;
+
+    // No compartís tu base de datos con nadie todavía: mostrar invitación a crear el grupo
+    if(soloVos){
+      return (<div className="fade">
+        <TopBar colors={colors} title="👨‍👩‍👧 Grupo Familiar" onBack={pop}/>
+        <div className="card" style={{padding:20,marginBottom:12,textAlign:"center"}}>
+          <div style={{fontSize:34,marginBottom:10}}>👨‍👩‍👧</div>
+          <div style={{fontSize:15,fontWeight:700,color:colors.text,marginBottom:6}}>No estás en ningún grupo familiar</div>
+          <div style={{fontSize:12.5,color:colors.textMuted,lineHeight:1.5}}>Tu base de datos es individual. Podés compartirla con tu familia invitándolos por link.</div>
+        </div>
+        <div className="card" style={{padding:16,marginBottom:12}}>
+          <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Crear grupo familiar</div>
+          <div style={{fontSize:12.5,color:colors.textMuted,marginBottom:10,lineHeight:1.4}}>Compartí este link con quien quieras sumar. Van a ver y editar la misma base de datos que vos.</div>
+          <div style={{display:"flex",gap:8}}>
+            <div className="mono" style={{flex:1,background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12,color:colors.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{link}</div>
+            <button className="btn" onClick={copiarLink} style={{background:colors.accent,color:"#fff",padding:"0 14px",fontSize:12}}>Copiar</button>
+          </div>
+        </div>
+      </div>);
+    }
 
     return (<div className="fade">
       <TopBar colors={colors} title="👨‍👩‍👧 Grupo Familiar" onBack={pop}/>
