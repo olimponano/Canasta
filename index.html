@@ -1095,13 +1095,13 @@
     useEffect(()=>{
       (async()=>{
         try {
-          const gId=await ensureMiGrupo();
-          setGrupoId(gId);
-          if(gId) cargarInfoGrupo(gId);
-          const [{ data: catRows }, { data: prodRows }] = await Promise.all([
+          const [gId, { data: catRows }, { data: prodRows }] = await Promise.all([
+            ensureMiGrupo(),
             sb.from("categorias").select("*"),
             sb.from("productos").select("*")
           ]);
+          setGrupoId(gId);
+          if(gId) cargarInfoGrupo(gId);
           if (catRows && catRows.length) {
             const lc = catRows.map(r=>({id:r.id,label:r.label,emoji:r.emoji,color:r.color,subs:r.subs||[]}));
             const validSubs = new Set(lc.flatMap(c=>c.subs.map(s=>s.id)));
@@ -1203,7 +1203,8 @@
     useEffect(()=>{
       if(!grupoId||!pendingInvite) return;
       (async()=>{
-        const {data:target}=await sb.from("grupos").select("id,nombre").eq("codigo_invitacion",pendingInvite).maybeSingle();
+        const {data:targetRows}=await sb.rpc("buscar_grupo_por_codigo",{codigo:pendingInvite});
+        const target=targetRows&&targetRows[0]?targetRows[0]:null;
         if(onInviteHandled) onInviteHandled();
         if(!target){showToast("El link de invitación no es válido","err");return;}
         if(target.id===grupoId){showToast("Ya formás parte de este grupo");return;}
@@ -2612,8 +2613,8 @@
       const m=(window.location.hash||"").match(/^#join\/([a-zA-Z0-9]+)/);
       if(m){
         setPendingInvite(m[1]);
-        sb.from("grupos").select("nombre,codigo_invitacion").eq("codigo_invitacion",m[1]).maybeSingle()
-          .then(({data})=>{setInviteInfo(data||null);setInviteChecked(true);})
+        sb.rpc("buscar_grupo_por_codigo",{codigo:m[1]})
+          .then(({data})=>{setInviteInfo(data&&data[0]?data[0]:null);setInviteChecked(true);})
           .catch(()=>setInviteChecked(true));
       } else setInviteChecked(true);
     },[]);
