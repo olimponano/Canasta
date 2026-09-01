@@ -1071,11 +1071,12 @@
       const {data:gm,error:errGm}=await sb.from("grupo_miembros").select("grupo_id,rol").eq("user_id",userId).maybeSingle();
       if(errGm){console.error("Error leyendo membresía de grupo:",errGm);return null;}
       if(gm) return gm.grupo_id;
-      const {data:nuevoGrupo,error:errG}=await sb.from("grupos").insert({nombre:"Mi grupo",creado_por:userId}).select().single();
+      const nuevoId=crypto.randomUUID?crypto.randomUUID():(Date.now()+"-"+Math.random());
+      const {error:errG}=await sb.from("grupos").insert({id:nuevoId,nombre:"Mi grupo",creado_por:userId});
       if(errG){console.error("Error creando grupo:",errG);return null;}
-      const {error:errGm2}=await sb.from("grupo_miembros").insert({grupo_id:nuevoGrupo.id,user_id:userId,rol:"admin",email:session.user.email});
+      const {error:errGm2}=await sb.from("grupo_miembros").insert({grupo_id:nuevoId,user_id:userId,rol:"admin",email:session.user.email});
       if(errGm2){console.error("Error asignando membresía:",errGm2);return null;}
-      return nuevoGrupo.id;
+      return nuevoId;
     };
 
     const cargarInfoGrupo=async(gId)=>{
@@ -1225,12 +1226,13 @@
         "¿Salir del grupo? Vas a pasar a tener tu propia base de datos individual, con una copia de los productos y categorías actuales. Los demás miembros del grupo no se ven afectados.",
         async()=>{
           try{
-            const {data:nuevoGrupo,error:errG}=await sb.from("grupos").insert({nombre:"Mi grupo",creado_por:userId}).select().single();
+            const nuevoId=crypto.randomUUID?crypto.randomUUID():(Date.now()+"-"+Math.random());
+            const {error:errG}=await sb.from("grupos").insert({id:nuevoId,nombre:"Mi grupo",creado_por:userId});
             if(errG) throw errG;
             // Copiar categorías y productos actuales al nuevo grupo personal
-            if(cats.length) await sb.from("categorias").insert(cats.map(c=>({id:crypto.randomUUID?crypto.randomUUID():(c.id+"_"+Date.now()),label:c.label,emoji:c.emoji,color:c.color,subs:c.subs,grupo_id:nuevoGrupo.id})));
+            if(cats.length) await sb.from("categorias").insert(cats.map(c=>({id:crypto.randomUUID?crypto.randomUUID():(c.id+"_"+Date.now()),label:c.label,emoji:c.emoji,color:c.color,subs:c.subs,grupo_id:nuevoId})));
             await sb.from("grupo_miembros").delete().eq("user_id",userId);
-            await sb.from("grupo_miembros").insert({grupo_id:nuevoGrupo.id,user_id:userId,rol:"admin",email:session.user.email});
+            await sb.from("grupo_miembros").insert({grupo_id:nuevoId,user_id:userId,rol:"admin",email:session.user.email});
             showToast("Saliste del grupo");
             setTimeout(()=>window.location.reload(),700);
           }catch(e){console.error(e);showToast("Error al salir del grupo","err");}
