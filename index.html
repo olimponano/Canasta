@@ -293,7 +293,7 @@
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState("1");
     const precioNum=parseFloat((precio||"").replace(",","."));
-    const cantNum=parseInt(cantidad)||1;
+    const cantNum=parseFloat((cantidad||"").replace(",","."))||1;
     const submit=()=>{
       if(!nombre.trim())return;
       if(!precioNum||precioNum<=0)return;
@@ -304,11 +304,11 @@
         <div style={{background:colors.card,borderRadius:16,padding:"24px 20px",width:"100%",maxWidth:340,border:`1px solid ${colors.hoverCard}`,boxShadow:`0 8px 32px ${colors.shadowSoft}`}}>
           <div style={{fontWeight:700,fontSize:18,marginBottom:6,color:colors.text}}>Item suelto</div>
           <div style={{fontSize:12,color:colors.textMuted,marginBottom:20}}>Se suma al total del ticket, sin guardarse como producto</div>
-          <div className="field" style={{marginBottom:14}}><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. Bolsa de hielo" value={nombre} onChange={e=>setNombre(e.target.value)} autoFocus/></div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
-            <div className="field"><label>Precio $</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 500" value={precio} onChange={e=>setPrecio(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            <div className="field"><label>Precio $</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 500" value={precio} onChange={e=>setPrecio(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoFocus/></div>
             <div className="field"><label>Compré</label><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantidad} onChange={e=>setCantidad(e.target.value)}/></div>
           </div>
+          <div className="field" style={{marginBottom:20}}><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. Bolsa de hielo" value={nombre} onChange={e=>setNombre(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
           <div style={{display:"flex",gap:10}}>
             <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:13,fontSize:14}}>Cancelar</button>
             <button className="btn" onClick={submit} style={{flex:2,background:colors.accent,color:colors.bg,padding:13,fontSize:15,fontWeight:700}}>Agregar</button>
@@ -1064,6 +1064,17 @@
     const current=stack[stack.length-1];
     const push=(screen,params={})=>setStack(s=>[...s,{screen,...params}]);
     const pop=()=>setStack(s=>s.length>1?s.slice(0,-1):s);
+
+    // Si se elimina una categoría que está referenciada en el stack de navegación
+    // (por ejemplo, la categoría en la que estabas parado), cortamos el stack
+    // antes de esa pantalla para evitar quedar en una pantalla en blanco/negra.
+    useEffect(()=>{
+      setStack(s=>{
+        const idx=s.findIndex(f=>f.catId&&!cats.some(c=>c.id===f.catId));
+        if(idx===-1)return s;
+        return idx===0?[{screen:"home"}]:s.slice(0,idx);
+      });
+    },[cats]);
 
     // Busca el grupo del usuario o le crea uno personal si es la primera vez
     const ensureMiGrupo=async()=>{
