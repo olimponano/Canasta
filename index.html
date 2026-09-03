@@ -80,6 +80,18 @@
   const fmt = (n) => n == null ? "—" : `$${Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const fmtDate = (d) => new Date(d + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "2-digit" });
   const todayISO = () => new Date().toISOString().split("T")[0];
+  // Calcula el descuento aplicado por una promo sobre un subtotal, respetando el tope si está limitada.
+  // Como el % es igual para toda la compra, distribuir proporcionalmente a cada producto
+  // equivale a multiplicar el total de cada uno por el mismo factor.
+  const calcPromo=(subtotal,promo)=>{
+    if(!promo||!subtotal||subtotal<=0)return{descuentoAplicado:0,factor:1};
+    const pct=parseFloat(String(promo.pct||0).replace(",","."))||0;
+    const rawDescuento=subtotal*pct/100;
+    const limite=promo.limitado?(parseFloat(String(promo.limite||0).replace(",","."))||0):null;
+    const descuentoAplicado=promo.limitado?Math.min(rawDescuento,limite):rawDescuento;
+    const factor=descuentoAplicado>0?(subtotal-descuentoAplicado)/subtotal:1;
+    return{descuentoAplicado,factor};
+  };
   const COLORS = ["#60a5fa","#f472b6","#4ade80","#fb923c","#a78bfa","#facc15","#34d399","#f87171","#38bdf8","#e879f9"];
   const alpha = (a, b, key="label") => (a[key]||"").localeCompare(b[key]||"", "es");
   const alphaStr = (a, b) => (a||"").localeCompare(b||"", "es");
@@ -319,6 +331,54 @@
     );
   }
 
+  function PromoModal({promo,subtotal,onClose,onSave,onQuitar,colors}) {
+    const [pct,setPct]=useState(promo?String(promo.pct):"");
+    const [limitado,setLimitado]=useState(promo?.limitado||false);
+    const [limite,setLimite]=useState(promo?.limite?String(promo.limite):"");
+    const pctNum=parseFloat((pct||"").replace(",","."))||0;
+    const limiteNum=parseFloat((limite||"").replace(",","."))||0;
+    const preview=calcPromo(subtotal,{pct:pctNum,limitado,limite:limiteNum});
+    const submit=()=>{
+      if(!pctNum||pctNum<=0)return;
+      if(limitado&&(!limiteNum||limiteNum<=0))return;
+      onSave({pct:pctNum,limitado,limite:limitado?limiteNum:null});
+    };
+    return (
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px 40px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{background:colors.card,borderRadius:16,padding:"24px 20px",width:"100%",maxWidth:360,border:`1px solid ${colors.hoverCard}`,boxShadow:`0 8px 32px ${colors.shadowSoft}`}}>
+          <div style={{fontWeight:700,fontSize:18,marginBottom:6,color:colors.text}}>🏷️ Promo</div>
+          <div style={{fontSize:12,color:colors.textMuted,marginBottom:20}}>Descuento sobre el total de la compra, repartido en forma proporcional entre todos los productos</div>
+          <div className="field" style={{marginBottom:14}}>
+            <label>Descuento %</label>
+            <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 20" value={pct} onChange={e=>setPct(e.target.value)} autoFocus/>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:limitado?10:20,cursor:"pointer"}} onClick={()=>setLimitado(l=>!l)}>
+            <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${limitado?colors.accent:colors.hoverCard}`,background:limitado?colors.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13,color:"#fff"}}>{limitado?"✓":""}</div>
+            <span style={{fontSize:13,color:colors.textSecondary}}>Limitar el reintegro a un monto máximo</span>
+          </div>
+          {limitado&&(
+            <div className="field" style={{marginBottom:20}}>
+              <label>Tope $</label>
+              <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 10000" value={limite} onChange={e=>setLimite(e.target.value)}/>
+            </div>
+          )}
+          {subtotal>0&&pctNum>0&&(
+            <div style={{background:colors.inputBg,borderRadius:10,padding:"10px 14px",marginBottom:20,display:"flex",flexDirection:"column",gap:4}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:colors.textMuted}}><span>Subtotal</span><span className="mono">{fmt(subtotal)}</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#10b981"}}><span>Descuento</span><span className="mono">-{fmt(preview.descuentoAplicado)}</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,color:colors.text,marginTop:2,paddingTop:6,borderTop:`1px solid ${colors.cardBorder}`}}><span>Total</span><span className="mono">{fmt(subtotal-preview.descuentoAplicado)}</span></div>
+            </div>
+          )}
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:13,fontSize:14}}>Cancelar</button>
+            <button className="btn" onClick={submit} style={{flex:2,background:colors.accent,color:colors.bg,padding:13,fontSize:15,fontWeight:700}}>{promo?"Guardar":"Aplicar"}</button>
+          </div>
+          {promo&&onQuitar&&<button className="btn" onClick={onQuitar} style={{width:"100%",marginTop:10,background:"none",color:colors.error,padding:8,fontSize:13}}>Quitar promo</button>}
+        </div>
+      </div>
+    );
+  }
+
   function ConfirmCompra({colors,data,onOk,onCancel}) {
     // data: {nombre, marca, cantDesc, precio, cantComprada, totalPagado, catColor}
     return (
@@ -487,7 +547,7 @@
     );
   }
 
-  function TicketDrawer({ticket,setTicket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,askConfirm,onAddSuelto,onAddProducto,stock,stockTotal,mesesRestantes,fmtMeses,colors}) {
+  function TicketDrawer({ticket,setTicket,productos,cats,ticketOpen,setTicketOpen,onFinalizar,onCancelar,askConfirm,onAddSuelto,onAddProducto,promo,onEditPromo,stock,stockTotal,mesesRestantes,fmtMeses,colors}) {
     const [editIdx,setEditIdx]=useState(null);
     const [editCant,setEditCant]=useState("");
     const [editPrecio,setEditPrecio]=useState("");
@@ -498,7 +558,9 @@
       setMenuIdx(null);
       setEditModalIdx(idx);
     };
-    const totalPagado=ticket.reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
+    const subtotal=ticket.reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
+    const promoCalc=calcPromo(subtotal,promo);
+    const totalPagado=subtotal-promoCalc.descuentoAplicado;
     const totalRef=ticket.filter(i=>!i.suelto&&(i.totalRef??0)>0).reduce((s,i)=>s+(i.totalRef??0),0);
     const totalPagadoConRef=ticket.filter(i=>!i.suelto&&(i.totalRef??0)>0).reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
     const diff=totalPagadoConRef-totalRef;
@@ -530,6 +592,7 @@
               <span style={{fontSize:10,color:colors.textMuted,fontWeight:600}}>Total</span>
               <span className="mono" style={{fontWeight:700,fontSize:14,color:ticket.length>0?colors.text:colors.hoverCard}}>{ticket.length>0?fmt(totalPagado):"$0,00"}</span>
             </div>
+            {ticket.length>0&&promo&&promoCalc.descuentoAplicado>0&&<div style={{fontSize:10,fontWeight:700,color:"#10b981"}}>🏷️ -{fmt(promoCalc.descuentoAplicado)}</div>}
             {ticket.length>0&&diffPct!==null&&<div style={{fontSize:10,fontWeight:700,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
           </div>
           <span style={{color:colors.textMuted,fontSize:14}}>{ticketOpen?"▼":"▲"}</span>
@@ -561,7 +624,7 @@
                     </div>
                   ):(
                     <div style={{cursor:"pointer"}} onClick={()=>setMenuIdx(menuIdx===i?null:i)}>
-                      <TicketItemRow item={item} colors={colors}/>
+                      <TicketItemRow item={item} factor={promoCalc.factor} colors={colors}/>
                     </div>
                   )}
                   {menuIdx===i&&editIdx!==i&&(
@@ -573,6 +636,12 @@
                 </div>);
               })}
 
+            </div>
+            {/* Promo */}
+            <div style={{padding:"10px 16px 0",flexShrink:0}}>
+              <button className="btn" onClick={onEditPromo} style={{width:"100%",background:promo?"#10b98122":colors.btnSecondary,color:promo?"#10b981":colors.accent,border:`1px solid ${promo?"#10b981":colors.hoverCard}`,padding:"9px 0",fontSize:13,fontWeight:promo?700:600}}>
+                {promo?`🏷️ Promo -${promo.pct}%${promo.limitado?` (tope ${fmt(promo.limite)})`:""} · editar`:"🏷️ Agregar promo"}
+              </button>
             </div>
             {/* Botones de agregar */}
             <div style={{padding:"10px 16px 0",display:"flex",gap:8,borderTop:`1px solid ${colors.cardBorder}`,flexShrink:0}}>
@@ -591,8 +660,10 @@
     </>);
   }
 
-  function TicketItemRow({item,colors}) {
+  function TicketItemRow({item,factor=1,colors}) {
     const totalPagado=item.totalPagado??item.precio??0;
+    const totalMostrado=totalPagado*factor;
+    const precioMostrado=(item.precio??0)*factor;
     const totalRef=item.totalRef??null;
     const diffItem=totalRef>0?totalPagado-totalRef:null;
     const diffItemPct=totalRef>0?((totalPagado-totalRef)/totalRef*100).toFixed(1):null;
@@ -603,13 +674,16 @@
       <div style={{padding:"5px 0"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontWeight:600,fontSize:13,color:colors.text,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.nombre}</div>
-          <div style={{fontSize:12,color:colors.textMuted,fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",marginLeft:8}}>{fmt(item.precio)} × {item.cantComprada||1}</div>
+          <div style={{fontSize:12,color:factor<1?"#10b981":colors.textMuted,fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",marginLeft:8,display:"flex",alignItems:"center",gap:5}}>
+            {factor<1&&<span style={{textDecoration:"line-through",color:colors.textMuted}}>{fmt(item.precio)}</span>}
+            <span>{fmt(precioMostrado)} × {item.cantComprada||1}</span>
+          </div>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
           <div style={{fontSize:11,color:colors.textMuted}}>{item.marca||""}{cantLabel?` · ${cantLabel}`:""}</div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
             {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
-            <div className="mono" style={{fontSize:13,fontWeight:700,color:colors.text}}>{fmt(totalPagado)}</div>
+            <div className="mono" style={{fontSize:13,fontWeight:700,color:factor<1?"#10b981":colors.text}}>{fmt(totalMostrado)}</div>
           </div>
         </div>
       </div>
@@ -636,6 +710,7 @@
               </div>
               <div style={{textAlign:"right"}}>
                 <div className="mono" style={{fontWeight:700,fontSize:20,color:colors.text}}>{fmt(totalPagado)}</div>
+                {ticket.promo&&<div style={{fontSize:11,fontWeight:600,color:"#10b981"}}>🏷️ Promo -{ticket.promo.pct}%: -{fmt(ticket.promo.descuentoAplicado)}</div>}
                 {diffPct!==null&&<div style={{fontSize:12,fontWeight:600,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
               </div>
             </div>
@@ -684,6 +759,7 @@
                   <div><div style={{fontSize:12,color:colors.textMuted}}>{fmtFecha(t.fecha)}</div><div style={{fontSize:11,color:colors.textSecondary,marginTop:2}}>{t.items.length} producto{t.items.length!==1?"s":""}</div></div>
                   <div style={{textAlign:"right"}}>
                     <div className="mono" style={{fontWeight:700,color:colors.text}}>{fmt(totalPagado)}</div>
+                    {t.promo&&<div style={{fontSize:10,color:"#10b981",fontWeight:600}}>🏷️ -{t.promo.pct}%</div>}
                     {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}%</div>}
                   </div>
                 </div>
@@ -846,7 +922,7 @@
     return (
       <div style={{position:"fixed",bottom:0,left:0,right:0,background:colors.card,borderTop:`1px solid ${colors.cardBorder}`,display:"flex",zIndex:200,maxWidth:500,margin:"0 auto",height:64,alignItems:"stretch"}}>
         {/* Precios */}
-        <button onClick={()=>setActiveTab("productos")} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
+        <button onClick={()=>setActiveTab("productos")} style={{flex:1,background:"none",border:"none",margin:0,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",WebkitAppearance:"none",appearance:"none"}}>
           <span style={{fontSize:20}}>💲</span>
           <span style={{fontSize:11,fontWeight:600,color:activeTab==="productos"&&!modoCompras?colors.accent:colors.textMuted}}>Precios</span>
           {activeTab==="productos"&&!modoCompras&&<div style={{width:20,height:2,background:colors.accent,borderRadius:1}}/>}
@@ -854,7 +930,7 @@
 
         {/* Compras — círculo que ocupa toda la altura */}
         <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"stretch",padding:"4px 0"}}>
-          <button onClick={onTapCompras} style={{position:"relative",aspectRatio:"1",background:colors.card,border:`3px solid ${modoCompras?colors.success:colors.hoverCard}`,borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
+          <button onClick={onTapCompras} style={{position:"relative",width:56,height:56,padding:0,margin:0,background:colors.card,border:`3px solid ${modoCompras?colors.success:colors.hoverCard}`,borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",WebkitAppearance:"none",appearance:"none",boxSizing:"border-box",flexShrink:0}}>
             <span style={{fontSize:22}}>🛒</span>
             {ticketCount>0&&(
               <div style={{position:"absolute",top:-2,right:-2,background:colors.error,borderRadius:"50%",minWidth:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",padding:"0 3px"}}>
@@ -865,7 +941,7 @@
         </div>
 
         {/* Stock */}
-        <button onClick={()=>setActiveTab("stock")} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none"}}>
+        <button onClick={()=>setActiveTab("stock")} style={{flex:1,background:"none",border:"none",margin:0,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",outline:"none",WebkitAppearance:"none",appearance:"none"}}>
           <span style={{fontSize:20}}>📦</span>
           <span style={{fontSize:11,fontWeight:600,color:activeTab==="stock"&&!modoCompras?colors.accent:colors.textMuted}}>Stock</span>
           {activeTab==="stock"&&!modoCompras&&<div style={{width:20,height:2,background:colors.accent,borderRadius:1}}/>}
@@ -1030,10 +1106,14 @@
     const [confirmCompra,setConfirmCompra]=useState(null);
     const [isDarkMode,setIsDarkMode]=useState(()=>{try{return localStorage.getItem("canasta_dark_mode")!=="false";}catch{return true;}});
     const TICKET_KEY="canasta_ticket_draft";
+    const PROMO_KEY="canasta_promo_draft";
     const ticketGuardado=()=>{try{const t=localStorage.getItem(TICKET_KEY);return t?JSON.parse(t):null;}catch{return null;}};
+    const promoGuardada=()=>{try{const p=localStorage.getItem(PROMO_KEY);return p?JSON.parse(p):null;}catch{return null;}};
     const draft=ticketGuardado();
     const [modoCompras,setModoCompras]=useState(!!draft&&draft.length>0);
     const [ticket,setTicket]=useState(draft||[]);
+    const [promo,setPromo]=useState(()=>(draft&&draft.length>0)?promoGuardada():null);
+    const [showPromoModal,setShowPromoModal]=useState(false);
     const [ticketOpen,setTicketOpen]=useState(!!draft&&draft.length>0);
     const [tickets,setTickets]=useState([]);
     const [showHistorial,setShowHistorial]=useState(false);
@@ -1052,6 +1132,14 @@
         else localStorage.removeItem(TICKET_KEY);
       }catch(e){}
     },[ticket]);
+
+    // Guardar promo en localStorage cada vez que cambia
+    useEffect(()=>{
+      try{
+        if(promo) localStorage.setItem(PROMO_KEY,JSON.stringify(promo));
+        else localStorage.removeItem(PROMO_KEY);
+      }catch(e){}
+    },[promo]);
 
     // Aplicar CSS variables dinámicamente
     useEffect(()=>{
@@ -1337,24 +1425,44 @@
     const finalizarCompra=async()=>{
       if(ticket.length===0)return;
       askConfirm(`¿Finalizar compra con ${ticket.length} producto${ticket.length>1?"s":""}?`,async()=>{
-        const nuevoTicket={id:uid(),fecha:new Date().toISOString(),items:ticket};
+        const subtotal=ticket.reduce((s,i)=>s+(i.totalPagado??i.precio??0),0);
+        const promoCalc=calcPromo(subtotal,promo);
+        const promoAplicado=promo&&promoCalc.descuentoAplicado>0;
+        // Si hay promo, "horneamos" el descuento en el precio efectivo de cada producto
+        // (no solo en el total): así el historial de precios y el gráfico de cada producto
+        // reflejan lo que realmente pagaste, comparable con compras de otros supermercados.
+        const itemsFinal=promoAplicado
+          ?ticket.map(it=>{
+              const f=promoCalc.factor;
+              const baseTotal=it.totalPagado??it.precio??0;
+              const nuevoTotalPagado=Math.round(baseTotal*f*100)/100;
+              const nuevoPrecio=it.precio!=null?Math.round(it.precio*f*100)/100:it.precio;
+              const nuevoEquivalente=it.equivalente!=null?Math.round(it.equivalente*f*100)/100:it.equivalente;
+              const nuevaEntrada=it.entrada?{...it.entrada,precio:Math.round(it.entrada.precio*f*100)/100,equivalente:it.entrada.equivalente!=null?Math.round(it.entrada.equivalente*f*100)/100:it.entrada.equivalente}:it.entrada;
+              return{...it,totalPagado:nuevoTotalPagado,precio:nuevoPrecio,equivalente:nuevoEquivalente,entrada:nuevaEntrada};
+            })
+          :ticket;
+        const promoGuardado=promoAplicado?{pct:promo.pct,limitado:promo.limitado,limite:promo.limite,descuentoAplicado:Math.round(promoCalc.descuentoAplicado*100)/100}:null;
+        const nuevoTicket={id:uid(),fecha:new Date().toISOString(),items:itemsFinal,promo:promoGuardado};
         const nuevos=[nuevoTicket,...tickets].slice(0,15);
         setTickets(nuevos);
         setTicket([]);
+        setPromo(null);
         setTicketOpen(false);
         setModoCompras(false);
         try{localStorage.removeItem(TICKET_KEY);}catch(e){}
+        try{localStorage.removeItem(PROMO_KEY);}catch(e){}
         setTicketFinalizado(nuevoTicket);
         // Guardar en background sin bloquear el modal
         (async()=>{
           let prodActualizados=[...productos];
-          for(const item of ticket){
+          for(const item of itemsFinal){
             if(item.entrada){
               prodActualizados=prodActualizados.map(p=>p.id===item.prodId?{...p,historialCompra:[...(p.historialCompra||[]),item.entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:p);
             }
           }
           await guardar(null,prodActualizados);
-          for(const item of ticket){
+          for(const item of itemsFinal){
             if(!item.stockDelta||item.stockDelta.cantidad<=0) continue;
             const {cantRef,cantRefProd,cantidad,entradasBase,display}=item.stockDelta;
             const base=entradasBase.length===0&&cantRefProd
@@ -1367,7 +1475,7 @@
             guardarStock(item.prodId,nuevas);
           }
           try {
-            await sb.from("tickets").upsert({id:nuevoTicket.id,fecha:nuevoTicket.fecha,items:nuevoTicket.items,grupo_id:grupoId});
+            await sb.from("tickets").upsert({id:nuevoTicket.id,fecha:nuevoTicket.fecha,items:nuevoTicket.items,promo:nuevoTicket.promo,grupo_id:grupoId});
             if(tickets.length>=15){
               const aEliminar=tickets.slice(14).map(t=>t.id);
               if(aEliminar.length) await sb.from("tickets").delete().in("id",aEliminar);
@@ -1378,10 +1486,11 @@
     };
 
     const cancelarCompra=()=>{
-      if(ticket.length===0){setTicketOpen(false);setModoCompras(false);return;}
+      if(ticket.length===0){setTicketOpen(false);setModoCompras(false);setPromo(null);return;}
       askConfirm("¿Cancelar la compra? Se perderán los items del ticket.",()=>{
-        setTicket([]);setTicketOpen(false);setModoCompras(false);
+        setTicket([]);setPromo(null);setTicketOpen(false);setModoCompras(false);
         try{localStorage.removeItem(TICKET_KEY);}catch(e){}
+        try{localStorage.removeItem(PROMO_KEY);}catch(e){}
       },"Cancelar compra","#ef4444");
     };
 
@@ -1417,7 +1526,7 @@
           <FloatingAdd colors={colors} onClick={()=>push("nuevo-prod",{catId:current.catId||null,subId:current.subId&&current.subId!==UNASSIGNED_ID?current.subId:null})}/>
         )}
         {modoCompras&&(
-          <TicketDrawer colors={colors} ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm} onAddSuelto={()=>setShowItemSuelto(true)} onAddProducto={()=>setShowNuevoProdModal(true)} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses}/>
+          <TicketDrawer colors={colors} ticket={ticket} setTicket={setTicket} productos={productos} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm} onAddSuelto={()=>setShowItemSuelto(true)} onAddProducto={()=>setShowNuevoProdModal(true)} promo={promo} onEditPromo={()=>setShowPromoModal(true)} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses}/>
         )}
         {showHistorial&&<HistorialTickets colors={colors} tickets={tickets} setTickets={setTickets} onClose={()=>setShowHistorial(false)} askConfirm={askConfirm}/>}
         {ticketFinalizado&&<TicketFinalizadoModal colors={colors} ticket={ticketFinalizado} onClose={()=>setTicketFinalizado(null)}/>}
@@ -1425,6 +1534,7 @@
           <Confirm colors={colors} msg="¿Iniciar compra?" onOk={()=>{setModoCompras(true);setShowIniciarCompra(false);}} onCancel={()=>setShowIniciarCompra(false)} okLabel="Iniciar" okColor={colors.success}/>
         )}
         {showItemSuelto&&<ItemSueltoModal colors={colors} onClose={()=>setShowItemSuelto(false)} onSave={agregarItemSuelto}/>}
+        {showPromoModal&&<PromoModal colors={colors} promo={promo} subtotal={ticket.reduce((s,i)=>s+(i.totalPagado??i.precio??0),0)} onClose={()=>setShowPromoModal(false)} onSave={(p)=>{setPromo(p);setShowPromoModal(false);}} onQuitar={()=>{setPromo(null);setShowPromoModal(false);}}/>}
         {showNuevoProdModal&&(
           <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 0 80px"}} onClick={e=>e.target===e.currentTarget&&setShowNuevoProdModal(false)}>
             <div style={{width:"100%",maxWidth:500,background:colors.inputBg}}>
