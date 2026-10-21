@@ -1693,15 +1693,13 @@
 
     return (<div className="fade">
       <TopBar colors={colors} title={`${cat.emoji} ${cat.label}`} subtitle={!isStock&&!modoCompras&&catGasto>0?<span style={{color:colors.accent,fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined} onBack={pop}
-        right={<div style={{display:"flex",gap:8}}>
-          <button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 11px",fontSize:12}}>Ver todos</button>
-          {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} session={session}/>}
-        </div>}/>
+        right={!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} session={session}/>}/>
       <SearchRow colors={colors} q={q} onChange={setQ} sortValue={sortBy} onSort={setSortBy} sortOptions={<>
         <option value="nombre-az">A→Z</option><option value="nombre-za">Z→A</option>
         {!isStock&&!modoCompras&&<><option value="precio-asc">Precio ↑</option><option value="precio-desc">Precio ↓</option>
         <option value="gasto-asc">Gasto ↑</option><option value="gasto-desc">Gasto ↓</option></>}
       </>}/>
+      {!q&&<button className="btn" onClick={()=>push("lista",{catId,subId:null})} style={{width:"100%",background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"11px 0",fontSize:14,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>Ver todos los productos de {cat.label} <span style={{color:colors.hoverCard,fontSize:16}}>›</span></button>}
       {q?(<>
         <div style={{fontSize:12,color:colors.textMuted,marginBottom:10}}>{resultsQ.length} resultado{resultsQ.length!==1?"s":""} en toda la canasta</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>{resultsQ.map(p=>{const pcat=cats.find(c=>c.id===p.catId);
@@ -1837,8 +1835,8 @@
       {selectMode&&canSelect?(
         <div style={{position:"sticky",top:0,zIndex:120,background:colors.bg,margin:"0 -16px 14px",padding:"28px 16px 12px",borderBottom:`1px solid ${colors.cardBorder}`}}>
           <div style={{display:"flex",gap:8,marginBottom:12}}>
-            <button className="btn" disabled={!selected.size} onClick={()=>selected.size&&setMoveModal(true)} style={{flex:1,background:selected.size?colors.accent:colors.btnSecondary,color:selected.size?"#fff":colors.textMuted,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>📂 Mover</button>
             <button className="btn" disabled={!selected.size} onClick={doDelete} style={{flex:1,background:colors.errorBg,color:selected.size?colors.error:colors.textMuted,border:`1px solid ${colors.errorBorder}`,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>🗑️ Eliminar</button>
+            <button className="btn" disabled={!selected.size} onClick={()=>selected.size&&setMoveModal(true)} style={{flex:1,background:selected.size?colors.accent:colors.btnSecondary,color:selected.size?"#fff":colors.textMuted,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>📂 Mover</button>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <button className="btn" onClick={toggleAll} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.accent,padding:"8px 12px",fontSize:13,flexShrink:0,minWidth:76}}>{allSelected?"Ninguno":"Todos"}</button>
@@ -2570,23 +2568,28 @@
   }
 
   function ExportScreen({cats,productos,pop,showToast,colors}) {
-    const [openKey,setOpenKey]=useState(null);
+    const [openKey,setOpenKey]=useState(null);   // sección cuyo texto está desplegado
+    const [openCatId,setOpenCatId]=useState(null); // categoría desplegada
     const toggle=(key)=>setOpenKey(k=>k===key?null:key);
+    const toggleCat=(id)=>{setOpenCatId(c=>c===id?null:id);setOpenKey(null);};
     const doCopy=async(text,e)=>{e.stopPropagation();const ok=await copyToClipboard(text);showToast(ok?"📋 Copiado":"No se pudo copiar",ok?null:"err");};
+
+    const TextBlock=({text})=>(
+      <div style={{position:"relative"}}>
+        <button onClick={e=>doCopy(text,e)} style={{position:"absolute",top:8,right:12,background:colors.accent,border:"none",borderRadius:8,color:"#fff",padding:"4px 10px",fontSize:12,cursor:"pointer",zIndex:1}}>📋 Copiar</button>
+        <pre style={{fontSize:12,color:colors.text,lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:colors.inputBg,padding:"32px 16px 12px",margin:0,borderTop:`1px solid ${colors.cardBorder}`}}>{text||"Sin productos."}</pre>
+      </div>
+    );
 
     const SectionRow=({label,catId,subId,indent=false})=>{
       const key=`${catId}-${subId}`;
       const isOpen=openKey===key;
-      const text=buildExportText(cats,productos,catId,subId);
       return (<div style={{borderTop:`1px solid ${colors.cardBorder}`}}>
         <div className="row" style={{padding:`10px 16px 10px ${indent?44:16}px`,display:"flex",alignItems:"center",gap:10,cursor:"pointer",WebkitTapHighlightColor:"transparent"}} onClick={()=>toggle(key)}>
-          <div style={{flex:1,fontSize:indent?13:14,color:indent?"#c8cfe0":"#e8eaf0",fontWeight:indent?400:600}}>{label}</div>
+          <div style={{flex:1,fontSize:indent?13:14,color:indent?colors.textSecondary:colors.text,fontWeight:indent?400:600}}>{label}</div>
           <div style={{fontSize:12,color:colors.textMuted}}>{isOpen?"▼":"▶"}</div>
         </div>
-        {isOpen&&<div style={{position:"relative"}}>
-          <button onClick={e=>doCopy(text,e)} style={{position:"absolute",top:8,right:12,background:colors.accent,border:"none",borderRadius:8,color:"#fff",padding:"4px 10px",fontSize:12,cursor:"pointer",zIndex:1}}>📋 Copiar</button>
-          <pre style={{fontSize:12,color:colors.text,lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:colors.inputBg,padding:"32px 16px 12px",margin:0,borderTop:`1px solid ${colors.cardBorder}`}}>{text||"Sin productos."}</pre>
-        </div>}
+        {isOpen&&<TextBlock text={buildExportText(cats,productos,catId,subId)}/>}
       </div>);
     };
 
@@ -2600,18 +2603,24 @@
         const validS=new Set(cat.subs.map(s=>s.id));
         const orphans=cp.filter(p=>!p.subId||!validS.has(p.subId));
         const hasSubs=cat.subs.length>0;
+        const isOpen=openCatId===cat.id;
         return (<div key={cat.id} className="card" style={{marginBottom:8,overflow:"hidden",borderLeft:`3px solid ${cat.color}`}}>
-          <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+          <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",WebkitTapHighlightColor:"transparent"}} onClick={()=>toggleCat(cat.id)}>
             <span style={{fontSize:18}}>{cat.emoji}</span>
             <div style={{flex:1}}><div style={{fontWeight:600,fontSize:14,color:colors.text}}>{cat.label}</div><div style={{fontSize:11,color:colors.textMuted}}>{cp.length} productos</div></div>
+            <div style={{fontSize:12,color:colors.textMuted}}>{isOpen?"▼":"▶"}</div>
           </div>
-          <SectionRow label={cat.label} catId={cat.id} subId={null}/>
-          {hasSubs&&[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
-            const sp=cp.filter(p=>p.subId===sub.id);
-            if(!sp.length)return null;
-            return <SectionRow key={sub.id} label={sub.label} catId={cat.id} subId={sub.id} indent/>;
-          })}
-          {hasSubs&&orphans.length>0&&<SectionRow label="Sin subcategoría" catId={cat.id} subId="__sin_sub__" indent/>}
+          {isOpen&&(hasSubs?(<>
+            <SectionRow label="Toda la categoría" catId={cat.id} subId={null}/>
+            {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
+              const sp=cp.filter(p=>p.subId===sub.id);
+              if(!sp.length)return null;
+              return <SectionRow key={sub.id} label={sub.label} catId={cat.id} subId={sub.id} indent/>;
+            })}
+            {orphans.length>0&&<SectionRow label="Sin subcategoría" catId={cat.id} subId="__sin_sub__" indent/>}
+          </>):(
+            <TextBlock text={buildExportText(cats,productos,cat.id,null)}/>
+          ))}
         </div>);
       })}
     </div>);
