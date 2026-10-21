@@ -1324,6 +1324,28 @@
       })();
     },[grupoId,pendingInvite]);
 
+    // Borra todos los datos del grupo actual (categorías, productos, stock e historial de compras)
+    const borrarBaseDatos=async()=>{
+      if(!grupoId) throw new Error("No se encontró el grupo");
+      const prodIds=productos.map(p=>p.id);
+      const rs=await sb.from("stock").delete().eq("grupo_id",grupoId);
+      if(rs.error) throw rs.error;
+      // Barrido extra por si quedaron filas de stock viejas sin grupo_id
+      for(let i=0;i<prodIds.length;i+=100){
+        const r=await sb.from("stock").delete().in("producto_id",prodIds.slice(i,i+100));
+        if(r.error) throw r.error;
+      }
+      const rt=await sb.from("tickets").delete().eq("grupo_id",grupoId);
+      if(rt.error) console.warn("Tickets:",rt.error);
+      const rp=await sb.from("productos").delete().eq("grupo_id",grupoId);
+      if(rp.error) throw rp.error;
+      const rc=await sb.from("categorias").delete().eq("grupo_id",grupoId);
+      if(rc.error) throw rc.error;
+      setStock({});setTickets([]);setProductos([]);setCats([]);
+      setTicket([]);setPromo(null);setModoCompras(false);setTicketOpen(false);
+      try{localStorage.removeItem(TICKET_KEY);localStorage.removeItem(PROMO_KEY);}catch(e){}
+    };
+
     const salirDelGrupo=()=>{
       askConfirm(
         "¿Salir del grupo? Vas a pasar a tener tu propia base de datos individual, con una copia de los productos y categorías actuales. Los demás miembros del grupo no se ven afectados.",
@@ -1501,7 +1523,7 @@
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:colors.accent,fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion,borrarBaseDatos};
 
     const isMenuScreen=["export","backup","import","config","cuenta","grupo"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
@@ -1814,17 +1836,17 @@
       </div>)}
       {selectMode&&canSelect?(
         <div style={{position:"sticky",top:0,zIndex:120,background:colors.bg,margin:"0 -16px 14px",padding:"28px 16px 12px",borderBottom:`1px solid ${colors.cardBorder}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-            <button className="btn" onClick={cancelSelect} style={{background:colors.card,color:colors.text,border:`1px solid ${colors.cardBorder}`,padding:"8px 12px",fontSize:14,flexShrink:0}}>✕</button>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:700,fontSize:22,letterSpacing:"-.03em",color:colors.text}}>{selected.size} seleccionado{selected.size!==1?"s":""}</div>
-              <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>de {lista.length} producto{lista.length!==1?"s":""} · tocá para marcar o desmarcar</div>
-            </div>
-            <button className="btn" onClick={toggleAll} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.accent,padding:"8px 12px",fontSize:13,flexShrink:0}}>{allSelected?"Ninguno":"Todos"}</button>
-          </div>
-          <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
             <button className="btn" disabled={!selected.size} onClick={()=>selected.size&&setMoveModal(true)} style={{flex:1,background:selected.size?colors.accent:colors.btnSecondary,color:selected.size?"#fff":colors.textMuted,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>📂 Mover</button>
             <button className="btn" disabled={!selected.size} onClick={doDelete} style={{flex:1,background:colors.errorBg,color:selected.size?colors.error:colors.textMuted,border:`1px solid ${colors.errorBorder}`,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>🗑️ Eliminar</button>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <button className="btn" onClick={toggleAll} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.accent,padding:"8px 12px",fontSize:13,flexShrink:0,minWidth:76}}>{allSelected?"Ninguno":"Todos"}</button>
+            <div style={{flex:1,minWidth:0,textAlign:"center"}}>
+              <div style={{fontWeight:700,fontSize:15,color:colors.text}}>{selected.size} seleccionado{selected.size!==1?"s":""}</div>
+              <div style={{fontSize:11,color:colors.textMuted,marginTop:2}}>Tocá para marcar o desmarcar</div>
+            </div>
+            <button className="btn" onClick={cancelSelect} style={{background:colors.card,color:colors.text,border:`1px solid ${colors.cardBorder}`,padding:"8px 12px",fontSize:14,flexShrink:0,minWidth:76}}>✕</button>
           </div>
         </div>
       ):(<>
@@ -2596,8 +2618,27 @@
   }
 
   // ── BackupScreen ──────────────────────────────────────────────────────────────
-  function BackupScreen({cats,productos,pop,showToast,colors}) {
+  function BackupScreen({cats,productos,pop,showToast,colors,borrarBaseDatos,grupoInfo}) {
     const [copied,setCopied]=useState(false);
+    const [showBorrar,setShowBorrar]=useState(false);
+    const [confirmTxt,setConfirmTxt]=useState("");
+    const [borrando,setBorrando]=useState(false);
+    const compartido=(grupoInfo?.miembros?.length||0)>1;
+    const habilitado=confirmTxt.trim().toUpperCase()==="ELIMINAR";
+    const doBorrar=async()=>{
+      if(!habilitado||borrando)return;
+      setBorrando(true);
+      try{
+        await borrarBaseDatos();
+        showToast("🗑️ Base de datos eliminada");
+        setShowBorrar(false);
+        pop();
+      }catch(e){
+        console.error(e);
+        showToast("Error al eliminar: "+(e.message||""),"err");
+        setBorrando(false);
+      }
+    };
     const text=buildBackupText(cats,productos);
     const doCopy=async()=>{
       const ok=await copyToClipboard(text);
@@ -2615,6 +2656,27 @@
         </div>
         <pre style={{fontSize:12,color:colors.text,lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",background:colors.inputBg,borderRadius:8,padding:12,maxHeight:400,overflowY:"auto"}}>{text||"Sin productos."}</pre>
       </div>
+      <button className="btn" onClick={()=>{setConfirmTxt("");setShowBorrar(true);}} style={{width:"100%",padding:12,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,fontSize:13}}>🗑️ Eliminar base de datos</button>
+      {showBorrar&&(
+        <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&!borrando&&setShowBorrar(false)}>
+          <div style={{background:colors.card,border:`1px solid ${colors.errorBorder}`,borderRadius:16,padding:24,maxWidth:340,width:"100%"}}>
+            <div style={{fontWeight:700,fontSize:17,color:colors.error,marginBottom:10}}>Eliminar base de datos</div>
+            <div style={{fontSize:13.5,color:colors.text,lineHeight:1.5,marginBottom:10}}>
+              Se borran <b>{cats.length} categorías</b>, <b>{productos.length} productos</b>, todo el stock y el historial de compras. No se puede deshacer.
+            </div>
+            {compartido&&<div style={{fontSize:12.5,color:colors.warning,lineHeight:1.4,marginBottom:10}}>⚠️ Compartís esta base con tu grupo familiar: se borra para todos los miembros.</div>}
+            <div style={{fontSize:12.5,color:colors.textMuted,lineHeight:1.4,marginBottom:14}}>Si querés conservar una copia, cancelá y tocá "Copiar todo" primero.</div>
+            <div className="field" style={{marginBottom:16}}>
+              <label>Escribí ELIMINAR para confirmar</label>
+              <input className="inp" autoComplete="canasta-field-ignore" autoCapitalize="characters" value={confirmTxt} onChange={e=>setConfirmTxt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doBorrar()} autoFocus/>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn" disabled={borrando} onClick={()=>setShowBorrar(false)} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12}}>Cancelar</button>
+              <button className="btn" disabled={!habilitado||borrando} onClick={doBorrar} style={{flex:1,background:habilitado?colors.error:colors.btnSecondary,color:habilitado?"#fff":colors.textMuted,padding:12,cursor:habilitado&&!borrando?"pointer":"default",opacity:borrando?.6:1}}>{borrando?"Eliminando…":"Eliminar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>);
   }
 
