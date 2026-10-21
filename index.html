@@ -1700,7 +1700,7 @@
           <div className="card row" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderLeft:"3px solid #4a5568",opacity:0.85}} onClick={()=>push("lista",{catId,subId:"__sin_sub__"})}>
             <div style={{flex:1}}>
               <div style={{fontWeight:600,fontSize:15,color:colors.textSecondary}}>Sin subcategoría</div>
-              <div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{orphans.length} producto{orphans.length!==1?"s":""} sin asignar · usá Selec. para moverlos</div>
+              <div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{orphans.length} producto{orphans.length!==1?"s":""} sin asignar · mantené apretado uno para moverlos</div>
             </div>
             <div style={{textAlign:"right"}}>
               {orphanGasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:colors.textSecondary}}>{fmt(orphanGasto)}<span style={{fontSize:10,color:colors.textMuted}}>/mes</span></div>}
@@ -1721,6 +1721,9 @@
     const [selectMode,setSelectMode]=useState(false); const [moveModal,setMoveModal]=useState(false); const [moveDest,setMoveDest]=useState("");
     const [openStockId,setOpenStockId]=useState(null); // ID del StockCard abierto
     const [frozenOrder,setFrozenOrder]=useState(null); // orden congelado mientras hay panel abierto
+    // Pulsación larga para entrar en modo selección
+    const lpTimer=useRef(null); const lpStart=useRef(null); const lpFired=useRef(false);
+    useEffect(()=>()=>clearTimeout(lpTimer.current),[]);
     const cat=cats.find(c=>c.id===catId); const sub=cat?.subs?.find(s=>s.id===subId); if(!cat) return null;
     const isUnassignedView=subId===UNASSIGNED_ID;
     const sortFn = (a,b) => {
@@ -1751,6 +1754,35 @@
     };
     const toggleSelect=(id)=>{setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});};
     const cancelSelect=()=>{setSelectMode(false);setSelected(new Set());};
+    const canSelect=!isStock&&!modoCompras;
+    const pressStart=(id,e)=>{
+      if(!canSelect)return;
+      lpFired.current=false;
+      lpStart.current={x:e.clientX,y:e.clientY};
+      clearTimeout(lpTimer.current);
+      lpTimer.current=setTimeout(()=>{
+        lpFired.current=true; lpStart.current=null;
+        try{if(navigator.vibrate)navigator.vibrate(30);}catch(err){}
+        setSelectMode(true);
+        setSelected(prev=>{const n=new Set(prev);n.add(id);return n;});
+      },450);
+    };
+    const pressMove=(e)=>{
+      if(!lpStart.current)return;
+      if(Math.abs(e.clientX-lpStart.current.x)>10||Math.abs(e.clientY-lpStart.current.y)>10){clearTimeout(lpTimer.current);lpStart.current=null;}
+    };
+    const pressEnd=()=>{clearTimeout(lpTimer.current);lpStart.current=null;};
+    const allSelected=lista.length>0&&lista.every(p=>selected.has(p.id));
+    const toggleAll=()=>setSelected(allSelected?new Set():new Set(lista.map(p=>p.id)));
+    const doDelete=()=>{
+      const n=selected.size; if(!n)return;
+      askConfirm(`¿Eliminar ${n} producto${n>1?"s":""}? También se borra su historial de precios. No se puede deshacer.`,async()=>{
+        const ids=new Set(selected);
+        await guardar(null,productos.filter(p=>!ids.has(p.id)),{deleteRemoved:true});
+        showToast(`🗑️ ${n} producto${n>1?"s":""} eliminado${n>1?"s":""}`);
+        cancelSelect();
+      },"Eliminar","#ef4444");
+    };
     const doMove=async()=>{
       if(!moveDest)return;
       const [dCatId,dSubId]=moveDest.split("::");
@@ -1780,17 +1812,24 @@
           </div>
         </div>
       </div>)}
-      <TopBar colors={colors} title={title} subtitle={listSubtitle} onBack={()=>{cancelSelect();pop();}}
-        right={selectMode&&!isStock&&!modoCompras
-          ?<div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <div style={{fontSize:13,color:colors.accent,fontWeight:600}}>{selected.size} sel.</div>
-              {selected.size>0&&<button className="btn" onClick={()=>setMoveModal(true)} style={{background:colors.accent,color:"#fff",padding:"8px 12px",fontSize:13}}>Mover</button>}
-              <button className="btn" onClick={cancelSelect} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:"8px 12px",fontSize:13}}>✕</button>
+      {selectMode&&canSelect?(
+        <div style={{position:"sticky",top:0,zIndex:120,background:colors.bg,margin:"0 -16px 14px",padding:"28px 16px 12px",borderBottom:`1px solid ${colors.cardBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+            <button className="btn" onClick={cancelSelect} style={{background:colors.card,color:colors.text,border:`1px solid ${colors.cardBorder}`,padding:"8px 12px",fontSize:14,flexShrink:0}}>✕</button>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:22,letterSpacing:"-.03em",color:colors.text}}>{selected.size} seleccionado{selected.size!==1?"s":""}</div>
+              <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>de {lista.length} producto{lista.length!==1?"s":""} · tocá para marcar o desmarcar</div>
             </div>
-          :<div style={{display:"flex",gap:8}}>
-              {!isStock&&!modoCompras&&<button className="btn" onClick={()=>setSelectMode(true)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 11px",fontSize:12}}>Selec.</button>}
-              {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} session={session}/>}
-            </div>}/>
+            <button className="btn" onClick={toggleAll} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.accent,padding:"8px 12px",fontSize:13,flexShrink:0}}>{allSelected?"Ninguno":"Todos"}</button>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button className="btn" disabled={!selected.size} onClick={()=>selected.size&&setMoveModal(true)} style={{flex:1,background:selected.size?colors.accent:colors.btnSecondary,color:selected.size?"#fff":colors.textMuted,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>📂 Mover</button>
+            <button className="btn" disabled={!selected.size} onClick={doDelete} style={{flex:1,background:colors.errorBg,color:selected.size?colors.error:colors.textMuted,border:`1px solid ${colors.errorBorder}`,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>🗑️ Eliminar</button>
+          </div>
+        </div>
+      ):(<>
+      <TopBar colors={colors} title={title} subtitle={listSubtitle} onBack={()=>{cancelSelect();pop();}}
+        right={!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} session={session}/>}/>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder={q?"🔍 Buscando en toda la canasta…":"🔍 Buscar en toda la canasta…"} value={q} onChange={v=>{setQ(v.target.value);if(v.target.value)cancelSelect();}} style={{flex:1,marginBottom:0,height:44,boxSizing:"border-box"}}/>
         <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,borderRadius:10,padding:"0 10px",fontSize:13,fontFamily:"inherit",outline:"none",flexShrink:0,height:44,width:90}}>
@@ -1801,6 +1840,7 @@
         </select>
       </div>
       {q&&<div style={{fontSize:12,color:colors.textMuted,marginBottom:10}}>{lista.length} resultado{lista.length!==1?"s":""} en toda la canasta</div>}
+      </>)}
       {lista.length===0?<div style={{textAlign:"center",color:colors.textMuted,padding:"60px 0",fontSize:14}}>Sin productos aún.</div>
         :<div style={{display:"flex",flexDirection:"column",gap:8}}>
           {lista.map(p=>{
@@ -1808,9 +1848,11 @@
             if(isStock&&!modoCompras) return <StockCard key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardarStock={guardarStock} askConfirm={askConfirm} onOpen={()=>handleStockOpen(p.id)} onClose={handleStockClose} colors={colors}/>;
             if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} colors={colors}/>;
             const isSel=selected.has(p.id);
-            return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?colors.accent:pcat?.color||"#444"}`,cursor:"pointer",background:isSel?`${colors.accent}22`:colors.card,transition:"all .15s"}}
-              onClick={()=>selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id})}>
-              {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?"#3b82f6":"#2a3550"}`,background:isSel?"#3b82f6":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
+            return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?colors.accent:pcat?.color||"#444"}`,cursor:"pointer",background:isSel?`${colors.accent}22`:colors.card,transition:"all .15s",userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
+              onPointerDown={e=>pressStart(p.id,e)} onPointerMove={pressMove} onPointerUp={pressEnd} onPointerCancel={pressEnd} onPointerLeave={pressEnd}
+              onContextMenu={e=>e.preventDefault()}
+              onClick={()=>{if(lpFired.current){lpFired.current=false;return;}selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id});}}>
+              {selectMode&&<div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?colors.accent:colors.hoverCard}`,background:isSel?colors.accent:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
               <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:colors.text}}>{p.nombre}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{p.marca||"—"}{p.cantidadRef&&<span style={{marginLeft:6,color:colors.textMuted}}>{fmtCantRef(p)}</span>}</div></div>
               <div style={{textAlign:"right",flexShrink:0}}>{p.precioRef?<><div className="mono" style={{fontWeight:700,fontSize:16,color:colors.text}}>{fmt(p.precioRef)}</div>{gastoMensual(p)&&p.unidadesMes&&<div className="mono" style={{fontSize:11,color:pcat?.color,marginTop:2}}>{fmtU(p.unidadesMes)} u/mes = {fmt(gastoMensual(p))}</div>}</>:<div style={{fontSize:12,color:colors.textMuted}}>Sin precio</div>}</div>
             </div>);
