@@ -96,6 +96,58 @@
     const factor=descuentoAplicado>0?(subtotal-descuentoAplicado)/subtotal:1;
     return{descuentoAplicado,factor};
   };
+  // Último precio de compra, llevado a la cantidad de referencia del producto (comparable con el Ref)
+  const ultimoEquiv=(p)=>{
+    const h=p?.historialCompra||[]; if(!h.length)return null;
+    const u=h[h.length-1];
+    if(u.equivalente!=null)return u.equivalente;
+    const c=parseFloat(String(u.cantidad||"").replace(",","."));
+    if(c>0&&p.cantidadRef)return (u.precio/c)*p.cantidadRef;
+    return u.precio??null;
+  };
+  // % de diferencia de a respecto de b
+  const pctDiff=(a,b)=>(a!=null&&b)?((a-b)/b*100):null;
+  // % del ticket completo vs Ref y vs Últ (solo items que tienen ese dato)
+  const ticketDiffs=(items)=>{
+    const calc=(k)=>{
+      const its=(items||[]).filter(x=>!x.suelto&&(x[k]??0)>0);
+      const base=its.reduce((s,x)=>s+x[k],0);
+      const pag=its.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
+      return base>0?(pag-base)/base*100:null;
+    };
+    return {refPct:calc("totalRef"),ultPct:calc("totalUlt")};
+  };
+  // Etiquetas "Ref ▲x%  Últ ▼y%"
+  function PctPair({refPct,ultPct,size=11,gap=8}) {
+    const one=(lbl,v)=>v==null?null:(
+      <span style={{fontSize:size,fontWeight:700,color:v<=0?"#10b981":"#ef4444",whiteSpace:"nowrap"}}>{lbl} {v<=0?"▼":"▲"}{Math.abs(v).toFixed(1)}%</span>
+    );
+    if(refPct==null&&ultPct==null)return null;
+    return <span style={{display:"inline-flex",gap,alignItems:"baseline"}}>{one("Ref",refPct)}{one("Últ",ultPct)}</span>;
+  }
+  // Celdas Ref | Últ | Total de la tarjeta de compra
+  function CompararCeldas({precioRef,precioUlt,equivalente,totalPagado,colors}) {
+    const lbl={fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase"};
+    const box={background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,borderRadius:10,padding:"10px 10px",fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"};
+    const cell=(titulo,valor)=>{
+      const d=pctDiff(equivalente,valor);
+      return (<div style={{minWidth:0}}>
+        <div style={lbl}>{titulo}</div>
+        <div style={{...box,color:valor?colors.textSecondary:colors.hoverCard}}>{valor?fmt(valor):"—"}</div>
+        <div style={{fontSize:12,fontWeight:700,marginTop:4,textAlign:"center",minHeight:16,color:d==null?colors.textMuted:d>0?"#ef4444":"#10b981"}}>{d==null?"—":`${d>0?"▲":"▼"}${Math.abs(d).toFixed(1)}%`}</div>
+      </div>);
+    };
+    return (
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 110px",gap:8,marginBottom:14,alignItems:"start"}}>
+        {cell("Ref",precioRef)}
+        {cell("Últ",precioUlt)}
+        <div style={{minWidth:0}}>
+          <div style={{...lbl,textAlign:"right"}}>Total</div>
+          <div style={{...box,fontSize:14,textAlign:"right",color:totalPagado?colors.text:colors.hoverCard}}>{totalPagado?fmt(totalPagado):"—"}</div>
+        </div>
+      </div>
+    );
+  }
   const COLORS = ["#60a5fa","#f472b6","#4ade80","#fb923c","#a78bfa","#facc15","#34d399","#f87171","#38bdf8","#e879f9"];
   const alpha = (a, b, key="label") => (a[key]||"").localeCompare(b[key]||"", "es");
   const alphaStr = (a, b) => (a||"").localeCompare(b||"", "es");
@@ -479,19 +531,26 @@
     const cantMetrosNum=esM?(parseFloat(cantMetros)||0):0;
     const metrosPorPaq=cantRollosNum*cantMetrosNum;
     const cantNum=esM?metrosPorPaq:parseFloat((cantidad||"").replace(",","."));
-    const equivalente=esM
-      ?(precioNum>0&&metrosPorPaq>0&&cantRefProd?(precioNum/metrosPorPaq)*cantRefProd:null)
-      :(!esSuelto&&precioNum>0&&cantNum>0&&cantRefProd?(precioNum/cantNum)*cantRefProd:item.equivalente);
+    const equivalente=esSuelto?null
+      :!(precioNum>0)?null
+      :cantRefProd?(cantNum>0?(precioNum/cantNum)*cantRefProd:null)
+      :precioNum;
     const totalPagado=precioNum>0&&cantCompradaNum>0?precioNum*cantCompradaNum:null;
-    const precioRefEquiv=!esSuelto&&cantRefProd&&cantNum>0&&item.precioRef?(item.precioRef/cantRefProd)*cantNum:item.precioRef;
-    const totalRef=precioRefEquiv!=null&&cantCompradaNum>0?precioRefEquiv*cantCompradaNum:null;
-    const diff=equivalente!=null&&item.precioRef?((equivalente-item.precioRef)/item.precioRef*100):null;
+    // Último precio: el guardado al agregar al ticket, o se calcula si el item es de una versión anterior
+    const precioUlt=esSuelto?null:(item.precioUlt!==undefined?item.precioUlt:(p?ultimoEquiv(p):null));
+    const aPaquete=(v)=>v==null?null:(cantRefProd&&cantNum>0?(v/cantRefProd)*cantNum:v);
+    const totalRef=!esSuelto&&item.precioRef&&cantCompradaNum>0?aPaquete(item.precioRef)*cantCompradaNum:null;
+    const totalUlt=!esSuelto&&precioUlt&&cantCompradaNum>0?aPaquete(precioUlt)*cantCompradaNum:null;
+    const cantPaq=esM?cantNum:(!esSuelto?(parseFloat(String(cantidad).replace(",","."))||cantRefProd):null);
     const guardar=()=>onSave({
       nombre:nombre.trim()||item.nombre,
-      precio:precioNum,cantRef:esM?cantNum:(!esSuelto?(parseFloat(cantidad)||cantRefProd):null),
+      precio:precioNum,cantRef:cantPaq,
       rollosRef:esM?(cantRollosNum||null):null,metrosRef:esM?(cantMetrosNum||null):null,
-      cantComprada:cantCompradaNum,totalPagado,totalRef,equivalente,
-      stockDelta:item.stockDelta?{...item.stockDelta,cantidad:cantCompradaNum}:item.stockDelta
+      cantComprada:cantCompradaNum,totalPagado,totalRef,totalUlt,precioUlt,equivalente,
+      // También se actualiza lo que va al historial de precios y al stock
+      entrada:item.entrada?{...item.entrada,precio:precioNum,equivalente,cantidad:esM?String(cantNum):(cantidad||null)}:item.entrada,
+      stockDelta:item.stockDelta?{...item.stockDelta,cantidad:cantCompradaNum,cantRef:cantPaq||item.stockDelta.cantRef,
+        rollosRef:esM?(cantRollosNum||null):item.stockDelta.rollosRef,metrosRef:esM?(cantMetrosNum||null):item.stockDelta.metrosRef}:item.stockDelta
     });
     return (
       <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -511,8 +570,7 @@
               <div style={{fontSize:13,color:colors.textMuted,marginLeft:8}}>{item.marca||"—"}</div>
             </div>
           )}
-          {!esSuelto&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div style={{fontSize:12,color:colors.textMuted}}>{item.precioRef&&<span>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(item.precioRef)}</span></span>}</div>
+          {!esSuelto&&<div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",marginBottom:16}}>
             <div style={{fontSize:12,color:colors.textMuted,textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
           </div>}
           {esSuelto?null:esM?(
@@ -535,13 +593,14 @@
               <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
             </div>
           )}
-          <div style={{background:colors.inputBg,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:13,color:colors.textMuted}}>Total</span>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
+          {esSuelto?(
+            <div style={{background:colors.inputBg,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{fontSize:13,color:colors.textMuted}}>Total</span>
               <span className="mono" style={{fontWeight:700,fontSize:16,color:totalPagado?colors.text:colors.hoverCard}}>{totalPagado?fmt(totalPagado):"—"}</span>
             </div>
-          </div>
+          ):(
+            <CompararCeldas precioRef={item.precioRef} precioUlt={precioUlt} equivalente={equivalente} totalPagado={totalPagado} colors={colors}/>
+          )}
           <div style={{display:"flex",gap:10}}>
             <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:"11px 0",fontSize:14}}>Cancelar</button>
             <button className="btn" onClick={guardar} style={{flex:2,background:colors.accent,color:"#fff",padding:"11px 0",fontSize:14,fontWeight:700}}>Confirmar</button>
@@ -579,8 +638,9 @@
       const cantNum=parseFloat(String(item.cantidad||cantRefNum))||cantRefNum;
       const equivalente=(nuevoPrecio>0&&cantNum>0&&cantRefNum)?(nuevoPrecio/cantNum)*cantRefNum:item.equivalente;
       const totalPagado=nuevoPrecio*nuevaCant;
-      const totalRef=item.precioRef?item.precioRef*nuevaCant:null;
-      setTicket(t=>t.map((x,i)=>i===editIdx?{...x,precio:nuevoPrecio,cantComprada:nuevaCant,totalPagado,totalRef,equivalente,stockDelta:x.stockDelta?{...x.stockDelta,cantidad:nuevaCant}:x.stockDelta}:x));
+      const totalRef=item.totalRef&&item.cantComprada?item.totalRef/item.cantComprada*nuevaCant:(item.precioRef?item.precioRef*nuevaCant:null);
+      const totalUlt=item.totalUlt&&item.cantComprada?item.totalUlt/item.cantComprada*nuevaCant:null;
+      setTicket(t=>t.map((x,i)=>i===editIdx?{...x,precio:nuevoPrecio,cantComprada:nuevaCant,totalPagado,totalRef,totalUlt,equivalente,stockDelta:x.stockDelta?{...x.stockDelta,cantidad:nuevaCant}:x.stockDelta}:x));
       setEditIdx(null);
     };
     return (<>
@@ -597,7 +657,7 @@
               <span className="mono" style={{fontWeight:700,fontSize:14,color:ticket.length>0?colors.text:colors.hoverCard}}>{ticket.length>0?fmt(totalPagado):"$0,00"}</span>
             </div>
             {ticket.length>0&&promo&&promoCalc.descuentoAplicado>0&&<div style={{fontSize:10,fontWeight:700,color:"#10b981"}}>🏷️ -{fmt(promoCalc.descuentoAplicado)}</div>}
-            {ticket.length>0&&diffPct!==null&&<div style={{fontSize:10,fontWeight:700,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+            {ticket.length>0&&<div><PctPair {...ticketDiffs(ticket)} size={10} gap={6}/></div>}
           </div>
           <span style={{color:colors.textMuted,fontSize:14}}>{ticketOpen?"▼":"▲"}</span>
         </div>
@@ -610,8 +670,6 @@
               {ticket.map((item,i)=>{
                 const p=productos.find(x=>x.id===item.prodId);
                 const cat=cats.find(c=>c.id===p?.catId);
-                const diffItem=item.totalRef>0?item.totalPagado-item.totalRef:null;
-                const diffItemPct=item.totalRef>0?((item.totalPagado-item.totalRef)/item.totalRef*100).toFixed(1):null;
                 const isEditing=editIdx===i;
                 return (<div key={i} style={{padding:"8px 16px"}}>
                   {isEditing?(
@@ -668,9 +726,8 @@
     const totalPagado=item.totalPagado??item.precio??0;
     const totalMostrado=totalPagado*factor;
     const precioMostrado=(item.precio??0)*factor;
-    const totalRef=item.totalRef??null;
-    const diffItem=totalRef>0?totalPagado-totalRef:null;
-    const diffItemPct=totalRef>0?((totalPagado-totalRef)/totalRef*100).toFixed(1):null;
+    const refPct=item.totalRef>0?pctDiff(totalPagado,item.totalRef):null;
+    const ultPct=item.totalUlt>0?pctDiff(totalPagado,item.totalUlt):null;
     const cantLabel=item.unidad==="m"&&item.rollosRef&&item.metrosRef
       ?`${item.rollosRef}x${item.metrosRef}m`
       :item.cantRef?`${item.cantRef}${item.unidad||""}`:null;
@@ -686,7 +743,7 @@
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
           <div style={{fontSize:11,color:colors.textMuted}}>{item.marca||""}{cantLabel?` · ${cantLabel}`:""}</div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-            {diffItemPct!=null&&<div style={{fontSize:11,fontWeight:600,color:diffItem<=0?"#10b981":"#ef4444"}}>{diffItem<=0?"▼":"▲"} {Math.abs(parseFloat(diffItemPct))}%</div>}
+            <PctPair refPct={refPct} ultPct={ultPct} size={11} gap={6}/>
             <div className="mono" style={{fontSize:13,fontWeight:700,color:factor<1?"#10b981":colors.text}}>{fmt(totalMostrado)}</div>
           </div>
         </div>
@@ -715,7 +772,7 @@
               <div style={{textAlign:"right"}}>
                 <div className="mono" style={{fontWeight:700,fontSize:20,color:colors.text}}>{fmt(totalPagado)}</div>
                 {ticket.promo&&<div style={{fontSize:11,fontWeight:600,color:"#10b981"}}>🏷️ Promo -{ticket.promo.pct}%: -{fmt(ticket.promo.descuentoAplicado)}</div>}
-                {diffPct!==null&&<div style={{fontSize:12,fontWeight:600,color:diff<=0?"#10b981":"#ef4444"}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}% vs ref</div>}
+                <div><PctPair {...ticketDiffs(ticket.items)} size={12}/></div>
               </div>
             </div>
           </div>
@@ -764,7 +821,7 @@
                   <div style={{textAlign:"right"}}>
                     <div className="mono" style={{fontWeight:700,color:colors.text}}>{fmt(totalPagado)}</div>
                     {t.promo&&<div style={{fontSize:10,color:"#10b981",fontWeight:600}}>🏷️ -{t.promo.pct}%</div>}
-                    {diffPct!==null&&<div style={{fontSize:11,color:diff<=0?"#10b981":"#ef4444",fontWeight:600}}>{diff<=0?"▼":"▲"} {Math.abs(parseFloat(diffPct))}%</div>}
+                    <div><PctPair {...ticketDiffs(t.items)} size={11} gap={6}/></div>
                   </div>
                 </div>
                 <div style={{marginTop:8}}>
@@ -809,7 +866,7 @@
     const mesesTxt=fmtMeses(meses,true);
     const urgColor=meses===null?"#4a5568":meses===0?"#ef4444":meses<1?"#f97316":meses<2?"#facc15":"#4ade80";
     const hist=p.historialCompra||[];
-    const ultimoPrecio=hist.length>0?hist[hist.length-1].precio:null;
+    const precioUlt=ultimoEquiv(p);
     const fmtTotal=(t)=>{const r=Math.round(t*100)/100;return r===Math.round(r)?String(Math.round(r)):r.toLocaleString("es-AR");};
 
     const precioNum=parseFloat((precio||"").replace(",","."));
@@ -817,16 +874,18 @@
     const cantMetrosNum=esM?(parseFloat(cantMetros)||0):0;
     const cantCompradaNum=parseFloat((cantComprada||"").replace(",","."))||1;
     const metrosPorPaq=cantRollosNum*cantMetrosNum;
-    const cantNum=esM?metrosPorPaq*cantCompradaNum:parseFloat((cantidad||"").replace(",","."));
+    // cantNum = cantidad de UN paquete (los paquetes comprados van en cantCompradaNum)
+    const cantNum=esM?metrosPorPaq:parseFloat((cantidad||"").replace(",","."));
     const cantDisplay=esM&&cantRollosNum>0&&cantMetrosNum>0?`${cantRollosNum}x${cantMetrosNum}`:null;
     const cantRefNum=p.cantidadRef;
-    const equivalente=esM
-      ?(precioNum>0&&metrosPorPaq>0&&cantRefNum?(precioNum/metrosPorPaq)*cantRefNum:null)
-      :(precioNum>0&&cantNum>0&&cantRefNum?(precioNum/cantNum)*cantRefNum:null);
-    const diff=equivalente!=null&&p.precioRef?((equivalente-p.precioRef)/p.precioRef*100):null;
+    const equivalente=!(precioNum>0)?null
+      :cantRefNum?(cantNum>0?(precioNum/cantNum)*cantRefNum:null)
+      :precioNum;
     const totalPagado=precioNum>0&&cantCompradaNum>0?precioNum*cantCompradaNum:null;
-    const precioRefEquiv=cantRefNum&&cantNum>0&&p.precioRef?(p.precioRef/cantRefNum)*cantNum:p.precioRef;
-    const totalRef=precioRefEquiv!=null&&cantCompradaNum>0?precioRefEquiv*cantCompradaNum:null;
+    // Precio de referencia y último, llevados a la cantidad de este paquete
+    const aPaquete=(v)=>v==null?null:(cantRefNum&&cantNum>0?(v/cantRefNum)*cantNum:v);
+    const totalRef=p.precioRef&&cantCompradaNum>0?aPaquete(p.precioRef)*cantCompradaNum:null;
+    const totalUlt=precioUlt&&cantCompradaNum>0?aPaquete(precioUlt)*cantCompradaNum:null;
 
     const doRegistrar=async()=>{
       if(!precioNum||precioNum<=0)return showToast("Precio inválido","err");
@@ -837,8 +896,8 @@
         const entrada={id:uid(),precio:precioNum,cantidad:cantGuardada,equivalente,fecha};
         agregarAlTicket({
           prodId:p.id,nombre:p.nombre,marca:p.marca,cantRef:cantNum||cantRefNum,rollosRef:esM?(parseInt(cantRollos)||null):null,metrosRef:esM?(parseFloat(cantMetros)||null):null,
-          cantDisplay,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,fecha,
-          cantComprada:cantCompradaNum,totalPagado,totalRef,
+          cantDisplay,unidad:p.unidad,precio:precioNum,equivalente,precioRef:p.precioRef,precioUlt,fecha,
+          cantComprada:cantCompradaNum,totalPagado,totalRef,totalUlt,
           entrada,
           stockDelta:{cantRef:cantNum||cantRefNum,cantRefProd:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,rollosRef:esM?(parseInt(cantRollos)||null):null,metrosRef:esM?(parseFloat(cantMetros)||null):null}
         });
@@ -862,7 +921,7 @@
             </div>
             <div style={{marginTop:4,display:"flex",gap:10}}>
               {p.precioRef&&<span style={{fontSize:12,color:colors.textMuted}}>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(p.precioRef)}</span></span>}
-              {ultimoPrecio&&<span style={{fontSize:12,color:colors.textMuted}}>Último: <span style={{color:colors.text,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(ultimoPrecio)}</span></span>}
+              {precioUlt&&<span style={{fontSize:12,color:colors.textMuted}}>Últ: <span style={{color:colors.text,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(precioUlt)}</span></span>}
             </div>
           </div>
           <button onClick={()=>setOpen(true)} style={{width:38,alignSelf:"center",height:38,borderRadius:10,background:colors.accent,border:"none",color:"#fff",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,flexShrink:0}}>+</button>
@@ -876,8 +935,7 @@
               <div style={{fontWeight:700,fontSize:17,color:colors.text}}>{p.nombre}</div>
               <div style={{fontSize:13,color:colors.textMuted,textAlign:"right",marginLeft:8}}>{p.marca||"—"}</div>
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <div style={{fontSize:12,color:colors.textMuted}}>{p.precioRef&&<span>Ref: <span style={{color:cat?.color||"#3b82f6",fontWeight:700}}>{fmt(p.precioRef)}</span></span>}</div>
+            <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",marginBottom:16}}>
               <div style={{fontSize:12,color:colors.textMuted,textAlign:"right"}}>Stock: <span className="mono" style={{fontWeight:700,color:urgColor}}>{fmtTotal(total)}</span> · <span style={{color:urgColor}}>{mesesTxt}</span></div>
             </div>
             {esM?(
@@ -906,13 +964,7 @@
                 <div style={{width:60}}><div style={{fontSize:10,color:colors.textMuted,marginBottom:3,fontWeight:600,textTransform:"uppercase",textAlign:"center"}}>Compré</div><input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="1" value={cantComprada} onChange={e=>setCantComprada(e.target.value)} style={{textAlign:"center"}}/></div>
               </div>
             )}
-            <div style={{background:colors.inputBg,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <span style={{fontSize:13,color:colors.textMuted}}>Total</span>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                {diff!=null&&<span style={{fontSize:13,fontWeight:700,color:diff>0?"#ef4444":"#10b981"}}>{diff>0?"▲":"▼"}{Math.abs(diff).toFixed(1)}%</span>}
-                <span className="mono" style={{fontWeight:700,fontSize:16,color:totalPagado?colors.text:colors.hoverCard}}>{totalPagado?fmt(totalPagado):"—"}</span>
-              </div>
-            </div>
+            <CompararCeldas precioRef={p.precioRef} precioUlt={precioUlt} equivalente={equivalente} totalPagado={totalPagado} colors={colors}/>
             <div style={{display:"flex",gap:10}}>
               <button className="btn" onClick={()=>setOpen(false)} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:"11px 0",fontSize:14}}>Cancelar</button>
               <button className="btn" onClick={doRegistrar} disabled={saving||!precioNum||precioNum<=0} style={{flex:2,background:precioNum>0?(cat?.color||colors.success):colors.btnSecondary,color:precioNum>0?colors.bg:colors.textMuted,padding:"11px 0",fontSize:14,fontWeight:700}}>Confirmar</button>
