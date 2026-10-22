@@ -133,18 +133,18 @@
       return (<div style={{minWidth:0}}>
         <div style={{display:"flex",alignItems:"baseline",gap:6,whiteSpace:"nowrap"}}>
           <span style={lbl}>{titulo}</span>
-          <span className="mono" style={{fontSize:13,fontWeight:700,color:valor?colors.textSecondary:colors.hoverCard}}>{valor?fmt(valor):"—"}</span>
+          <span className="mono" style={{fontSize:12,fontWeight:700,color:valor?colors.textSecondary:colors.hoverCard,overflow:"hidden",textOverflow:"ellipsis"}}>{valor?fmt(valor):"—"}</span>
         </div>
         <div style={{fontSize:12,fontWeight:700,marginTop:3,minHeight:16,color:d==null?colors.textMuted:d>0?"#ef4444":"#10b981"}}>{d==null?"—":`${d>0?"▲":"▼"}${Math.abs(d).toFixed(1)}%`}</div>
       </div>);
     };
     return (
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:10,marginBottom:16,alignItems:"start"}}>
+      <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) 96px",gap:6,marginBottom:16,alignItems:"start"}}>
         {item("Ref",precioRef)}
         {item("Últ",precioUlt)}
         <div style={{textAlign:"right"}}>
           <div style={lbl}>Total</div>
-          <div className="mono" style={{fontSize:16,fontWeight:700,marginTop:2,whiteSpace:"nowrap",color:totalPagado?colors.text:colors.hoverCard}}>{totalPagado?fmt(totalPagado):"—"}</div>
+          <div className="mono" style={{fontSize:14,fontWeight:700,marginTop:2,whiteSpace:"nowrap",color:totalPagado?colors.text:colors.hoverCard}}>{totalPagado?fmt(totalPagado):"—"}</div>
         </div>
       </div>
     );
@@ -1377,6 +1377,67 @@
       })();
     },[grupoId,pendingInvite]);
 
+    // ── Edición y borrado de categorías / subcategorías ──
+    const borrarProductosDB=async(ids)=>{
+      for(let i=0;i<ids.length;i+=100){
+        const chunk=ids.slice(i,i+100);
+        const rs=await sb.from("stock").delete().in("producto_id",chunk); if(rs.error) throw rs.error;
+        const rp=await sb.from("productos").delete().in("id",chunk); if(rp.error) throw rp.error;
+      }
+    };
+    const quitarProductosLocal=(ids)=>{
+      const set=new Set(ids);
+      setProductos(ps=>ps.filter(p=>!set.has(p.id)));
+      setStock(st=>{const n={...st};ids.forEach(i=>{delete n[i];});return n;});
+      setTicket(t=>t.filter(i=>!set.has(i.prodId)));
+    };
+    const upsertCategoria=async(c)=>{
+      const r=await sb.from("categorias").upsert({id:c.id,label:c.label,emoji:c.emoji,color:c.color,subs:c.subs,grupo_id:grupoId});
+      if(r.error) throw r.error;
+    };
+    // cambios: {emoji,label,color,subs?} · moves: [{subId,destId}] subcategorías que pasan a otra categoría (con sus productos)
+    const editarCategoria=async(catId,{moves=[],...cambios})=>{
+      const c=cats.find(x=>x.id===catId); if(!c) return;
+      const subsEditadas=cambios.subs||c.subs;
+      const movidas=new Set(moves.map(m=>m.subId));
+      const nc={...c,...cambios,subs:subsEditadas.filter(x=>!movidas.has(x.id))};
+      if(!moves.length){
+        try{await upsertCategoria(nc);setCats(cs=>cs.map(x=>x.id===catId?nc:x));}
+        catch(e){console.error(e);showToast("Error al guardar la categoría","err");throw e;}
+        return;
+      }
+      let nextCats=cats.map(x=>x.id===catId?nc:x);
+      moves.forEach(m=>{
+        const sub=subsEditadas.find(x=>x.id===m.subId); if(!sub) return;
+        nextCats=nextCats.map(x=>x.id===m.destId?{...x,subs:[...x.subs.filter(y=>y.id!==sub.id),sub]}:x);
+      });
+      const destDe=Object.fromEntries(moves.map(m=>[m.subId,m.destId]));
+      const nextProds=productos.map(p=>p.catId===catId&&destDe[p.subId]?{...p,catId:destDe[p.subId]}:p);
+      await guardar(nextCats,nextProds);
+    };
+    const editarSubcategoria=async(catId,subId,label)=>{
+      const c=cats.find(x=>x.id===catId); if(!c) return;
+      const nc={...c,subs:c.subs.map(sb2=>sb2.id===subId?{...sb2,label}:sb2)};
+      try{await upsertCategoria(nc);setCats(cs=>cs.map(x=>x.id===catId?nc:x));}
+      catch(e){console.error(e);showToast("Error al guardar la subcategoría","err");throw e;}
+    };
+    const eliminarCategoria=async(catId)=>{
+      const ids=productos.filter(p=>p.catId===catId).map(p=>p.id);
+      await borrarProductosDB(ids);
+      const r=await sb.from("categorias").delete().eq("id",catId); if(r.error) throw r.error;
+      quitarProductosLocal(ids);
+      setCats(cs=>cs.filter(c=>c.id!==catId));
+    };
+    const eliminarSubcategoria=async(catId,subId)=>{
+      const c=cats.find(x=>x.id===catId); if(!c) return;
+      const ids=productos.filter(p=>p.catId===catId&&p.subId===subId).map(p=>p.id);
+      await borrarProductosDB(ids);
+      const nc={...c,subs:c.subs.filter(x=>x.id!==subId)};
+      await upsertCategoria(nc);
+      quitarProductosLocal(ids);
+      setCats(cs=>cs.map(x=>x.id===catId?nc:x));
+    };
+
     // Borra todos los datos del grupo actual (categorías, productos, stock e historial de compras)
     const borrarBaseDatos=async()=>{
       if(!grupoId) throw new Error("No se encontró el grupo");
@@ -1576,7 +1637,7 @@
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:colors.accent,fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion,borrarBaseDatos};
+    const shared={cats,productos,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion,borrarBaseDatos,editarCategoria,editarSubcategoria,eliminarCategoria,eliminarSubcategoria};
 
     const isMenuScreen=["export","backup","import","config","cuenta","grupo"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
@@ -1645,8 +1706,6 @@
             <div style={{borderTop:`1px solid ${colors.cardBorder}`,margin:"4px 0"}}/>
             <button className="btn" onClick={()=>{setOpen(false);setShowHistorial(true);}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>🧾 Historial de compras</button>
             <div style={{borderTop:`1px solid ${colors.cardBorder}`,margin:"4px 0"}}/>
-            <button className="btn" onClick={()=>{setOpen(false);push("config");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>📂 Editar categorías</button>
-            <div style={{borderTop:`1px solid ${colors.cardBorder}`,margin:"4px 0"}}/>
             <button className="btn" onClick={()=>{toggleDarkMode();setOpen(false);}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>{isDarkMode?"☀️ Modo cálido":"🌙 Modo oscuro"}</button>
             <div style={{borderTop:`1px solid ${colors.cardBorder}`,margin:"4px 0"}}/>
             <button className="btn" onClick={()=>{setOpen(false);push("grupo");}} style={{width:"100%",background:"none",color:colors.text,padding:"10px 14px",textAlign:"left",fontSize:14,display:"flex",gap:10,alignItems:"center"}}>👨‍👩‍👧 Grupo Familiar</button>
@@ -1657,8 +1716,217 @@
     );
   }
 
-  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session}) {
+  // ── Pulsación larga reutilizable ──────────────────────────────────────────────
+  // bind(onLong,onTap) devuelve los handlers para un elemento. Si se dispara la pulsación
+  // larga, el click siguiente se ignora. Moverse más de 10px (scroll) la cancela.
+  function useLongPress(ms=450){
+    const timer=useRef(null); const start=useRef(null); const fired=useRef(false);
+    useEffect(()=>()=>clearTimeout(timer.current),[]);
+    const end=()=>{clearTimeout(timer.current);start.current=null;};
+    return (onLong,onTap)=>({
+      onPointerDown:(e)=>{
+        fired.current=false;
+        if(!onLong)return;
+        start.current={x:e.clientX,y:e.clientY};
+        clearTimeout(timer.current);
+        timer.current=setTimeout(()=>{
+          fired.current=true;start.current=null;
+          try{if(navigator.vibrate)navigator.vibrate(30);}catch(err){}
+          onLong();
+        },ms);
+      },
+      onPointerMove:(e)=>{
+        if(!start.current)return;
+        if(Math.abs(e.clientX-start.current.x)>10||Math.abs(e.clientY-start.current.y)>10)end();
+      },
+      onPointerUp:end,onPointerCancel:end,onPointerLeave:end,
+      onContextMenu:(e)=>e.preventDefault(),
+      onClick:()=>{if(fired.current){fired.current=false;return;}onTap&&onTap();}
+    });
+  }
+  const noSelectStyle={userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"};
+
+  // Ventana flotante: Eliminar (izq) / Editar (der)
+  function AccionesModal({titulo,subtitulo,onEditar,onMover,onEliminar,onClose,colors}) {
+    return (
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div className="fade" style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:20,maxWidth:320,width:"100%",boxShadow:`0 8px 32px ${colors.shadowSoft}`}}>
+          <div style={{fontWeight:700,fontSize:16,color:colors.text,textAlign:"center"}}>{titulo}</div>
+          {subtitulo&&<div style={{fontSize:12,color:colors.textMuted,textAlign:"center",marginTop:4}}>{subtitulo}</div>}
+          <div style={{display:"flex",gap:8,marginTop:18}}>
+            <button className="btn" onClick={onEliminar} style={{flex:1,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"12px 0",fontSize:13.5}}>🗑️ Eliminar</button>
+            {onMover&&<button className="btn" onClick={onMover} style={{flex:1,background:colors.btnSecondary,color:colors.warning,border:`1px solid ${colors.hoverCard}`,padding:"12px 0",fontSize:13.5}}>📂 Mover</button>}
+            <button className="btn" onClick={onEditar} style={{flex:1,background:colors.accent,color:"#fff",padding:"12px 0",fontSize:13.5}}>✏️ Editar</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Editar nombre / emoji / color. Guardar (izq) / Cancelar (der)
+  function EditarCatModal({titulo,inicial,conColor=true,onSave,onClose,colors,otrasCats=[],subCounts={},onEliminarSub,avisoGrupo}) {
+    const [emoji,setEmoji]=useState(inicial.emoji||"📦");
+    const [label,setLabel]=useState(inicial.label||"");
+    const [color,setColor]=useState(inicial.color||colors.accent);
+    const [saving,setSaving]=useState(false);
+    // Subcategorías: los cambios quedan pendientes hasta tocar Guardar
+    const [subs,setSubs]=useState(inicial.subs||[]);
+    const [moves,setMoves]=useState([]); // [{subId,destId}]
+    const [renId,setRenId]=useState(null); const [renTxt,setRenTxt]=useState("");
+    const [movId,setMovId]=useState(null); const [movDest,setMovDest]=useState("");
+    const [delSub,setDelSub]=useState(null);
+    const conSubs=conColor&&(inicial.subs||[]).length>0;
+    const confirmarRen=()=>{if(!renTxt.trim())return;setSubs(ss=>ss.map(x=>x.id===renId?{...x,label:renTxt.trim()}:x));setRenId(null);};
+    const confirmarMov=()=>{if(!movDest)return;setMoves(m=>[...m.filter(x=>x.subId!==movId),{subId:movId,destId:movDest}]);setMovId(null);setMovDest("");};
+    const deshacerMov=(id)=>setMoves(m=>m.filter(x=>x.subId!==id));
+    const submit=async()=>{
+      if(!label.trim()||saving)return;
+      setSaving(true);
+      try{await onSave(conColor?{emoji:emoji.trim()||"📦",label:label.trim(),color,...(conSubs?{subs,moves}:{})}:{label:label.trim()});}
+      finally{setSaving(false);}
+    };
+    const smallBtn={padding:"6px 10px",fontSize:12,flexShrink:0};
+    return (
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2600,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div className="fade" style={{background:colors.card,borderRadius:16,padding:24,width:"100%",maxWidth:400,border:`1px solid ${colors.hoverCard}`,boxShadow:`0 8px 40px ${colors.shadowSoft}`}}>
+          <div style={{fontWeight:700,fontSize:18,marginBottom:20,color:colors.text}}>{titulo}</div>
+          {conColor?(
+            <div style={{display:"grid",gridTemplateColumns:"64px 1fr",gap:10,marginBottom:16}}>
+              <div className="field"><label>Emoji</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={emoji} onChange={e=>setEmoji(e.target.value)} style={{textAlign:"center",fontSize:22,padding:"10px 4px"}}/></div>
+              <div className="field"><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+            </div>
+          ):(
+            <div className="field" style={{marginBottom:16}}><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={label} onChange={e=>setLabel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoFocus/></div>
+          )}
+          {conColor&&(
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10}}>Color</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{COLORS.map(c=><div key={c} onClick={()=>setColor(c)} style={{width:32,height:32,borderRadius:"50%",background:c,cursor:"pointer",border:color===c?`3px solid ${colors.text}`:"3px solid transparent",transition:"all .15s",flexShrink:0}}/>)}</div>
+            </div>
+          )}
+          {conSubs&&(
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Subcategorías</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {[...subs].sort((a,b)=>alpha(a,b)).map(sub=>{
+                  const mv=moves.find(m=>m.subId===sub.id);
+                  const dest=mv?otrasCats.find(c=>c.id===mv.destId):null;
+                  const n=subCounts[sub.id]||0;
+                  return (<div key={sub.id} style={{background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,borderRadius:10,padding:"8px 10px"}}>
+                    {renId===sub.id?(
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <input type="search" autoComplete="canasta-field-ignore" className="inp" value={renTxt} onChange={e=>setRenTxt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&confirmarRen()} style={{flex:1,padding:"7px 10px",fontSize:13}} autoFocus/>
+                        <button className="btn" onClick={confirmarRen} style={{...smallBtn,background:colors.accent,color:"#fff"}}>✓</button>
+                        <button className="btn" onClick={()=>setRenId(null)} style={{...smallBtn,background:colors.btnSecondary,color:colors.textSecondary}}>✕</button>
+                      </div>
+                    ):movId===sub.id?(
+                      <div>
+                        <div style={{fontSize:12,color:colors.textMuted,marginBottom:6}}>Mover <b style={{color:colors.text}}>{sub.label}</b> a:</div>
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <select className="inp" value={movDest} onChange={e=>setMovDest(e.target.value)} style={{flex:1,padding:"7px 34px 7px 10px",fontSize:13}}>
+                            <option value="">— Elegir categoría —</option>
+                            {[...otrasCats].sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                          </select>
+                          <button className="btn" disabled={!movDest} onClick={confirmarMov} style={{...smallBtn,background:movDest?colors.accent:colors.btnSecondary,color:movDest?"#fff":colors.textMuted}}>✓</button>
+                          <button className="btn" onClick={()=>{setMovId(null);setMovDest("");}} style={{...smallBtn,background:colors.btnSecondary,color:colors.textSecondary}}>✕</button>
+                        </div>
+                      </div>
+                    ):(
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13.5,fontWeight:600,color:mv?colors.textMuted:colors.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sub.label}</div>
+                          <div style={{fontSize:11,color:mv?colors.accent:colors.textMuted}}>{mv?`→ ${dest?.emoji||""} ${dest?.label||""} · ${n} producto${n!==1?"s":""}`:`${n} producto${n!==1?"s":""}`}</div>
+                        </div>
+                        {mv&&<button className="btn" onClick={()=>deshacerMov(sub.id)} style={{...smallBtn,background:colors.btnSecondary,color:colors.textSecondary}}>Deshacer</button>}
+                      </div>
+                    )}
+                    {!mv&&renId!==sub.id&&movId!==sub.id&&(
+                      <div style={{display:"flex",gap:6,marginTop:8}}>
+                        {onEliminarSub&&<button className="btn" onClick={()=>setDelSub(sub)} style={{...smallBtn,flex:1,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`}}>🗑️ Eliminar</button>}
+                        {otrasCats.length>0&&<button className="btn" onClick={()=>{setRenId(null);setMovDest("");setMovId(sub.id);}} style={{...smallBtn,flex:1,background:colors.btnSecondary,color:colors.warning}}>📂 Mover</button>}
+                        <button className="btn" onClick={()=>{setMovId(null);setRenTxt(sub.label);setRenId(sub.id);}} style={{...smallBtn,flex:1,background:colors.btnSecondary,color:colors.accent}}>✏️ Editar</button>
+                      </div>
+                    )}
+                  </div>);
+                })}
+              </div>
+              {moves.length>0&&<div style={{fontSize:11.5,color:colors.textMuted,marginTop:8,lineHeight:1.4}}>Las subcategorías se mueven con sus productos al tocar Guardar.</div>}
+              {subs.length===0&&<div style={{fontSize:12.5,color:colors.textMuted}}>Sin subcategorías.</div>}
+            </div>
+          )}
+          {delSub&&(()=>{const n=subCounts[delSub.id]||0;return <EliminarSeguroModal colors={colors} titulo={`Eliminar ${delSub.label}`}
+            mensaje={<>Se borra la subcategoría y {n===0?"no tiene productos":<>sus <b>{n} producto{n!==1?"s":""}</b>, con su stock y su historial de precios</>}. Se aplica en el momento, sin esperar a Guardar. No se puede deshacer.</>}
+            aviso={avisoGrupo}
+            onClose={()=>setDelSub(null)}
+            onConfirm={async()=>{await onEliminarSub(delSub.id);setSubs(ss=>ss.filter(x=>x.id!==delSub.id));setDelSub(null);}}/>;})()}
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn" disabled={!label.trim()||saving} onClick={submit} style={{flex:1,background:label.trim()?(conColor?color:colors.accent):colors.btnSecondary,color:label.trim()?"#fff":colors.textMuted,padding:13,fontSize:15,fontWeight:700,opacity:saving?.6:1}}>{saving?"Guardando…":"Guardar"}</button>
+            <button className="btn" disabled={saving} onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:13,fontSize:14}}>Cancelar</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Mover una subcategoría (con sus productos) a otra categoría
+  function MoverSubModal({sub,cantProds,otrasCats,onMover,onClose,colors}) {
+    const [dest,setDest]=useState(""); const [saving,setSaving]=useState(false);
+    const doIt=async()=>{if(!dest||saving)return;setSaving(true);try{await onMover(dest);}finally{setSaving(false);}};
+    return (
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2600,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&!saving&&onClose()}>
+        <div className="fade" style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:24,maxWidth:340,width:"100%"}}>
+          <div style={{fontWeight:700,fontSize:17,color:colors.text,marginBottom:4}}>Mover {sub.label}</div>
+          <div style={{fontSize:12.5,color:colors.textMuted,marginBottom:14}}>Se mueve con sus {cantProds} producto{cantProds!==1?"s":""}. Elegí la categoría destino:</div>
+          <select className="inp" value={dest} onChange={e=>setDest(e.target.value)} style={{marginBottom:16}}>
+            <option value="">— Elegir categoría —</option>
+            {[...otrasCats].sort((a,b)=>alpha(a,b)).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+          </select>
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn" disabled={saving} onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12}}>Cancelar</button>
+            <button className="btn" disabled={!dest||saving} onClick={doIt} style={{flex:1,background:dest?colors.accent:colors.btnSecondary,color:dest?"#fff":colors.textMuted,padding:12,opacity:saving?.6:1}}>{saving?"Moviendo…":"Mover"}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Confirmación fuerte: hay que escribir ELIMINAR (mismo criterio que borrar la base de datos)
+  function EliminarSeguroModal({titulo,mensaje,aviso,onConfirm,onClose,colors}) {
+    const [txt,setTxt]=useState("");
+    const [borrando,setBorrando]=useState(false);
+    const [error,setError]=useState("");
+    const ok=txt.trim().toUpperCase()==="ELIMINAR";
+    const doIt=async()=>{
+      if(!ok||borrando)return;
+      setBorrando(true);setError("");
+      try{await onConfirm();}
+      catch(e){console.error(e);setError("No se pudo eliminar: "+(e.message||"error inesperado"));setBorrando(false);}
+    };
+    return (
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2700,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&!borrando&&onClose()}>
+        <div className="fade" style={{background:colors.card,border:`1px solid ${colors.errorBorder}`,borderRadius:16,padding:24,maxWidth:340,width:"100%"}}>
+          <div style={{fontWeight:700,fontSize:17,color:colors.error,marginBottom:10}}>{titulo}</div>
+          <div style={{fontSize:13.5,color:colors.text,lineHeight:1.5,marginBottom:10}}>{mensaje}</div>
+          {aviso&&<div style={{fontSize:12.5,color:colors.warning,lineHeight:1.4,marginBottom:10}}>{aviso}</div>}
+          <div className="field" style={{marginBottom:16,marginTop:4}}>
+            <label>Escribí ELIMINAR para confirmar</label>
+            <input className="inp" autoComplete="canasta-field-ignore" autoCapitalize="characters" value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doIt()} autoFocus/>
+          </div>
+          {error&&<div style={{color:colors.error,fontSize:12.5,marginBottom:12}}>{error}</div>}
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn" disabled={borrando} onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12}}>Cancelar</button>
+            <button className="btn" disabled={!ok||borrando} onClick={doIt} style={{flex:1,background:ok?colors.error:colors.btnSecondary,color:ok?"#fff":colors.textMuted,padding:12,cursor:ok&&!borrando?"pointer":"default",opacity:borrando?.6:1}}>{borrando?"Eliminando…":"Eliminar"}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function HomeScreen({cats,productos,push,gastoMensual,guardar,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,editarCategoria,eliminarCategoria,eliminarSubcategoria}) {
     const [q,setQ]=useState(""); const [showAddCat,setShowAddCat]=useState(false); const [sortCats,setSortCats]=useState("nombre-az");
+    const [accionCat,setAccionCat]=useState(null); const [editCat,setEditCat]=useState(null); const [delCat,setDelCat]=useState(null);
+    const lp=useLongPress();
+    const compartido=(grupoInfo?.miembros?.length||0)>1;
     const [menuOpen,setMenuOpen]=useState(false);
     const isStock=activeTab==="stock";
     const total=productos.reduce((s,p)=>s+(gastoMensual(p)||0),0);
@@ -1704,8 +1972,8 @@
           {sortedCats.map(cat=>{
             const catProds=productos.filter(p=>p.catId===cat.id);
             const gasto=catProds.reduce((s,p)=>s+(gastoMensual(p)||0),0);
-            return (<div key={cat.id} className="card row" style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14,borderLeft:`4px solid ${cat.color}`}}
-              onClick={()=>cat.subs?.length?push("subs",{catId:cat.id}):push("lista",{catId:cat.id,subId:null})}>
+            return (<div key={cat.id} className="card row" style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14,borderLeft:`4px solid ${cat.color}`,...noSelectStyle}}
+              {...lp(!modoCompras?()=>setAccionCat(cat):null,()=>cat.subs?.length?push("subs",{catId:cat.id}):push("lista",{catId:cat.id,subId:null}))}>
               <div style={{fontSize:28}}>{cat.emoji}</div>
               <div style={{flex:1}}><div style={{fontWeight:600,fontSize:16,color:colors.text}}>{cat.label}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{cat.subs?.length?`${cat.subs.length} subcategorías · `:""}{catProds.length} productos</div></div>
               <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:700,fontSize:15,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:colors.textMuted}}>/mes</span></div>}<div style={{fontSize:18,color:colors.hoverCard,marginTop:2}}>›</div></div>
@@ -1715,13 +1983,34 @@
         </div>
       )}
       {showAddCat&&<AddModal colors={colors} title="Nueva categoría" namePlaceholder="ej. Panadería" onClose={()=>setShowAddCat(false)} onSave={addCat} showColor={true}/>}
+      {accionCat&&<AccionesModal colors={colors} titulo={`${accionCat.emoji} ${accionCat.label}`} subtitulo={`${productos.filter(p=>p.catId===accionCat.id).length} productos${accionCat.subs?.length?` · ${accionCat.subs.length} subcategorías`:""}`}
+        onClose={()=>setAccionCat(null)}
+        onEditar={()=>{setEditCat(accionCat);setAccionCat(null);}}
+        onEliminar={()=>{setDelCat(accionCat);setAccionCat(null);}}/>}
+      {editCat&&<EditarCatModal colors={colors} titulo="Editar categoría" inicial={editCat} onClose={()=>setEditCat(null)}
+        otrasCats={cats.filter(c=>c.id!==editCat.id)}
+        onEliminarSub={async(subId)=>{await eliminarSubcategoria(editCat.id,subId);showToast("🗑️ Subcategoría eliminada");}}
+        avisoGrupo={compartido?"⚠️ Compartís esta base con tu grupo familiar: se borra para todos los miembros.":null}
+        subCounts={Object.fromEntries((editCat.subs||[]).map(sub=>[sub.id,productos.filter(p=>p.catId===editCat.id&&p.subId===sub.id).length]))}
+        onSave={async(cambios)=>{await editarCategoria(editCat.id,cambios);setEditCat(null);showToast("✅ Categoría actualizada");}}/>}
+      {delCat&&(()=>{
+        const n=productos.filter(p=>p.catId===delCat.id).length; const ns=delCat.subs?.length||0;
+        return <EliminarSeguroModal colors={colors} titulo={`Eliminar ${delCat.label}`}
+          mensaje={<>Se borra la categoría{ns>0?<> con sus <b>{ns} subcategorías</b></>:null} y {n===0?"no tiene productos":<>sus <b>{n} producto{n!==1?"s":""}</b>, con su stock y su historial de precios</>}. No se puede deshacer.</>}
+          aviso={compartido?"⚠️ Compartís esta base con tu grupo familiar: se borra para todos los miembros.":null}
+          onClose={()=>setDelCat(null)}
+          onConfirm={async()=>{await eliminarCategoria(delCat.id);setDelCat(null);showToast("🗑️ Categoría eliminada");}}/>;
+      })()}
     </div>);
   }
 
   // ── SubsScreen ───────────────────────────────────────────────────────────────
-  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode,session}) {
+  function SubsScreen({cats,catId,productos,push,pop,gastoMensual,guardar,showToast,handleExport,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode,session,grupoInfo,editarSubcategoria,eliminarSubcategoria,editarCategoria}) {
     const [q,setQ]=useState(""); const [showAddSub,setShowAddSub]=useState(false);
     const [sortBy,setSortBy]=useState("nombre-az");
+    const [accionSub,setAccionSub]=useState(null); const [editSub,setEditSub]=useState(null); const [delSub,setDelSub]=useState(null); const [movSub,setMovSub]=useState(null);
+    const lp=useLongPress();
+    const compartido=(grupoInfo?.miembros?.length||0)>1;
     const isStock=activeTab==="stock"; 
     const cat=cats.find(c=>c.id===catId); if(!cat) return null;
     const catGasto=productos.filter(p=>p.catId===catId).reduce((s,p)=>s+(gastoMensual(p)||0),0);
@@ -1764,7 +2053,7 @@
         {[...cat.subs].sort((a,b)=>alpha(a,b)).map(sub=>{
           const subProds=productos.filter(p=>p.catId===catId&&p.subId===sub.id);
           const gasto=subProds.reduce((s,p)=>s+(gastoMensual(p)||0),0);
-          return (<div key={sub.id} className="card row" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${cat.color}`}} onClick={()=>push("lista",{catId,subId:sub.id})}>
+          return (<div key={sub.id} className="card row" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${cat.color}`,...noSelectStyle}} {...lp(!modoCompras?()=>setAccionSub(sub):null,()=>push("lista",{catId,subId:sub.id}))}>
             <div style={{flex:1}}><div style={{fontWeight:600,fontSize:15,color:colors.text}}>{sub.label}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>{subProds.length} productos</div></div>
             <div style={{textAlign:"right"}}>{gasto>0&&!isStock&&!modoCompras&&<div className="mono" style={{fontWeight:600,fontSize:14,color:cat.color}}>{fmt(gasto)}<span style={{fontSize:10,color:colors.textMuted}}>/mes</span></div>}<div style={{fontSize:18,color:colors.hoverCard}}>›</div></div>
           </div>);
@@ -1784,6 +2073,24 @@
         {!modoCompras&&<button className="btn" onClick={()=>setShowAddSub(true)} style={{background:cat.color+"11",border:`1px solid ${cat.color}`,color:cat.color,padding:"13px",fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Agregar subcategoría</button>}
       </div>)}
       {showAddSub&&<AddModal colors={colors} title={`Nueva subcategoría en ${cat.label}`} namePlaceholder="ej. Personal" onClose={()=>setShowAddSub(false)} onSave={addSub} showColor={false} accentColor={cat.color}/>}
+      {accionSub&&<AccionesModal colors={colors} titulo={accionSub.label} subtitulo={`${cat.emoji} ${cat.label} · ${productos.filter(p=>p.catId===catId&&p.subId===accionSub.id).length} productos`}
+        onClose={()=>setAccionSub(null)}
+        onEditar={()=>{setEditSub(accionSub);setAccionSub(null);}}
+        onMover={cats.length>1?()=>{setMovSub(accionSub);setAccionSub(null);}:null}
+        onEliminar={()=>{setDelSub(accionSub);setAccionSub(null);}}/>}
+      {movSub&&<MoverSubModal colors={colors} sub={movSub} cantProds={productos.filter(p=>p.catId===catId&&p.subId===movSub.id).length} otrasCats={cats.filter(c=>c.id!==catId)}
+        onClose={()=>setMovSub(null)}
+        onMover={async(destId)=>{const d=cats.find(c=>c.id===destId);await editarCategoria(catId,{moves:[{subId:movSub.id,destId}]});setMovSub(null);showToast(`✅ ${movSub.label} movida a ${d?.label||""}`);}}/>}
+      {editSub&&<EditarCatModal colors={colors} titulo="Editar subcategoría" inicial={editSub} conColor={false} onClose={()=>setEditSub(null)}
+        onSave={async({label})=>{await editarSubcategoria(catId,editSub.id,label);setEditSub(null);showToast("✅ Subcategoría actualizada");}}/>}
+      {delSub&&(()=>{
+        const n=productos.filter(p=>p.catId===catId&&p.subId===delSub.id).length;
+        return <EliminarSeguroModal colors={colors} titulo={`Eliminar ${delSub.label}`}
+          mensaje={<>Se borra la subcategoría y {n===0?"no tiene productos":<>sus <b>{n} producto{n!==1?"s":""}</b>, con su stock y su historial de precios</>}. No se puede deshacer.</>}
+          aviso={compartido?"⚠️ Compartís esta base con tu grupo familiar: se borra para todos los miembros.":null}
+          onClose={()=>setDelSub(null)}
+          onConfirm={async()=>{await eliminarSubcategoria(catId,delSub.id);setDelSub(null);showToast("🗑️ Subcategoría eliminada");}}/>;
+      })()}
     </div>);
   }
   function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode,session}) {
