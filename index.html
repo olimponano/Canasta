@@ -108,11 +108,12 @@
   // % de diferencia de a respecto de b
   const pctDiff=(a,b)=>(a!=null&&b)?((a-b)/b*100):null;
   // % del ticket completo vs Ref y vs Últ (solo items que tienen ese dato)
-  const ticketDiffs=(items)=>{
+  // factor: descuento de una promo todavía no aplicada (ticket en curso); 1 si ya está incluido
+  const ticketDiffs=(items,factor=1)=>{
     const calc=(k)=>{
       const its=(items||[]).filter(x=>!x.suelto&&(x[k]??0)>0);
       const base=its.reduce((s,x)=>s+x[k],0);
-      const pag=its.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
+      const pag=its.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0)*factor;
       return base>0?(pag-base)/base*100:null;
     };
     return {refPct:calc("totalRef"),ultPct:calc("totalUlt")};
@@ -659,7 +660,7 @@
               <span className="mono" style={{fontWeight:700,fontSize:14,color:ticket.length>0?colors.text:colors.hoverCard}}>{ticket.length>0?fmt(totalPagado):"$0,00"}</span>
             </div>
             {ticket.length>0&&promo&&promoCalc.descuentoAplicado>0&&<div style={{fontSize:10,fontWeight:700,color:"#10b981"}}>🏷️ -{fmt(promoCalc.descuentoAplicado)}</div>}
-            {ticket.length>0&&<div><PctPair {...ticketDiffs(ticket)} size={10} gap={6}/></div>}
+            {ticket.length>0&&<div><PctPair {...ticketDiffs(ticket,promoCalc.factor)} size={10} gap={6}/></div>}
           </div>
           <span style={{color:colors.textMuted,fontSize:14}}>{ticketOpen?"▼":"▲"}</span>
         </div>
@@ -728,8 +729,8 @@
     const totalPagado=item.totalPagado??item.precio??0;
     const totalMostrado=totalPagado*factor;
     const precioMostrado=(item.precio??0)*factor;
-    const refPct=item.totalRef>0?pctDiff(totalPagado,item.totalRef):null;
-    const ultPct=item.totalUlt>0?pctDiff(totalPagado,item.totalUlt):null;
+    const refPct=item.totalRef>0?pctDiff(totalMostrado,item.totalRef):null;
+    const ultPct=item.totalUlt>0?pctDiff(totalMostrado,item.totalUlt):null;
     const cantLabel=item.unidad==="m"&&item.rollosRef&&item.metrosRef
       ?`${item.rollosRef}x${item.metrosRef}m`
       :item.cantRef?`${item.cantRef}${item.unidad||""}`:null;
@@ -1290,7 +1291,7 @@
             }
             // Cargar tickets (tabla puede no existir aún)
             try {
-              const { data: ticketRows } = await sb.from("tickets").select("*").order("fecha",{ascending:false}).limit(5);
+              const { data: ticketRows } = await sb.from("tickets").select("*").order("fecha",{ascending:false}).limit(15);
               if (ticketRows) setTickets(ticketRows);
             } catch(e){ console.warn("Tabla tickets no disponible:", e); }
           } else {
@@ -1563,6 +1564,78 @@
       showToast("✅ Item agregado al ticket");
     };
 
+    // ── Guardado de la compra finalizada, en pasos y reanudable ──
+    const PENDING_KEY="canasta_compra_pendiente";
+    const guardarPendiente=(p)=>{try{localStorage.setItem(PENDING_KEY,JSON.stringify(p));}catch(e){}};
+    const leerPendiente=()=>{try{const v=localStorage.getItem(PENDING_KEY);return v?JSON.parse(v):null;}catch(e){return null;}};
+    const procesarPendiente=async(pend,prodsBase,stockBase,reintento=false)=>{
+      const t=pend.ticket; const pasos={...pend.pasos};
+      const marcar=(k)=>{pasos[k]=true;guardarPendiente({...pend,pasos});};
+      let fallo=false; let errorTicket="";
+      // 1) El ticket (lo que se ve en el historial)
+      if(!pasos.ticket){
+        // onConflict explícito por id: si la tabla tuviera otra clave única (ej. grupo_id),
+        // falla con error en vez de sobrescribir otra compra en silencio
+        const r=await sb.from("tickets").upsert({id:t.id,fecha:t.fecha,items:t.items,promo:t.promo,grupo_id:grupoId},{onConflict:"id"});
+        if(r.error){console.error("Error guardando ticket:",r.error);fallo=true;errorTicket=r.error.message||r.error.code||"";}
+        else{
+          marcar("ticket");
+          if(pend.aEliminar?.length){const d=await sb.from("tickets").delete().in("id",pend.aEliminar);if(d.error)console.warn("Tickets viejos:",d.error);}
+        }
+      }
+      // 2) Historial de precios: solo los productos de esta compra (sin duplicar entradas)
+      if(!pasos.productos){
+        const entradas={};
+        t.items.forEach(it=>{if(it.entrada)(entradas[it.prodId]=entradas[it.prodId]||[]).push(it.entrada);});
+        const cambiados=[];
+        const prodsNuevos=prodsBase.map(p=>{
+          const add=(entradas[p.id]||[]).filter(e=>!(p.historialCompra||[]).some(h=>h.id===e.id));
+          if(!add.length)return p;
+          const np={...p,historialCompra:[...(p.historialCompra||[]),...add].sort((a,b)=>a.fecha.localeCompare(b.fecha))};
+          cambiados.push(np);return np;
+        });
+        if(cambiados.length){
+          const set=new Set(cambiados.map(p=>p.id));
+          setProductos(ps=>ps.map(p=>set.has(p.id)?cambiados.find(c=>c.id===p.id):p));
+          const r=await sb.from("productos").upsert(cambiados.map(p=>({id:p.id,nombre:p.nombre,marca:p.marca||"",cat_id:p.catId,sub_id:p.subId||null,
+            precio_ref:p.precioRef,unidades_mes:p.unidadesMes,cantidad_ref:(typeof p.cantidadRef==="string"?parseQty(p.cantidadRef):p.cantidadRef)||null,
+            rollos_ref:p.rollosRef||null,metros_ref:p.metrosRef||null,unidad:p.unidad||"gr",historial_compra:p.historialCompra||[],grupo_id:grupoId})));
+          if(r.error){console.error("Error guardando historial de precios:",r.error);fallo=true;}
+          else marcar("productos");
+        } else marcar("productos");
+      }
+      // 3) Stock (al reintentar no se repite para no sumar dos veces)
+      if(!pasos.stock&&!reintento){
+        const acum={...stockBase};
+        for(const item of t.items){
+          if(!item.stockDelta||item.stockDelta.cantidad<=0) continue;
+          const {cantRef,cantRefProd,cantidad,display}=item.stockDelta;
+          const actuales=acum[item.prodId]||item.stockDelta.entradasBase||[];
+          const base=actuales.length===0&&cantRefProd
+            ?[{cantRef:cantRefProd,unidad:item.unidad||"gr",stock:0,display:display||null}]
+            :[...actuales];
+          const idx=base.findIndex(e=>e.cantRef===cantRef);
+          const nuevas=idx>=0?base.map((e,i)=>i===idx?{...e,stock:e.stock+cantidad}:e):[...base,{cantRef,unidad:item.unidad||"gr",stock:cantidad,display:null}];
+          acum[item.prodId]=nuevas;
+          await guardarStock(item.prodId,nuevas);
+        }
+        marcar("stock");
+      }
+      if(fallo){
+        showToast(errorTicket?`⚠️ No se pudo guardar la compra en el historial (${errorTicket}). Se reintenta al abrir la app.`:"⚠️ La compra no se pudo guardar del todo. Se reintenta al volver a abrir la app.","err");
+      } else {
+        try{localStorage.removeItem(PENDING_KEY);}catch(e){}
+        if(reintento) showToast("✅ Se terminó de guardar una compra pendiente");
+      }
+    };
+    // Al abrir la app: completar una compra que quedó a medio guardar
+    useEffect(()=>{
+      if(!loaded||!grupoId) return;
+      const pend=leerPendiente(); if(!pend||!pend.ticket) return;
+      setTickets(ts=>ts.some(x=>x.id===pend.ticket.id)?ts:[pend.ticket,...ts].slice(0,15));
+      procesarPendiente({...pend,pasos:{...pend.pasos,stock:true}},productos,stock,true);
+    },[loaded,grupoId]);
+
     const finalizarCompra=async()=>{
       if(ticket.length===0)return;
       askConfirm(`¿Finalizar compra con ${ticket.length} producto${ticket.length>1?"s":""}?`,async()=>{
@@ -1586,43 +1659,20 @@
         const promoGuardado=promoAplicado?{pct:promo.pct,limitado:promo.limitado,limite:promo.limite,descuentoAplicado:Math.round(promoCalc.descuentoAplicado*100)/100}:null;
         const nuevoTicket={id:uid(),fecha:new Date().toISOString(),items:itemsFinal,promo:promoGuardado};
         const nuevos=[nuevoTicket,...tickets].slice(0,15);
+        const aEliminar=tickets.slice(14).map(t=>t.id);
         setTickets(nuevos);
         setTicket([]);
         setPromo(null);
         setTicketOpen(false);
         setModoCompras(false);
+        // Guardar la compra como pendiente ANTES de borrar el borrador: si la app se cierra
+        // a mitad del guardado, se completa la próxima vez que se abra.
+        const pendiente={ticket:nuevoTicket,aEliminar,pasos:{ticket:false,productos:false,stock:false}};
+        guardarPendiente(pendiente);
         try{localStorage.removeItem(TICKET_KEY);}catch(e){}
         try{localStorage.removeItem(PROMO_KEY);}catch(e){}
         setTicketFinalizado(nuevoTicket);
-        // Guardar en background sin bloquear el modal
-        (async()=>{
-          let prodActualizados=[...productos];
-          for(const item of itemsFinal){
-            if(item.entrada){
-              prodActualizados=prodActualizados.map(p=>p.id===item.prodId?{...p,historialCompra:[...(p.historialCompra||[]),item.entrada].sort((a,b)=>a.fecha.localeCompare(b.fecha))}:p);
-            }
-          }
-          await guardar(null,prodActualizados);
-          for(const item of itemsFinal){
-            if(!item.stockDelta||item.stockDelta.cantidad<=0) continue;
-            const {cantRef,cantRefProd,cantidad,entradasBase,display}=item.stockDelta;
-            const base=entradasBase.length===0&&cantRefProd
-              ?[{cantRef:cantRefProd,unidad:item.unidad||"gr",stock:0,display:display||null}]
-              :[...entradasBase];
-            const idx=base.findIndex(e=>e.cantRef===cantRef);
-            let nuevas;
-            if(idx>=0){nuevas=base.map((e,i)=>i===idx?{...e,stock:e.stock+cantidad}:e);}
-            else{nuevas=[...base,{cantRef,unidad:item.unidad||"gr",stock:cantidad,display:null}];}
-            guardarStock(item.prodId,nuevas);
-          }
-          try {
-            await sb.from("tickets").upsert({id:nuevoTicket.id,fecha:nuevoTicket.fecha,items:nuevoTicket.items,promo:nuevoTicket.promo,grupo_id:grupoId});
-            if(tickets.length>=15){
-              const aEliminar=tickets.slice(14).map(t=>t.id);
-              if(aEliminar.length) await sb.from("tickets").delete().in("id",aEliminar);
-            }
-          } catch(e){console.warn("Ticket save error:",e);}
-        })();
+        procesarPendiente(pendiente,productos,stock);
       },"Finalizar","#10b981");
     };
 
