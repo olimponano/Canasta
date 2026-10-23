@@ -100,10 +100,11 @@
     Object.keys(infl||{}).forEach(m=>{if(!ES_MES.test(m))return;if((!desde||m>desde)&&(!hasta||m<hasta))f*=1+(Number(infl[m])||0)/100;});
     return f;
   };
-  // Ref vigente: base × inflación de los meses posteriores al mes base. Redondeado a pesos si hubo inflación.
+  // Ref vigente: base × inflación de los meses posteriores al mes base que YA TERMINARON
+  // (el valor del mes en curso se aplica recién a fin de mes). Redondeado a pesos si hubo inflación.
   const refConInflacion=(base,mesBase,infl,hasta=null)=>{
     if(base==null||base==="")return null;
-    const f=factorInflacion(infl,mesBase||mesActual(),hasta);
+    const f=factorInflacion(infl,mesBase||mesActual(),hasta||mesActual());
     return f===1?base:Math.round(base*f);
   };
 
@@ -3155,12 +3156,55 @@
   // ── InflacionScreen ───────────────────────────────────────────────────────────
   const fmtPct=(v)=>v==null?"—":`${Number(v).toLocaleString("es-AR",{maximumFractionDigits:2})} %`;
   const INFLACION_API="https://api.argentinadatos.com/v1/finanzas/indices/inflacion";
+  // Barras de la inflación mensual (últimos 12 meses cargados)
+  function InflacionChart({meses,inflacion,colors}) {
+    // Rango continuo (los meses sin cargar quedan como hueco), últimos 12
+    const todos=[];for(let m=meses[0];m<=meses[meses.length-1];m=mesSumar(m,1))todos.push(m);
+    const ms=todos.slice(-12);
+    const valsN=ms.map(m=>inflacion[m]!=null?Number(inflacion[m]):null);
+    const vals=valsN.filter(v=>v!=null);
+    const W=340,H=150,PL=8,PR=8,PT=22,PB=24;
+    const iW=W-PL-PR,iH=H-PT-PB;
+    const max=Math.max(...vals,0.1), min=Math.min(...vals,0);
+    const range=max-min||1;
+    const toY=v=>PT+(1-(v-min)/range)*iH;
+    const slot=iW/ms.length, bw=Math.min(28,slot*0.62);
+    const prom=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+    return (
+      <div className="card" style={{padding:"14px 12px 8px",marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"0 4px",marginBottom:4}}>
+          <div style={{fontSize:13,fontWeight:600,color:colors.text}}>Inflación mensual</div>
+          {vals.length>1&&<div style={{fontSize:11.5,color:colors.textMuted}}>Promedio <b className="mono" style={{color:colors.textSecondary}}>{fmtPct(Math.round(prom*10)/10)}</b></div>}
+        </div>
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block"}}>
+          <line x1={PL} x2={W-PR} y1={toY(0)} y2={toY(0)} stroke={colors.cardBorder} strokeWidth={1}/>
+          {vals.length>1&&<line x1={PL} x2={W-PR} y1={toY(prom)} y2={toY(prom)} stroke={colors.textMuted} strokeWidth={1} strokeDasharray="4 4" opacity={0.6}/>}
+          {ms.map((m,i)=>{
+            const v=valsN[i]; const x=PL+slot*i+(slot-bw)/2;
+            if(v==null) return (<g key={m}>
+              <text x={x+bw/2} y={toY(0)-6} textAnchor="middle" fontSize={10} fill={colors.warning}>–</text>
+              <text x={x+bw/2} y={H-6} textAnchor="middle" fontSize={ms.length>8?8:9} fill={colors.warning}>{fmtMes(m,true).split(" ")[0]}</text>
+            </g>);
+            const y0=toY(0), y1=toY(v);
+            const ultimo=i===ms.length-1;
+            return (<g key={m}>
+              <rect x={x} y={Math.min(y0,y1)} width={bw} height={Math.max(2,Math.abs(y0-y1))} rx={4} fill={colors.accent} opacity={ultimo?1:0.55}/>
+              <text x={x+bw/2} y={Math.min(y0,y1)-6} textAnchor="middle" fontSize={ms.length>8?8.5:10} fontWeight={ultimo?700:500} fill={ultimo?colors.text:colors.textSecondary}>{v.toLocaleString("es-AR",{maximumFractionDigits:1})}</text>
+              <text x={x+bw/2} y={H-6} textAnchor="middle" fontSize={ms.length>8?8:9} fill={colors.textMuted}>{fmtMes(m,true).split(" ")[0]}</text>
+            </g>);
+          })}
+        </svg>
+      </div>
+    );
+  }
+
   function InflacionScreen({productos,inflacion,guardarInflacion,guardarInflacionVarios,borrarInflacion,empezarInflacion,dejarInflacion,pop,showToast,askConfirm,colors}) {
     const hoy=mesActual();
+    const anterior=mesSumar(hoy,-1);
     const [sugeridas,setSugeridas]=useState({});
     const [estadoApi,setEstadoApi]=useState("cargando");
+    const [editMes,setEditMes]=useState(null);
     const [valor,setValor]=useState("");
-    const [editUltimo,setEditUltimo]=useState(false);
     const [saving,setSaving]=useState(false);
 
     const mesesCargados=Object.keys(inflacion).filter(k=>ES_MES.test(k)).sort();
@@ -3171,14 +3215,12 @@
       const bases=productos.filter(p=>p.precioRef!=null).map(p=>p.precioRefMes||hoy).sort();
       return bases[0]||hoy;
     })();
-    const ultimo=mesesCargados[mesesCargados.length-1]||null;
-    // Se carga de a un mes, en orden: el siguiente al último (o al inicio), siempre que ya haya terminado
-    const proximo=mesSumar(ultimo||inicio,1);
-    const pendientes=[];for(let m=proximo;m<hoy;m=mesSumar(m,1))pendientes.push(m);
-    const hayPendiente=pendientes.length>0;
-    const publicados=pendientes.filter(m=>sugeridas[m]!=null);
-    const acumulado=(factorInflacion(inflacion,inicio,null)-1)*100;
-    const actualizados=productos.filter(p=>p.precioRefBase!=null&&p.precioRef!==p.precioRefBase).length;
+    const primero=mesSumar(inicio,1);               // primer mes que se aplica
+    // El mes en curso no se muestra: recién se carga cuando termina
+    const previo=anterior>=primero?anterior:null;    // mes anterior: editable durante todo el mes en curso
+    const viejos=[];for(let m=mesSumar(anterior,-1);m>=primero;m=mesSumar(m,-1))viejos.push(m); // solo se cargan si faltan
+    const faltantes=[previo,...viejos].filter(m=>m&&inflacion[m]==null);
+    const ultimoCargado=mesesCargados.filter(m=>m<hoy).slice(-1)[0]||null; // el único cargado que se puede editar
 
     useEffect(()=>{
       if(!activa){setEstadoApi("off");return;}
@@ -3194,34 +3236,20 @@
         .finally(()=>clearTimeout(to));
       return ()=>{clearTimeout(to);ctrl.abort();};
     },[activa]);
-    // Prellenar con el valor publicado del próximo mes
-    useEffect(()=>{if(hayPendiente&&sugeridas[proximo]!=null&&valor==="")setValor(String(sugeridas[proximo]).replace(".",","));},[sugeridas,proximo]);
 
-    const parse=(v)=>{const n=parseFloat(String(v).replace(",","."));return isNaN(n)||n<-50||n>100?null:n;};
-    const cargarProximo=async()=>{
-      const v=parse(valor); if(v==null)return showToast("Porcentaje inválido","err");
+    const abrir=(m)=>{setEditMes(m);setValor(inflacion[m]!=null?String(inflacion[m]).replace(".",","):sugeridas[m]!=null?String(sugeridas[m]).replace(".",","):"");};
+    const cerrar=()=>{setEditMes(null);setValor("");};
+    const guardar=async()=>{
+      const v=parseFloat(String(valor).replace(",","."));
+      if(isNaN(v)||v<-50||v>100)return showToast("Porcentaje inválido","err");
       setSaving(true);
-      try{await guardarInflacion(proximo,v);setValor("");showToast(`✅ ${fmtMes(proximo)}: ${fmtPct(v)}`);}catch(e){}
+      try{await guardarInflacion(editMes,v);showToast(`✅ ${fmtMes(editMes)}: ${fmtPct(v)}`);cerrar();}catch(e){}
       finally{setSaving(false);}
     };
-    const cargarPublicados=async()=>{
-      // Solo los consecutivos desde el próximo, para no dejar huecos
-      const lote={};for(const m of pendientes){if(sugeridas[m]==null)break;lote[m]=sugeridas[m];}
-      const n=Object.keys(lote).length; if(!n)return;
-      setSaving(true);
-      try{await guardarInflacionVarios(lote);setValor("");showToast(`✅ ${n} mes${n>1?"es":""} cargado${n>1?"s":""}`);}catch(e){}
-      finally{setSaving(false);}
-    };
-    const guardarUltimo=async()=>{
-      const v=parse(valor); if(v==null)return showToast("Porcentaje inválido","err");
-      setSaving(true);
-      try{await guardarInflacion(ultimo,v);setEditUltimo(false);setValor("");showToast(`✅ ${fmtMes(ultimo)} corregido`);}catch(e){}
-      finally{setSaving(false);}
-    };
-    const borrarUltimo=()=>askConfirm(`¿Borrar la inflación de ${fmtMes(ultimo)}? Los precios de referencia vuelven al valor anterior.`,async()=>{
-      try{await borrarInflacion(ultimo);setEditUltimo(false);setValor("");showToast("🗑️ Mes borrado");}catch(e){}
+    const borrar=(m)=>askConfirm(`¿Borrar la inflación de ${fmtMes(m)}?`,async()=>{
+      try{await borrarInflacion(m);cerrar();showToast("🗑️ Mes borrado");}catch(e){}
     },"Borrar","#ef4444");
-    const empezar=()=>askConfirm(`Los precios de referencia actuales pasan a ser la base de ${fmtMes(hoy)}. A partir de ${fmtMes(mesSumar(hoy,1))} se actualizan con la inflación que cargues.`,async()=>{
+    const empezar=()=>askConfirm(`Los precios de referencia actuales pasan a ser la base de ${fmtMes(hoy)}. La primera inflación que se aplica es la de ${fmtMes(mesSumar(hoy,1))}.`,async()=>{
       await empezarInflacion();showToast("📈 Inflación activada");
     },"Empezar","#10b981");
     const dejar=()=>askConfirm("Los precios de referencia quedan fijos en su valor actual y se borran los meses cargados. Podés volver a empezar cuando quieras.",async()=>{
@@ -3229,12 +3257,20 @@
     },"Dejar de contemplar","#ef4444");
 
     const lbl={fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em"};
-    const inputPct=(onEnter)=>(
-      <div style={{display:"flex",gap:6,alignItems:"center",flex:1}}>
-        <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 2,4" value={valor} onChange={e=>setValor(e.target.value)} onKeyDown={e=>e.key==="Enter"&&onEnter()} style={{flex:1,padding:"9px 10px"}}/>
+    const editor=(m,conBorrar)=>(<>
+      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        <input type="text" inputMode="decimal" autoComplete="canasta-field-ignore" className="inp" placeholder="ej. 2,4" value={valor} onChange={e=>setValor(e.target.value)} onKeyDown={e=>e.key==="Enter"&&guardar()} style={{flex:1,padding:"9px 10px"}} autoFocus/>
         <span style={{color:colors.textMuted,fontSize:14}}>%</span>
+        <button className="btn" disabled={saving} onClick={guardar} style={{background:colors.accent,color:"#fff",padding:"9px 14px",fontSize:13,opacity:saving?.6:1}}>Guardar</button>
+        <button className="btn" disabled={saving} onClick={cerrar} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:"9px 12px",fontSize:13}}>✕</button>
       </div>
-    );
+      {sugeridas[m]!=null&&<div style={{fontSize:11.5,color:colors.textMuted,marginTop:6}}>INDEC: {fmtPct(sugeridas[m])}</div>}
+      {conBorrar&&inflacion[m]!=null&&<button className="btn" disabled={saving} onClick={()=>borrar(m)} style={{marginTop:6,background:"none",color:colors.error,padding:"4px 0",fontSize:12.5}}>Borrar este mes</button>}
+    </>);
+    const valorTxt=(m)=>inflacion[m]!=null
+      ?<span className="mono" style={{fontSize:15,fontWeight:700,color:colors.text}}>{fmtPct(inflacion[m])}</span>
+      :<span style={{fontSize:12.5,color:colors.warning,fontWeight:600}}>Sin cargar{sugeridas[m]!=null?` · INDEC ${fmtPct(sugeridas[m])}`:""}</span>;
+    const difiere=(m)=>inflacion[m]!=null&&sugeridas[m]!=null&&Math.abs(sugeridas[m]-inflacion[m])>0.001;
 
     if(!activa) return (<div className="fade">
       <TopBar colors={colors} title="📈 Inflación" subtitle="IPC mensual · actualiza los precios de referencia" onBack={pop}/>
@@ -3246,72 +3282,63 @@
     </div>);
 
     return (<div className="fade">
-      <TopBar colors={colors} title="📈 Inflación" subtitle="IPC mensual · actualiza los precios de referencia" onBack={pop}/>
+      <TopBar colors={colors} title="📈 Inflación" subtitle="IPC mensual · actualiza los precios de referencia" onBack={pop}
+        right={<button className="btn" onClick={dejar} style={{background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:"8px 11px",fontSize:12}}>Desactivar</button>}/>
 
-      <div className="card" style={{padding:16,marginBottom:12}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:10}}>
-          <div>
-            <div style={lbl}>Acumulado desde {fmtMes(inicio,true)}</div>
-            <div className="mono" style={{fontSize:26,fontWeight:700,color:colors.text,marginTop:4}}>{acumulado>0?"+":""}{acumulado.toLocaleString("es-AR",{maximumFractionDigits:1})} %</div>
-          </div>
-          <div style={{textAlign:"right",fontSize:12,color:colors.textMuted,lineHeight:1.5}}>
-            <div>{mesesCargados.length} mes{mesesCargados.length!==1?"es":""} cargado{mesesCargados.length!==1?"s":""}</div>
-            <div>{actualizados} producto{actualizados!==1?"s":""} actualizado{actualizados!==1?"s":""}</div>
-          </div>
-        </div>
-      </div>
+      {mesesCargados.some(m=>m<hoy)&&<InflacionChart meses={mesesCargados.filter(m=>m<hoy)} inflacion={inflacion} colors={colors}/>}
 
-      {/* Próximo mes a cargar */}
-      <div className="card" style={{padding:16,marginBottom:12,border:hayPendiente?`1px solid ${colors.accent}66`:undefined}}>
-        <div style={{...lbl,marginBottom:8}}>Próximo mes</div>
-        {hayPendiente?(<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
-            <div style={{fontWeight:700,fontSize:16,color:colors.text}}>{fmtMes(proximo)}</div>
-            {sugeridas[proximo]!=null&&<div style={{fontSize:12,color:colors.textMuted}}>INDEC: <b className="mono" style={{color:colors.text}}>{fmtPct(sugeridas[proximo])}</b></div>}
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            {inputPct(cargarProximo)}
-            <button className="btn" disabled={saving} onClick={cargarProximo} style={{background:colors.accent,color:"#fff",padding:"0 18px",fontSize:14,opacity:saving?.6:1}}>Cargar</button>
-          </div>
-          {pendientes.length>1&&<div style={{fontSize:12,color:colors.warning,marginTop:10}}>⚠️ Faltan {pendientes.length} meses: se cargan de a uno, en orden.</div>}
-          {publicados.length>1&&sugeridas[proximo]!=null&&<button className="btn" disabled={saving} onClick={cargarPublicados} style={{width:"100%",marginTop:10,background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:10,fontSize:13}}>Cargar los {publicados.length} meses publicados por el INDEC</button>}
-        </>):(
-          <div style={{fontSize:13,color:colors.textMuted,lineHeight:1.5}}>Estás al día. El próximo es <b style={{color:colors.text}}>{fmtMes(proximo>hoy?proximo:hoy)}</b>, que el INDEC publica a mediados de {fmtMes(mesSumar(proximo>hoy?proximo:hoy,1))}.</div>
-        )}
-      </div>
-
-      {/* Último mes: el único editable */}
-      {ultimo&&(
-        <div className="card" style={{padding:16,marginBottom:12}}>
-          <div style={{...lbl,marginBottom:8}}>Último mes cargado</div>
-          {editUltimo?(<>
-            <div style={{fontWeight:600,fontSize:14,color:colors.text,marginBottom:8}}>{fmtMes(ultimo)}</div>
-            <div style={{display:"flex",gap:6}}>
-              {inputPct(guardarUltimo)}
-              <button className="btn" disabled={saving} onClick={guardarUltimo} style={{background:colors.accent,color:"#fff",padding:"0 14px",fontSize:13}}>✓</button>
-              <button className="btn" disabled={saving} onClick={()=>{setEditUltimo(false);setValor("");}} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:"0 14px",fontSize:13}}>✕</button>
-            </div>
-            <button className="btn" disabled={saving} onClick={borrarUltimo} style={{marginTop:8,background:"none",color:colors.error,padding:"4px 0",fontSize:12.5}}>Borrar este mes</button>
-          </>):(
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{flex:1,fontSize:14,color:colors.text}}>{fmtMes(ultimo)}</div>
-              {sugeridas[ultimo]!=null&&Math.abs(sugeridas[ultimo]-inflacion[ultimo])>0.001&&<span style={{fontSize:11,color:colors.warning}}>INDEC {fmtPct(sugeridas[ultimo])}</span>}
-              <span className="mono" style={{fontSize:15,fontWeight:700,color:colors.text}}>{fmtPct(inflacion[ultimo])}</span>
-              <button className="btn" onClick={()=>{setValor(String(inflacion[ultimo]).replace(".",","));setEditUltimo(true);}} style={{background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:"6px 10px",fontSize:12}}>✏️ Editar</button>
-            </div>
-          )}
-          {mesesCargados.length>1&&<div style={{fontSize:11.5,color:colors.textMuted,marginTop:12,lineHeight:1.6}}>
-            🔒 Anteriores: {mesesCargados.slice(0,-1).reverse().map(m=>`${fmtMes(m,true)} ${fmtPct(inflacion[m])}`).join(" · ")}
-          </div>}
+      {!previo&&(
+        <div className="card" style={{padding:16,marginBottom:10,fontSize:13,color:colors.textMuted,lineHeight:1.5}}>
+          La primera inflación a cargar es la de <b style={{color:colors.text}}>{fmtMes(primero)}</b>. Va a aparecer acá cuando termine ese mes; el INDEC la publica a mediados de {fmtMes(mesSumar(primero,1))}.
         </div>
       )}
 
-      <div style={{fontSize:11.5,color:colors.textMuted,marginBottom:16,lineHeight:1.5}}>
+      {/* Mes anterior: siempre editable */}
+      {previo&&(
+        <div className="card" style={{padding:16,marginBottom:10,border:`1px solid ${colors.accent}66`}}>
+          <div style={{...lbl,marginBottom:6}}>Último mes</div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{flex:1,fontSize:15,fontWeight:600,color:colors.text}}>{fmtMes(previo)}</div>
+            {editMes!==previo&&<>
+              {difiere(previo)&&<span style={{fontSize:11,color:colors.warning}}>INDEC {fmtPct(sugeridas[previo])}</span>}
+              {valorTxt(previo)}
+              {(inflacion[previo]==null||previo===ultimoCargado)&&<button className="btn" onClick={()=>abrir(previo)} style={{background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:"6px 10px",fontSize:12}}>{inflacion[previo]!=null?"✏️ Editar":"+ Cargar"}</button>}
+            </>}
+          </div>
+          {editMes===previo&&<div style={{marginTop:10}}>{editor(previo,true)}</div>}
+          <div style={{fontSize:12,color:colors.textMuted,lineHeight:1.45,marginTop:8}}>Una vez cargado, se puede editar hasta que se cargue el mes siguiente.</div>
+        </div>
+      )}
+
+      {faltantes.length>0&&<div style={{fontSize:12.5,color:colors.warning,fontWeight:600,margin:"2px 2px 10px"}}>⚠️ Falta{faltantes.length>1?"n":""} cargar {faltantes.length} mes{faltantes.length>1?"es":""}</div>}
+
+      {/* Meses anteriores: cerrados; solo se pueden cargar si faltan */}
+      {viejos.length>0&&(<>
+        <div style={{...lbl,margin:"14px 0 8px"}}>Meses anteriores</div>
+        <div className="card" style={{overflow:"hidden",marginBottom:12}}>
+          {viejos.map((m,i)=>{
+            const cargado=inflacion[m]!=null;
+            const editable=!cargado||m===ultimoCargado;
+            return (<div key={m} style={{borderTop:i?`1px solid ${colors.cardBorder}`:"none",padding:"11px 14px"}}>
+              {editMes===m?(<>
+                <div style={{fontSize:13.5,fontWeight:600,color:colors.text,marginBottom:8}}>{fmtMes(m)}</div>
+                {editor(m,m===ultimoCargado)}
+              </>):(
+                <div style={{display:"flex",alignItems:"center",gap:10,cursor:editable?"pointer":"default"}} onClick={()=>editable&&abrir(m)}>
+                  <div style={{flex:1,fontSize:14,color:editable?colors.text:colors.textSecondary}}>{fmtMes(m)}</div>
+                  {valorTxt(m)}
+                  <span style={{fontSize:13,width:18,textAlign:"center",color:editable?colors.accent:colors.textMuted}}>{!cargado?"+":editable?"✏️":"🔒"}</span>
+                </div>
+              )}
+            </div>);
+          })}
+        </div>
+      </>)}
+
+      <div style={{fontSize:11.5,color:colors.textMuted,marginBottom:20,lineHeight:1.5}}>
         {estadoApi==="cargando"?"Buscando el IPC publicado…":estadoApi==="ok"?"Valores del INDEC: ArgentinaDatos (vía BCRA).":"No se pudo consultar el IPC publicado. Cargá los valores a mano."}
         {" "}Cada producto acumula la inflación de los meses posteriores al mes en que se cargó o editó su precio.
       </div>
-
-      <button className="btn" onClick={dejar} style={{width:"100%",marginBottom:20,background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:12,fontSize:14}}>Dejar de contemplar inflación</button>
     </div>);
   }
 
