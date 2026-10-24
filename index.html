@@ -877,13 +877,15 @@
   }
 
   // ── ComprasCardInline ─────────────────────────────────────────────────────────
-  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket,colors}) {
-    const [open,setOpen]=useState(false);
+  // soloModal: abre directo la ventana de compra (desde la lista), con initCant paquetes; avisa con onClose/onAgregado
+  function ComprasCardInline({p,cat,stock,stockTotal,guardarStock,mesesRestantes,fmtMeses,guardar,productos,showToast,agregarAlTicket,colors,soloModal=false,initCant=null,onClose,onAgregado}) {
+    const [open,setOpenRaw]=useState(!!soloModal);
+    const setOpen=(v)=>{setOpenRaw(v);if(!v&&soloModal&&onClose)onClose();};
     const [precio,setPrecio]=useState("");
     const [cantidad,setCantidad]=useState(p.cantidadRef?String(p.cantidadRef):"");
     const [cantRollos,setCantRollos]=useState(p.rollosRef?String(p.rollosRef):"");
     const [cantMetros,setCantMetros]=useState(p.metrosRef?String(p.metrosRef):"");
-    const [cantComprada,setCantComprada]=useState("1");
+    const [cantComprada,setCantComprada]=useState(initCant?String(initCant).replace(".",","):"1");
     const [saving,setSaving]=useState(false);
 
     const esM=p.unidad==="m";
@@ -929,13 +931,14 @@
           stockDelta:{cantRef:cantNum||cantRefNum,cantRefProd:cantRefNum,cantidad:cantCompradaNum,entradasBase:entradasGuardadas,rollosRef:esM?(parseInt(cantRollos)||null):null,metrosRef:esM?(parseFloat(cantMetros)||null):null}
         });
         showToast("✅ Agregado al ticket");
+        if(onAgregado)onAgregado();
         setOpen(false);
       } catch(e){showToast("Error al guardar","err");}
       finally{setSaving(false);}
     };
 
     return (<>
-      <div className="card" style={{borderLeft:`3px solid ${cat?.color||"#444"}`}}>
+      {!soloModal&&<div className="card" style={{borderLeft:`3px solid ${cat?.color||"#444"}`}}>
         <div style={{padding:"12px 14px",display:"flex",alignItems:"stretch",gap:10}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -953,7 +956,7 @@
           </div>
           <button onClick={()=>setOpen(true)} style={{width:38,alignSelf:"center",height:38,borderRadius:10,background:colors.accent,border:"none",color:"#fff",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,flexShrink:0}}>+</button>
         </div>
-      </div>
+      </div>}
       {open&&(
         <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:1500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&setOpen(false)}>
           <div style={{background:colors.card,borderRadius:16,padding:"20px",width:"100%",maxWidth:400,border:`1px solid ${cat?.color||"#2a3550"}`,boxShadow:`0 8px 32px ${colors.shadowSoft}`}}>
@@ -1185,6 +1188,7 @@
     const [grupoInfo,setGrupoInfo]=useState(null); // {id,nombre,codigo_invitacion,rol,miembros:[]}
     const [activeTab,setActiveTab]=useState("productos");
     const [stack,setStack]=useState([{screen:"home"}]);
+    const pantallaActual=stack[stack.length-1]?.screen;
     const [toast,setToast]=useState(null);
     const [confirm,setConfirm]=useState(null);
     const [confirmCompra,setConfirmCompra]=useState(null);
@@ -1203,6 +1207,13 @@
     const [showHistorial,setShowHistorial]=useState(false);
     const [ticketFinalizado,setTicketFinalizado]=useState(null);
     const [showIniciarCompra,setShowIniciarCompra]=useState(false);
+    const [showCarrito,setShowCarrito]=useState(false);
+    // ── Listas de compras ──
+    const LISTA_COMPRA_KEY="canasta_compra_lista";
+    const [listas,setListas]=useState([]);            // [{id,nombre,fija,items:[{id,prodId,texto,cant,estado}],creada}]
+    const [compraListaId,setCompraListaIdRaw]=useState(()=>{try{return localStorage.getItem(LISTA_COMPRA_KEY)||null;}catch(e){return null;}});
+    const setCompraListaId=(id)=>{setCompraListaIdRaw(id);try{id?localStorage.setItem(LISTA_COMPRA_KEY,id):localStorage.removeItem(LISTA_COMPRA_KEY);}catch(e){}};
+    const ultimaEscrituraListas=useRef(0);
     const [showItemSuelto,setShowItemSuelto]=useState(false);
     const [showNuevoProdModal,setShowNuevoProdModal]=useState(false);
 
@@ -1314,6 +1325,12 @@
               stockRows.forEach(r=>{ sm[r.producto_id]=r.entradas||[]; });
               setStock(sm);
             }
+            // Cargar listas (tabla puede no existir aún)
+            try {
+              const { data: lRows, error: lErr } = await sb.from("listas").select("*").order("creada",{ascending:true});
+              if (lErr) console.warn("Tabla listas no disponible:", lErr.message);
+              else if (lRows) setListas(lRows.map(r=>({id:r.id,nombre:r.nombre,fija:!!r.fija,items:r.items||[],creada:r.creada})));
+            } catch(e){ console.warn("Tabla listas no disponible:", e); }
             // Cargar inflación (tabla puede no existir aún)
             try {
               const { data: infRows, error: infErr } = await sb.from("inflacion").select("mes,pct");
@@ -1415,6 +1432,63 @@
       const r=await sb.from("inflacion").delete().eq("grupo_id",grupoId).eq("mes",mes);
       if(r.error){setInflacion(prev);console.error(r.error);showToast("No se pudo borrar ("+(r.error.message||"")+")","err");throw r.error;}
     };
+    // ── Listas: guardar / borrar / refrescar ──
+    const guardarLista=async(l)=>{
+      ultimaEscrituraListas.current=Date.now();
+      setListas(ls=>ls.some(x=>x.id===l.id)?ls.map(x=>x.id===l.id?l:x):[...ls,l]);
+      const r=await sb.from("listas").upsert({id:l.id,nombre:l.nombre,fija:!!l.fija,items:l.items||[],grupo_id:grupoId,creada:l.creada||new Date().toISOString(),actualizada:new Date().toISOString()},{onConflict:"id"});
+      ultimaEscrituraListas.current=Date.now();
+      if(r.error){console.error(r.error);showToast("No se pudo guardar la lista ("+(r.error.message||"")+")","err");}
+    };
+    const crearLista=async(nombre,prods=[])=>{
+      const items=prods.map(p=>({id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}));
+      const l={id:uid(),nombre:(nombre||"").trim()||"Lista",fija:false,items,creada:new Date().toISOString()};
+      await guardarLista(l);return l;
+    };
+    const borrarLista=async(id)=>{
+      ultimaEscrituraListas.current=Date.now();
+      setListas(ls=>ls.filter(x=>x.id!==id));
+      if(compraListaId===id)setCompraListaId(null);
+      const r=await sb.from("listas").delete().eq("id",id);
+      if(r.error){console.error(r.error);showToast("No se pudo borrar la lista ("+(r.error.message||"")+")","err");}
+    };
+    const refrescarListas=async()=>{
+      if(Date.now()-ultimaEscrituraListas.current<4000)return; // no pisar cambios propios en vuelo
+      const {data,error}=await sb.from("listas").select("*").order("creada",{ascending:true});
+      if(error||!data)return;
+      if(Date.now()-ultimaEscrituraListas.current<4000)return;
+      setListas(data.map(r=>({id:r.id,nombre:r.nombre,fija:!!r.fija,items:r.items||[],creada:r.creada})));
+    };
+    // Agrega productos a una lista (si ya están, no los duplica)
+    const agregarALista=async(listaId,prods)=>{
+      const l=listas.find(x=>x.id===listaId); if(!l)return 0;
+      const nuevos=prods.filter(p=>!l.items.some(it=>it.prodId===p.id)).map(p=>({id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}));
+      if(nuevos.length)await guardarLista({...l,items:[...l.items,...nuevos]});
+      return nuevos.length;
+    };
+    // Cantidad sugerida: lo que falta para cubrir un mes de consumo (mínimo 1)
+    const cantSugerida=(p)=>{
+      if(!p.unidadesMes)return 1;
+      return Math.max(1,Math.ceil(p.unidadesMes-stockTotal(p)-1e-9));
+    };
+    // Al terminar la compra: lo comprado sale de la lista (o se destilda si es fija); "no había" vuelve a pendiente
+    const cerrarListaDeCompra=(listaId,itemsTicket)=>{
+      const l=listas.find(x=>x.id===listaId); if(!l)return;
+      const enTicket=new Set(itemsTicket.map(i=>i.prodId));
+      const comprado=it=>it.estado==="tilde"||(it.prodId&&enTicket.has(it.prodId));
+      const items=l.fija
+        ?l.items.map(it=>({...it,estado:"pendiente"}))
+        :l.items.filter(it=>!comprado(it)).map(it=>({...it,estado:"pendiente"}));
+      guardarLista({...l,items});
+    };
+
+    const iniciarCompra=(listaId)=>{
+      setShowCarrito(false);
+      setCompraListaId(listaId||null);
+      setModoCompras(true);
+      if(listaId) push("lista-detalle",{listaId});
+    };
+
     // Empezar: todos los precios actuales pasan a ser la base de este mes; desde el mes siguiente acumulan inflación
     const empezarInflacion=async()=>{
       const hoy=mesActual();
@@ -1537,6 +1611,8 @@
         const r=await sb.from("stock").delete().in("producto_id",prodIds.slice(i,i+100));
         if(r.error) throw r.error;
       }
+      const rl=await sb.from("listas").delete().eq("grupo_id",grupoId);
+      if(rl.error) console.warn("Listas:",rl.error);
       const ri=await sb.from("inflacion").delete().eq("grupo_id",grupoId);
       if(ri.error) console.warn("Inflación:",ri.error);
       const rt=await sb.from("tickets").delete().eq("grupo_id",grupoId);
@@ -1545,7 +1621,7 @@
       if(rp.error) throw rp.error;
       const rc=await sb.from("categorias").delete().eq("grupo_id",grupoId);
       if(rc.error) throw rc.error;
-      setStock({});setTickets([]);setProductos([]);setCats([]);setInflacion({});
+      setStock({});setTickets([]);setProductos([]);setCats([]);setInflacion({});setListas([]);setCompraListaId(null);
       setTicket([]);setPromo(null);setModoCompras(false);setTicketOpen(false);
       try{localStorage.removeItem(TICKET_KEY);localStorage.removeItem(PROMO_KEY);}catch(e){}
     };
@@ -1760,23 +1836,35 @@
         try{localStorage.removeItem(TICKET_KEY);}catch(e){}
         try{localStorage.removeItem(PROMO_KEY);}catch(e){}
         setTicketFinalizado(nuevoTicket);
+        if(compraListaId){cerrarListaDeCompra(compraListaId,itemsFinal);setCompraListaId(null);}
         procesarPendiente(pendiente,productos,stock);
       },"Finalizar","#10b981");
     };
 
     const cancelarCompra=()=>{
-      if(ticket.length===0){setTicketOpen(false);setModoCompras(false);setPromo(null);return;}
+      if(ticket.length===0){setTicketOpen(false);setModoCompras(false);setPromo(null);setCompraListaId(null);return;}
       askConfirm("¿Cancelar la compra? Se perderán los items del ticket.",()=>{
-        setTicket([]);setPromo(null);setTicketOpen(false);setModoCompras(false);
+        setTicket([]);setPromo(null);setTicketOpen(false);setModoCompras(false);setCompraListaId(null);
         try{localStorage.removeItem(TICKET_KEY);}catch(e){}
         try{localStorage.removeItem(PROMO_KEY);}catch(e){}
       },"Cancelar compra","#ef4444");
     };
 
+    // Listas compartidas: refrescar cada 8 s mientras se ve una lista, y al volver a la app
+    useEffect(()=>{
+      if(!loaded)return;
+      const enListas=pantallaActual==="listas"||pantallaActual==="lista-detalle";
+      const onVis=()=>{if(document.visibilityState==="visible")refrescarListas();};
+      document.addEventListener("visibilitychange",onVis);
+      const iv=enListas?setInterval(refrescarListas,8000):null;
+      if(enListas)refrescarListas();
+      return ()=>{document.removeEventListener("visibilitychange",onVis);if(iv)clearInterval(iv);};
+    },[loaded,pantallaActual]);
+
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:colors.accent,fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={cats,productos:productosUI,inflacion,guardarInflacion,guardarInflacionVarios,borrarInflacion,empezarInflacion,dejarInflacion,refEnMes,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion,borrarBaseDatos,editarCategoria,editarSubcategoria,eliminarCategoria,eliminarSubcategoria};
+    const shared={listas,guardarLista,crearLista,borrarLista,agregarALista,cantSugerida,compraListaId,setCompraListaId,iniciarCompra,agregarAlTicket,cats,productos:productosUI,inflacion,guardarInflacion,guardarInflacionVarios,borrarInflacion,empezarInflacion,dejarInflacion,refEnMes,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion,borrarBaseDatos,editarCategoria,editarSubcategoria,eliminarCategoria,eliminarSubcategoria};
 
     const isMenuScreen=["export","backup","import","config","cuenta","grupo"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
@@ -1787,6 +1875,10 @@
         {confirm&&<Confirm colors={colors} msg={confirm.msg} onOk={()=>{confirm.onOk();setConfirm(null);}} onCancel={()=>setConfirm(null)} okLabel={confirm.okLabel} okColor={confirm.okColor}/>}
         {confirmCompra&&<ConfirmCompra colors={colors} data={confirmCompra} onOk={()=>{confirmCompra.onOk();setConfirmCompra(null);}} onCancel={()=>setConfirmCompra(null)}/>}
         <div style={{maxWidth:500,margin:"0 auto",padding:`0 16px ${modoCompras?"180px":"100px"}`}}>
+          {modoCompras&&compraListaId&&s!=="lista-detalle"&&(()=>{const l=listas.find(x=>x.id===compraListaId);if(!l)return null;const r=resumenLista(l,productosUI,ticket);return(
+            <div onClick={()=>push("lista-detalle",{listaId:l.id})} style={{position:"sticky",top:0,zIndex:110,margin:"0 -16px",padding:"10px 16px",background:"#10b981",color:"#fff",display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13.5,fontWeight:600}}>
+              <span>📝</span><span style={{flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.nombre} · {r.hechos} de {r.total}</span><span>Ver lista ›</span>
+            </div>);})()}
           {s==="home"        &&<HomeScreen {...shared} activeTab={activeTab}/>}
           {s==="subs"        &&<SubsScreen {...shared} catId={current.catId} activeTab={activeTab}/>}
           {s==="lista"       &&<ListaScreen {...shared} catId={current.catId} subId={current.subId} activeTab={activeTab}/>}
@@ -1798,6 +1890,8 @@
           {s==="export"      &&<ExportScreen {...shared}/>}
           {s==="backup"      &&<BackupScreen {...shared}/>}
           {s==="inflacion"   &&<InflacionScreen {...shared}/>}
+          {s==="listas"      &&<ListasScreen {...shared}/>}
+          {s==="lista-detalle"&&<ListaDetalleScreen {...shared} listaId={current.listaId}/>}
           {s==="import"      &&<ImportScreen {...shared}/>}
           {s==="cuenta"      &&<CuentaScreen {...shared}/>}
           {s==="grupo"       &&<GrupoFamiliarScreen {...shared}/>}
@@ -1810,6 +1904,8 @@
         )}
         {showHistorial&&<HistorialTickets colors={colors} tickets={tickets} setTickets={setTickets} onClose={()=>setShowHistorial(false)} askConfirm={askConfirm}/>}
         {ticketFinalizado&&<TicketFinalizadoModal colors={colors} ticket={ticketFinalizado} onClose={()=>setTicketFinalizado(null)}/>}
+        {showCarrito&&<CarritoSheet colors={colors} listas={listas} productos={productosUI} onClose={()=>setShowCarrito(false)}
+          onListas={()=>{setShowCarrito(false);push("listas");}} onIniciar={iniciarCompra}/>}
         {showIniciarCompra&&(
           <Confirm colors={colors} msg="¿Iniciar compra?" onOk={()=>{setModoCompras(true);setShowIniciarCompra(false);}} onCancel={()=>setShowIniciarCompra(false)} okLabel="Iniciar" okColor={colors.success}/>
         )}
@@ -1823,9 +1919,9 @@
           </div>
         )}
         {!isFormScreen&&<BottomTabs colors={colors} activeTab={activeTab} setActiveTab={(t)=>{setActiveTab(t);if(modoCompras)setModoCompras(false);}} modoCompras={modoCompras} ticketCount={ticket.length} onTapCompras={()=>{
-          if(modoCompras){}
+          if(modoCompras){ if(compraListaId&&current.screen!=="lista-detalle") push("lista-detalle",{listaId:compraListaId}); }
           else if(ticket.length>0){ setModoCompras(true); }
-          else { setShowIniciarCompra(true); }
+          else { setShowCarrito(true); }
         }}/>}
       </div>
     );
@@ -2235,12 +2331,13 @@
       })()}
     </div>);
   }
-  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode,session}) {
+  function ListaScreen({cats,catId,subId,productos,guardar,push,pop,gastoMensual,handleExport,showToast,activeTab,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,askConfirm,setConfirmCompra,setShowHistorial,colors,isDarkMode,toggleDarkMode,session,listas,agregarALista,crearLista}) {
     const [q,setQ]=useState("");
     const isStock=activeTab==="stock";
     const defaultSort="nombre-az";
     const [sortBy,setSortBy]=useState(defaultSort); const [selected,setSelected]=useState(new Set());
     const [selectMode,setSelectMode]=useState(false); const [moveModal,setMoveModal]=useState(false); const [moveDest,setMoveDest]=useState("");
+    const [listaModal,setListaModal]=useState(false);
     const [openStockId,setOpenStockId]=useState(null); // ID del StockCard abierto
     const [frozenOrder,setFrozenOrder]=useState(null); // orden congelado mientras hay panel abierto
     // Pulsación larga para entrar en modo selección
@@ -2319,6 +2416,13 @@
     const title=isUnassignedView?`${cat.emoji} Sin subcategoría`:sub?`${cat.emoji} ${sub.label}`:`${cat.emoji} ${cat.label}`;
     const listSubtitle=sub?cat.label:isUnassignedView?cat.label:(!isStock&&!modoCompras&&catGasto>0)?<span style={{color:colors.accent,fontWeight:600}}>{fmt(catGasto)}/mes</span>:undefined;
     return (<div className="fade">
+      {listaModal&&<AgregarAListaModal colors={colors} listas={listas||[]} cantidad={selected.size} onClose={()=>setListaModal(false)}
+        onElegir={async(id,nombreNueva)=>{
+          const prods=productos.filter(p=>selected.has(p.id));
+          const n=id?await agregarALista(id,prods):(await crearLista(nombreNueva,prods),prods.length);
+          setListaModal(false);cancelSelect();
+          showToast(n?`📝 ${n} producto${n>1?"s":""} agregado${n>1?"s":""} a la lista`:"Ya estaban en la lista");
+        }}/>}
       {moveModal&&(<div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
         <div style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:24,maxWidth:320,width:"100%"}}>
           <div style={{fontWeight:600,marginBottom:4,color:colors.text}}>Mover {selected.size} producto{selected.size>1?"s":""}</div>
@@ -2340,6 +2444,7 @@
         <div style={{position:"sticky",top:0,zIndex:120,background:colors.bg,margin:"0 -16px 14px",padding:"28px 16px 12px",borderBottom:`1px solid ${colors.cardBorder}`}}>
           <div style={{display:"flex",gap:8,marginBottom:12}}>
             <button className="btn" disabled={!selected.size} onClick={doDelete} style={{flex:1,background:colors.errorBg,color:selected.size?colors.error:colors.textMuted,border:`1px solid ${colors.errorBorder}`,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>🗑️ Eliminar</button>
+            <button className="btn" disabled={!selected.size} onClick={()=>selected.size&&setListaModal(true)} style={{flex:1,background:colors.btnSecondary,color:selected.size?colors.text:colors.textMuted,border:`1px solid ${colors.hoverCard}`,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>📝 Lista</button>
             <button className="btn" disabled={!selected.size} onClick={()=>selected.size&&setMoveModal(true)} style={{flex:1,background:selected.size?colors.accent:colors.btnSecondary,color:selected.size?"#fff":colors.textMuted,padding:"11px 0",fontSize:14,cursor:selected.size?"pointer":"default"}}>📂 Mover</button>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -2605,7 +2710,8 @@
   }
 
   // ── DetalleScreen ─────────────────────────────────────────────────────────────
-  function DetalleScreen({prodId,productos,guardar,pop,showToast,askConfirm,push,gastoMensual,getCat,getSub,colors,refEnMes,inflacion}) {
+  function DetalleScreen({prodId,productos,guardar,pop,showToast,askConfirm,push,gastoMensual,getCat,getSub,colors,refEnMes,inflacion,listas,agregarALista,crearLista}) {
+    const [listaModal,setListaModal]=useState(false);
     const p=productos.find(x=>x.id===prodId); if(!p) return null;
     const cat=getCat(p.catId); const sub=p.subId?getSub(p.catId,p.subId):null;
     const gm=gastoMensual(p); const clr=cat?.color||"#3b82f6";
@@ -2651,7 +2757,16 @@
         </div>
         {variacion!==null&&<div style={{marginTop:10,fontSize:12,color:parseFloat(variacion)>0?"#ef4444":"#10b981"}}>{parseFloat(variacion)>0?"▲":"▼"} {Math.abs(variacion)}% desde el primer registro</div>}
       </div>
-      <button className="btn" onClick={()=>push("nuevo-precio",{prodId})} style={{width:"100%",background:clr,color:"#080c14",padding:13,fontSize:14,marginBottom:14}}>+ Registrar precio de compra</button>
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        <button className="btn" onClick={()=>push("nuevo-precio",{prodId})} style={{flex:2,background:clr,color:"#080c14",padding:13,fontSize:14}}>+ Registrar precio de compra</button>
+        <button className="btn" onClick={()=>setListaModal(true)} style={{flex:1,background:colors.btnSecondary,color:colors.text,border:`1px solid ${colors.hoverCard}`,padding:13,fontSize:14}}>📝 A lista</button>
+      </div>
+      {listaModal&&<AgregarAListaModal colors={colors} listas={listas||[]} cantidad={1} onClose={()=>setListaModal(false)}
+        onElegir={async(id,nombreNueva)=>{
+          const n=id?await agregarALista(id,[p]):(await crearLista(nombreNueva,[p]),1);
+          setListaModal(false);
+          showToast(n?"📝 Agregado a la lista":"Ya estaba en la lista");
+        }}/>}
       {hist.length>=1&&(
       <div className="card" style={{padding:"18px 12px 10px",marginBottom:12}}>
         <div style={{fontSize:13,fontWeight:600,marginBottom:8,paddingLeft:4,color:colors.text}}>Evolución del precio de compra</div>
@@ -3151,6 +3266,317 @@
         </div>);
       })}
     </div>);
+  }
+
+  // ── Listas de compras ─────────────────────────────────────────────────────────
+  const fmtEntero=(v)=>"$"+Math.round(v).toLocaleString("es-AR");
+  const precioEstimado=(p)=>p?(p.precioRef??ultimoEquiv(p)??null):null;
+  const resumenLista=(l,productos,ticket)=>{
+    const enTicket=new Map((ticket||[]).map(i=>[i.prodId,i]));
+    let total=0,hechos=0,estimado=0,gastado=0;
+    (l.items||[]).forEach(it=>{
+      const p=it.prodId?productos.find(x=>x.id===it.prodId):null;
+      if(it.prodId&&!p)return; // producto borrado
+      total++;
+      const t=it.prodId?enTicket.get(it.prodId):null;
+      if(t){hechos++;gastado+=t.totalPagado??t.precio??0;}
+      else if(it.estado==="tilde"||it.estado==="no_habia")hechos++;
+      if(it.estado!=="no_habia"){const pe=precioEstimado(p);if(pe)estimado+=pe*(it.cant||1);}
+    });
+    return {total,hechos,estimado,gastado,pendientes:total-hechos};
+  };
+
+  // Hoja que aparece al tocar el carrito
+  function CarritoSheet({listas,productos,onListas,onIniciar,onClose,colors}) {
+    const [paso,setPaso]=useState("inicio");
+    const conItems=listas.map(l=>({l,r:resumenLista(l,productos,[])})).filter(x=>x.r.total>0);
+    const pend=conItems.reduce((a,x)=>a+x.r.pendientes,0);
+    const big={display:"flex",alignItems:"center",gap:14,width:"100%",textAlign:"left",padding:"18px 18px",borderRadius:14,fontSize:15};
+    return (
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div className="fade" style={{background:colors.card,borderRadius:"20px 20px 0 0",padding:"20px 18px 30px",width:"100%",maxWidth:500,border:`1px solid ${colors.cardBorder}`,borderBottom:"none"}}>
+          <div style={{width:40,height:4,background:colors.hoverCard,borderRadius:2,margin:"0 auto 18px"}}/>
+          {paso==="inicio"?(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <button className="btn" onClick={onListas} style={{...big,background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,color:colors.text}}>
+              <span style={{fontSize:30}}>📝</span>
+              <span style={{flex:1}}><div style={{fontWeight:700}}>Armá tu lista</div><div style={{fontSize:12.5,color:colors.textMuted,fontWeight:400,marginTop:3}}>{listas.length?`${listas.length} lista${listas.length>1?"s":""}${pend?` · ${pend} pendiente${pend>1?"s":""}`:""}`:"Planificá qué comprar"}</div></span>
+              <span style={{color:colors.hoverCard,fontSize:18}}>›</span>
+            </button>
+            <button className="btn" onClick={()=>conItems.length?setPaso("elegir"):onIniciar(null)} style={{...big,background:"#10b98118",border:"1px solid #10b981",color:colors.text}}>
+              <span style={{fontSize:30}}>🛒</span>
+              <span style={{flex:1}}><div style={{fontWeight:700}}>Iniciar compra</div><div style={{fontSize:12.5,color:colors.textMuted,fontWeight:400,marginTop:3}}>{conItems.length?"Con una lista o sin lista":"Registrá precios mientras comprás"}</div></span>
+              <span style={{color:colors.hoverCard,fontSize:18}}>›</span>
+            </button>
+          </div>):(<div>
+            <div style={{fontWeight:700,fontSize:17,color:colors.text,marginBottom:12}}>¿Con qué lista vas a comprar?</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {conItems.map(({l,r})=>(
+                <button key={l.id} className="btn" onClick={()=>onIniciar(l.id)} style={{...big,padding:"14px 16px",background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,color:colors.text}}>
+                  <span style={{fontSize:22}}>📝</span>
+                  <span style={{flex:1}}><div style={{fontWeight:600}}>{l.nombre}</div><div style={{fontSize:12,color:colors.textMuted,fontWeight:400,marginTop:2}}>{r.pendientes} pendiente{r.pendientes!==1?"s":""}{r.estimado>0?` · ~${fmtEntero(r.estimado)}`:""}</div></span>
+                </button>
+              ))}
+              <button className="btn" onClick={()=>onIniciar(null)} style={{...big,padding:"14px 16px",background:"none",border:`1px dashed ${colors.hoverCard}`,color:colors.textSecondary,justifyContent:"center"}}>Sin lista</button>
+            </div>
+          </div>)}
+        </div>
+      </div>
+    );
+  }
+
+  // Elegir a qué lista agregar productos
+  function AgregarAListaModal({listas,cantidad,onElegir,onClose,colors}) {
+    const [nueva,setNueva]=useState("");
+    return (
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2600,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div className="fade" style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:20,maxWidth:340,width:"100%"}}>
+          <div style={{fontWeight:700,fontSize:16,color:colors.text,marginBottom:4}}>Agregar a una lista</div>
+          <div style={{fontSize:12.5,color:colors.textMuted,marginBottom:14}}>{cantidad} producto{cantidad!==1?"s":""}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+            {listas.map(l=><button key={l.id} className="btn" onClick={()=>onElegir(l.id,null)} style={{textAlign:"left",background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:"12px 14px",fontSize:14}}>📝 {l.nombre}</button>)}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="Nueva lista…" value={nueva} onChange={e=>setNueva(e.target.value)} onKeyDown={e=>e.key==="Enter"&&nueva.trim()&&onElegir(null,nueva)} style={{flex:1}}/>
+            <button className="btn" disabled={!nueva.trim()} onClick={()=>onElegir(null,nueva)} style={{background:nueva.trim()?colors.accent:colors.btnSecondary,color:nueva.trim()?"#fff":colors.textMuted,padding:"0 14px",fontSize:13}}>Crear</button>
+          </div>
+          <button className="btn" onClick={onClose} style={{width:"100%",marginTop:12,background:colors.btnSecondary,color:colors.textSecondary,padding:11}}>Cancelar</button>
+        </div>
+      </div>
+    );
+  }
+
+  function ListasScreen({listas,productos,ticket,crearLista,push,pop,colors,grupoInfo,modoCompras,compraListaId}) {
+    const [nueva,setNueva]=useState(false);
+    const compartido=(grupoInfo?.miembros?.length||0)>1;
+    return (<div className="fade">
+      <TopBar colors={colors} title="📝 Listas" subtitle={compartido?"Compartidas con tu grupo familiar":"Planificá tus compras"} onBack={pop}/>
+      {listas.length===0&&<div className="card" style={{padding:20,fontSize:13.5,color:colors.textMuted,lineHeight:1.5,marginBottom:12}}>Todavía no tenés listas. Creá una, por ejemplo "Súper" o "Verdulería".</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {listas.map(l=>{
+          const r=resumenLista(l,productos,compraListaId===l.id?ticket:[]);
+          return (<div key={l.id} className="card row" onClick={()=>push("lista-detalle",{listaId:l.id})} style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14}}>
+            <div style={{fontSize:26}}>📝</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontWeight:600,fontSize:16,color:colors.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.nombre}</div>
+                {l.fija&&<span style={{fontSize:10,fontWeight:700,color:colors.accent,background:colors.accent+"22",borderRadius:5,padding:"2px 6px"}}>FIJA</span>}
+                {modoCompras&&compraListaId===l.id&&<span style={{fontSize:10,fontWeight:700,color:"#10b981",background:"#10b98122",borderRadius:5,padding:"2px 6px"}}>COMPRANDO</span>}
+              </div>
+              <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{r.total===0?"Vacía":`${r.pendientes} pendiente${r.pendientes!==1?"s":""} de ${r.total}`}</div>
+            </div>
+            {r.estimado>0&&<div className="mono" style={{fontSize:14,fontWeight:700,color:colors.textSecondary}}>~{fmtEntero(r.estimado)}</div>}
+            <div style={{fontSize:18,color:colors.hoverCard}}>›</div>
+          </div>);
+        })}
+      </div>
+      <button className="btn" onClick={()=>setNueva(true)} style={{background:`${colors.accent}11`,border:`1px solid ${colors.accent}`,color:colors.accent,padding:13,fontSize:14,marginTop:14,width:"100%",fontWeight:600}}>+ Nueva lista</button>
+      {nueva&&<EditarCatModal colors={colors} titulo="Nueva lista" inicial={{label:""}} conColor={false} onClose={()=>setNueva(false)}
+        onSave={async({label})=>{const l=await crearLista(label);setNueva(false);push("lista-detalle",{listaId:l.id});}}/>}
+    </div>);
+  }
+
+  function ListaDetalleScreen({listaId,listas,productos,cats,guardarLista,borrarLista,cantSugerida,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,guardar,showToast,askConfirm,pop,colors,grupoInfo,modoCompras,compraListaId,setCompraListaId,iniciarCompra,ticket,agregarAlTicket}) {
+    const l=listas.find(x=>x.id===listaId);
+    const [q,setQ]=useState("");
+    const [compraItem,setCompraItem]=useState(null);   // item que se está comprando (abre la tarjeta de precio)
+    const [opcItem,setOpcItem]=useState(null);         // item con menú de opciones (pulsación larga)
+    const [opciones,setOpciones]=useState(false);      // opciones de la lista
+    const [verSug,setVerSug]=useState(true);
+    const lp=useLongPress();
+    if(!l) return (<div className="fade"><TopBar colors={colors} title="📝 Lista" onBack={pop}/><div style={{color:colors.textMuted,padding:20,textAlign:"center"}}>Esta lista ya no existe.</div></div>);
+
+    const enCompra=modoCompras&&compraListaId===l.id;
+    const compartido=(grupoInfo?.miembros?.length||0)>1;
+    const enTicket=new Map((ticket||[]).map(i=>[i.prodId,i]));
+    const r=resumenLista(l,productos,enCompra?ticket:[]);
+    const prodDe=(it)=>it.prodId?productos.find(x=>x.id===it.prodId):null;
+    const items=l.items.filter(it=>!it.prodId||prodDe(it));
+    const estadoDe=(it)=>{
+      if(enCompra&&it.prodId&&enTicket.has(it.prodId))return "ticket";
+      return it.estado||"pendiente";
+    };
+    const setItems=(fn)=>guardarLista({...l,items:fn(l.items)});
+    const cambiarItem=(id,cambios)=>setItems(its=>its.map(x=>x.id===id?{...x,...cambios}:x));
+    const quitarItem=(id)=>setItems(its=>its.filter(x=>x.id!==id));
+    const agregarProd=(p)=>{setItems(its=>[...its,{id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}]);setQ("");};
+    const agregarTexto=(t)=>{setItems(its=>[...its,{id:uid(),prodId:null,texto:t.trim(),cant:1,estado:"pendiente"}]);setQ("");};
+
+    // Buscador para agregar
+    const enLista=new Set(items.filter(x=>x.prodId).map(x=>x.prodId));
+    const resultados=q.trim()?productos.filter(p=>!enLista.has(p.id)&&(norm(p.nombre).includes(norm(q))||norm(p.marca||"").includes(norm(q)))).sort((a,b)=>alphaStr(a.nombre,b.nombre)).slice(0,6):[];
+    // Sugerencias: se acaban en menos de 2 semanas
+    const sugeridos=productos.filter(p=>!enLista.has(p.id)&&p.unidadesMes>0&&(mesesRestantes(p)??99)<0.5).sort((a,b)=>(mesesRestantes(a)||0)-(mesesRestantes(b)||0));
+
+    const tocarCirculo=(it)=>{
+      const st=estadoDe(it);
+      if(st==="ticket")return showToast("Ya está en el ticket. Para cambiarlo, editalo desde el ticket.");
+      if(enCompra&&it.prodId&&st!=="tilde")return setCompraItem(it);
+      cambiarItem(it.id,{estado:st==="pendiente"?"tilde":"pendiente"});
+    };
+
+    // Agrupar pendientes por categoría
+    const pend=items.filter(it=>estadoDe(it)==="pendiente");
+    const grupos={};
+    pend.forEach(it=>{const p=prodDe(it);const c=p?cats.find(x=>x.id===p.catId):null;const k=c?c.id:"__otros";(grupos[k]=grupos[k]||{cat:c,items:[]}).items.push(it);});
+    const ordenGrupos=Object.values(grupos).sort((a,b)=>!a.cat?1:!b.cat?-1:alpha(a.cat,b.cat));
+    const noHabia=items.filter(it=>estadoDe(it)==="no_habia");
+    const hechos=items.filter(it=>["tilde","ticket"].includes(estadoDe(it)));
+
+    const Fila=({it})=>{
+      const p=prodDe(it); const st=estadoDe(it); const c=p?cats.find(x=>x.id===p.catId):null;
+      const hecho=st==="tilde"||st==="ticket"; const nh=st==="no_habia";
+      const t=st==="ticket"?enTicket.get(it.prodId):null;
+      const pe=precioEstimado(p);
+      const meta=p?[p.marca,p.cantidadRef?fmtCantRef(p):null].filter(Boolean).join(" · "):"Ítem libre";
+      return (<div {...lp(()=>setOpcItem(it),null)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderLeft:`3px solid ${c?.color||colors.hoverCard}`,...noSelectStyle}}>
+        <div onClick={e=>{e.stopPropagation();tocarCirculo(it);}} style={{width:26,height:26,borderRadius:"50%",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",
+          border:`2px solid ${hecho?"#10b981":nh?colors.warning:colors.hoverCard}`,background:hecho?"#10b981":"transparent"}}>{hecho?"✓":nh?<span style={{color:colors.warning,fontSize:12}}>✕</span>:""}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:14.5,fontWeight:600,color:hecho||nh?colors.textMuted:colors.text,textDecoration:hecho?"line-through":"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p?p.nombre:it.texto}</div>
+          <div style={{display:"flex",gap:8,alignItems:"baseline",marginTop:2,fontSize:11.5,color:colors.textMuted,whiteSpace:"nowrap",overflow:"hidden"}}>
+            <span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{meta}{nh?" · no había":""}</span>
+            {!t&&pe&&!nh&&<span className="mono" style={{flexShrink:0,marginLeft:"auto",color:colors.textSecondary}}>~{fmtEntero(pe*(it.cant||1))}</span>}
+          </div>
+        </div>
+        {!enCompra&&!hecho&&!nh?(
+          <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}} onPointerDown={e=>e.stopPropagation()}>
+            <button className="btn" onClick={()=>it.cant>1?cambiarItem(it.id,{cant:it.cant-1}):quitarItem(it.id)} style={{width:28,height:28,background:colors.btnSecondary,color:colors.textSecondary,fontSize:it.cant>1?15:12,padding:0}}>{it.cant>1?"−":"🗑"}</button>
+            <span className="mono" style={{minWidth:22,textAlign:"center",fontSize:14,fontWeight:700,color:colors.text}}>{fmtU(it.cant)}</span>
+            <button className="btn" onClick={()=>cambiarItem(it.id,{cant:(it.cant||1)+1})} style={{width:28,height:28,background:colors.btnSecondary,color:colors.accent,fontSize:15,padding:0}}>+</button>
+          </div>
+        ):(
+          <div style={{textAlign:"right",flexShrink:0}}>
+            <div className="mono" style={{fontSize:13,color:colors.textMuted}}>× {fmtU(t?t.cantComprada:it.cant)}</div>
+            {t&&<div className="mono" style={{fontSize:13.5,fontWeight:700,color:"#10b981",marginTop:2}}>{fmtEntero(t.totalPagado??t.precio)}</div>}
+          </div>
+        )}
+      </div>);
+    };
+    const Seccion=({titulo,its,color})=>its.length?(<>
+      <div style={{fontSize:11,fontWeight:600,color:color||colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",margin:"16px 2px 8px"}}>{titulo}</div>
+      <div className="card" style={{overflow:"hidden"}}>{its.map((it,i)=><div key={it.id} style={{borderTop:i?`1px solid ${colors.cardBorder}`:"none"}}>{Fila({it})}</div>)}</div>
+    </>):null;
+
+    const pct=r.total?r.hechos/r.total:0;
+    const compraP=compraItem?prodDe(compraItem):null;
+    return (<div className="fade">
+      <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?"🛒 Comprando":null,l.fija?"Lista fija":null,compartido?"Compartida con tu grupo":null].filter(Boolean).join(" · ")||undefined} onBack={pop}
+        right={<button className="btn" onClick={()=>setOpciones(true)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 12px",fontSize:15}}>⚙️</button>}/>
+
+      {/* Resumen / progreso */}
+      <div className="card" style={{padding:"14px 16px",marginBottom:12}}>
+        {enCompra?(<>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+            <div style={{fontSize:14,fontWeight:700,color:colors.text}}>{r.hechos} de {r.total}</div>
+            <div style={{fontSize:12.5,color:colors.textMuted}}><b className="mono" style={{color:"#10b981"}}>{fmtEntero(r.gastado)}</b>{r.estimado>0?<> de ~{fmtEntero(r.estimado)}</>:null}</div>
+          </div>
+          <div style={{height:6,background:colors.inputBg,borderRadius:3,marginTop:10,overflow:"hidden"}}><div style={{width:`${pct*100}%`,height:"100%",background:"#10b981",transition:"width .3s"}}/></div>
+        </>):(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+            <div style={{fontSize:14,color:colors.text}}><b>{r.total}</b> <span style={{color:colors.textMuted}}>producto{r.total!==1?"s":""}</span></div>
+            {r.estimado>0&&<div style={{fontSize:12.5,color:colors.textMuted}}>Estimado <b className="mono" style={{color:colors.text}}>~{fmtEntero(r.estimado)}</b></div>}
+          </div>
+        )}
+        {!enCompra&&items.length>0&&(!modoCompras
+          ?<button className="btn" onClick={()=>iniciarCompra(l.id)} style={{width:"100%",marginTop:12,background:"#10b981",color:"#fff",padding:12,fontSize:14,fontWeight:700}}>🛒 Ir de compras con esta lista</button>
+          :<button className="btn" onClick={()=>{setCompraListaId(l.id);showToast("📝 Lista vinculada a la compra");}} style={{width:"100%",marginTop:12,background:"#10b98122",border:"1px solid #10b981",color:"#10b981",padding:11,fontSize:13.5,fontWeight:600}}>Usar esta lista en la compra actual</button>)}
+        {enCompra&&<div style={{fontSize:11.5,color:colors.textMuted,marginTop:10,lineHeight:1.4}}>Tocá el círculo para cargar el precio. Mantené apretado un producto para tildarlo sin precio o marcar que no había.</div>}
+      </div>
+
+      {/* Agregar */}
+      <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="➕ Agregar producto o ítem libre…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&q.trim()){resultados[0]?agregarProd(resultados[0]):agregarTexto(q);}}} style={{height:44,marginBottom:q?8:12}}/>
+      {q.trim()&&(
+        <div className="card" style={{overflow:"hidden",marginBottom:12}}>
+          {resultados.map((p,i)=>{const c=cats.find(x=>x.id===p.catId);return(
+            <div key={p.id} className="row" onClick={()=>agregarProd(p)} style={{padding:"10px 14px",borderTop:i?`1px solid ${colors.cardBorder}`:"none",display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:18}}>{c?.emoji||"📦"}</span>
+              <div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:600,color:colors.text}}>{p.nombre}</div><div style={{fontSize:11.5,color:colors.textMuted}}>{p.marca||"—"}</div></div>
+              <span style={{fontSize:12.5,color:colors.accent,fontWeight:600}}>+ {fmtU(cantSugerida(p))}</span>
+            </div>);})}
+          <div className="row" onClick={()=>agregarTexto(q)} style={{padding:"11px 14px",borderTop:resultados.length?`1px solid ${colors.cardBorder}`:"none",fontSize:13.5,color:colors.accent,fontWeight:600}}>+ Agregar «{q.trim()}» como ítem libre</div>
+        </div>
+      )}
+
+      {/* Sugerencias por stock */}
+      {!q&&!enCompra&&sugeridos.length>0&&(
+        <div className="card" style={{padding:"12px 14px",marginBottom:12,border:`1px solid ${colors.warning}55`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>setVerSug(v=>!v)}>
+            <div style={{flex:1,fontSize:13.5,fontWeight:600,color:colors.text}}>💡 Se te están por acabar ({sugeridos.length})</div>
+            <span style={{fontSize:12,color:colors.textMuted}}>{verSug?"▼":"▶"}</span>
+          </div>
+          {verSug&&<>
+            <div style={{fontSize:11.5,color:colors.textMuted,margin:"4px 0 8px"}}>Les queda menos de 2 semanas de stock. La cantidad cubre un mes de consumo.</div>
+            {sugeridos.slice(0,8).map(p=>(
+              <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderTop:`1px solid ${colors.cardBorder}`}}>
+                <div style={{flex:1,minWidth:0}}><div style={{fontSize:13.5,color:colors.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.nombre}</div><div style={{fontSize:11,color:colors.warning}}>{fmtMeses(mesesRestantes(p),true)}</div></div>
+                <button className="btn" onClick={()=>agregarProd(p)} style={{background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:"6px 10px",fontSize:12}}>+ {fmtU(cantSugerida(p))}</button>
+              </div>
+            ))}
+            {sugeridos.length>1&&<button className="btn" onClick={()=>setItems(its=>[...its,...sugeridos.map(p=>({id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}))])} style={{width:"100%",marginTop:8,background:colors.accent,color:"#fff",padding:10,fontSize:13}}>Agregar todos</button>}
+          </>}
+        </div>
+      )}
+
+      {items.length===0&&!q&&<div style={{textAlign:"center",color:colors.textMuted,padding:"30px 0",fontSize:14}}>La lista está vacía. Buscá un producto para agregarlo.</div>}
+      {ordenGrupos.map(g=><React.Fragment key={g.cat?.id||"otros"}>{Seccion({titulo:g.cat?`${g.cat.emoji} ${g.cat.label}`:"📝 Otros",its:g.items})}</React.Fragment>)}
+      {Seccion({titulo:`No había (${noHabia.length})`,its:noHabia,color:colors.warning})}
+      {Seccion({titulo:`Comprado (${hechos.length})`,its:hechos,color:"#10b981"})}
+
+      {/* Tarjeta de precio al tildar en compra */}
+      {compraItem&&compraP&&<ComprasCardInline p={compraP} cat={cats.find(c=>c.id===compraP.catId)} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} colors={colors}
+        soloModal initCant={compraItem.cant} onClose={()=>setCompraItem(null)}/>}
+
+      {/* Opciones de un ítem */}
+      {opcItem&&(()=>{const it=l.items.find(x=>x.id===opcItem.id)||opcItem;const st=estadoDe(it);const p=prodDe(it);
+        const b={width:"100%",textAlign:"left",background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,color:colors.text,padding:"12px 14px",fontSize:14};
+        const cerrar=()=>setOpcItem(null);
+        return (<div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&cerrar()}>
+          <div className="fade" style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:20,maxWidth:320,width:"100%",display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{fontWeight:700,fontSize:16,color:colors.text,textAlign:"center",marginBottom:6}}>{p?p.nombre:it.texto}</div>
+            {st!=="ticket"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="tilde"?"pendiente":"tilde"});cerrar();}}>{st==="tilde"?"↩️ Destildar":"✓ Tildar sin cargar precio"}</button>}
+            {st!=="ticket"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="no_habia"?"pendiente":"no_habia"});cerrar();}}>{st==="no_habia"?"↩️ Volver a pendiente":"✕ No había"}</button>}
+            {st==="pendiente"&&enCompra&&<div style={{display:"flex",alignItems:"center",gap:8,...b}}>
+              <span style={{flex:1}}>Cantidad</span>
+              <button className="btn" onClick={()=>it.cant>1&&cambiarItem(it.id,{cant:it.cant-1})} style={{width:30,height:30,background:colors.btnSecondary,color:colors.textSecondary,padding:0}}>−</button>
+              <span className="mono" style={{minWidth:24,textAlign:"center",fontWeight:700}}>{fmtU(it.cant)}</span>
+              <button className="btn" onClick={()=>cambiarItem(it.id,{cant:(it.cant||1)+1})} style={{width:30,height:30,background:colors.btnSecondary,color:colors.accent,padding:0}}>+</button>
+            </div>}
+            <button className="btn" style={{...b,color:colors.error,background:colors.errorBg,border:`1px solid ${colors.errorBorder}`}} onClick={()=>{quitarItem(it.id);cerrar();}}>🗑️ Quitar de la lista</button>
+            <button className="btn" onClick={cerrar} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:11,marginTop:4}}>Cerrar</button>
+          </div>
+        </div>);})()}
+
+      {/* Opciones de la lista */}
+      {opciones&&<ListaOpcionesModal lista={l} colors={colors} onClose={()=>setOpciones(false)}
+        onGuardar={(cambios)=>{guardarLista({...l,...cambios});setOpciones(false);showToast("✅ Lista actualizada");}}
+        onDestildar={()=>{guardarLista({...l,items:l.items.map(it=>({...it,estado:"pendiente"}))});setOpciones(false);}}
+        onEliminar={()=>askConfirm(`¿Eliminar la lista "${l.nombre}"?`,async()=>{setOpciones(false);await borrarLista(l.id);pop();showToast("🗑️ Lista eliminada");},"Eliminar","#ef4444")}/>}
+    </div>);
+  }
+
+  function ListaOpcionesModal({lista,onGuardar,onDestildar,onEliminar,onClose,colors}) {
+    const [nombre,setNombre]=useState(lista.nombre);
+    const [fija,setFija]=useState(!!lista.fija);
+    return (
+      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div className="fade" style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:22,maxWidth:380,width:"100%"}}>
+          <div style={{fontWeight:700,fontSize:18,color:colors.text,marginBottom:16}}>Opciones de la lista</div>
+          <div className="field" style={{marginBottom:16}}><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={nombre} onChange={e=>setNombre(e.target.value)}/></div>
+          <div onClick={()=>setFija(f=>!f)} style={{display:"flex",gap:12,alignItems:"flex-start",cursor:"pointer",background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,borderRadius:12,padding:"12px 14px",marginBottom:16}}>
+            <div style={{width:42,height:24,borderRadius:12,background:fija?colors.accent:colors.hoverCard,position:"relative",flexShrink:0,transition:"background .15s"}}><div style={{position:"absolute",top:3,left:fija?21:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left .15s"}}/></div>
+            <div><div style={{fontSize:14,fontWeight:600,color:colors.text}}>Lista fija</div><div style={{fontSize:12,color:colors.textMuted,marginTop:3,lineHeight:1.4}}>Al terminar la compra, los productos no se borran: solo se destildan, para usarla otra vez (por ejemplo, "Compra quincenal").</div></div>
+          </div>
+          <div style={{display:"flex",gap:10,marginBottom:16}}>
+            <button className="btn" disabled={!nombre.trim()} onClick={()=>onGuardar({nombre:nombre.trim(),fija})} style={{flex:1,background:nombre.trim()?colors.accent:colors.btnSecondary,color:"#fff",padding:12,fontSize:14,fontWeight:700}}>Guardar</button>
+            <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12,fontSize:14}}>Cancelar</button>
+          </div>
+          <div style={{borderTop:`1px solid ${colors.cardBorder}`,paddingTop:14,display:"flex",flexDirection:"column",gap:8}}>
+            <button className="btn" onClick={onDestildar} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:11,fontSize:13}}>↩️ Destildar todo</button>
+            <button className="btn" onClick={onEliminar} style={{background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:11,fontSize:13}}>🗑️ Eliminar lista</button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // ── InflacionScreen ───────────────────────────────────────────────────────────
