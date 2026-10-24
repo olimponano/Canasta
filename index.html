@@ -1866,7 +1866,7 @@
     const s=current.screen;
     const shared={listas,guardarLista,crearLista,borrarLista,agregarALista,cantSugerida,compraListaId,setCompraListaId,iniciarCompra,agregarAlTicket,cats,productos:productosUI,inflacion,guardarInflacion,guardarInflacionVarios,borrarInflacion,empezarInflacion,dejarInflacion,refEnMes,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion,borrarBaseDatos,editarCategoria,editarSubcategoria,eliminarCategoria,eliminarSubcategoria};
 
-    const isMenuScreen=["export","backup","import","config","cuenta","grupo"].includes(s);
+    const isMenuScreen=["export","backup","import","config","cuenta","grupo","inflacion","listas","lista-detalle"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
 
     return (
@@ -3381,7 +3381,7 @@
     const [compraItem,setCompraItem]=useState(null);   // item que se está comprando (abre la tarjeta de precio)
     const [opcItem,setOpcItem]=useState(null);         // item con menú de opciones (pulsación larga)
     const [opciones,setOpciones]=useState(false);      // opciones de la lista
-    const [verSug,setVerSug]=useState(true);
+    const [verSug,setVerSug]=useState(false);
     const lp=useLongPress();
     if(!l) return (<div className="fade"><TopBar colors={colors} title="📝 Lista" onBack={pop}/><div style={{color:colors.textMuted,padding:20,textAlign:"center"}}>Esta lista ya no existe.</div></div>);
 
@@ -3463,24 +3463,27 @@
       <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?"🛒 Comprando":null,l.fija?"Lista fija":null,compartido?"Compartida con tu grupo":null].filter(Boolean).join(" · ")||undefined} onBack={pop}
         right={<button className="btn" onClick={()=>setOpciones(true)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 12px",fontSize:15}}>⚙️</button>}/>
 
-      {/* Resumen / progreso */}
-      <div className="card" style={{padding:"14px 16px",marginBottom:12}}>
+      {/* Resumen / progreso (suelto) */}
+      <div style={{margin:"2px 2px 14px"}}>
         {enCompra?(<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-            <div style={{fontSize:14,fontWeight:700,color:colors.text}}>{r.hechos} de {r.total}</div>
-            <div style={{fontSize:12.5,color:colors.textMuted}}><b className="mono" style={{color:"#10b981"}}>{fmtEntero(r.gastado)}</b>{r.estimado>0?<> de ~{fmtEntero(r.estimado)}</>:null}</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
+            <div style={{fontSize:24,fontWeight:700,color:colors.text,letterSpacing:"-.02em"}}>{r.hechos} <span style={{fontSize:15,color:colors.textMuted,fontWeight:500}}>de {r.total}</span></div>
+            <div style={{textAlign:"right"}}>
+              <div className="mono" style={{fontSize:22,fontWeight:700,color:"#10b981"}}>{fmtEntero(r.gastado)}</div>
+              {r.estimado>0&&<div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>de ~{fmtEntero(r.estimado)} estimado</div>}
+            </div>
           </div>
-          <div style={{height:6,background:colors.inputBg,borderRadius:3,marginTop:10,overflow:"hidden"}}><div style={{width:`${pct*100}%`,height:"100%",background:"#10b981",transition:"width .3s"}}/></div>
+          <div style={{height:6,background:colors.card,borderRadius:3,marginTop:10,overflow:"hidden"}}><div style={{width:`${pct*100}%`,height:"100%",background:"#10b981",transition:"width .3s"}}/></div>
+          <div style={{fontSize:11.5,color:colors.textMuted,marginTop:8,lineHeight:1.4}}>Tocá el círculo para cargar el precio. Mantené apretado un producto para tildarlo sin precio o marcar que no había.</div>
         </>):(
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-            <div style={{fontSize:14,color:colors.text}}><b>{r.total}</b> <span style={{color:colors.textMuted}}>producto{r.total!==1?"s":""}</span></div>
-            {r.estimado>0&&<div style={{fontSize:12.5,color:colors.textMuted}}>Estimado <b className="mono" style={{color:colors.text}}>~{fmtEntero(r.estimado)}</b></div>}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
+            <div style={{fontSize:24,fontWeight:700,color:colors.text,letterSpacing:"-.02em"}}>{r.total} <span style={{fontSize:15,color:colors.textMuted,fontWeight:500}}>producto{r.total!==1?"s":""}</span></div>
+            {r.estimado>0&&<div style={{textAlign:"right"}}>
+              <div className="mono" style={{fontSize:22,fontWeight:700,color:colors.text}}>~{fmtEntero(r.estimado)}</div>
+              <div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>estimado</div>
+            </div>}
           </div>
         )}
-        {!enCompra&&items.length>0&&(!modoCompras
-          ?<button className="btn" onClick={()=>iniciarCompra(l.id)} style={{width:"100%",marginTop:12,background:"#10b981",color:"#fff",padding:12,fontSize:14,fontWeight:700}}>🛒 Ir de compras con esta lista</button>
-          :<button className="btn" onClick={()=>{setCompraListaId(l.id);showToast("📝 Lista vinculada a la compra");}} style={{width:"100%",marginTop:12,background:"#10b98122",border:"1px solid #10b981",color:"#10b981",padding:11,fontSize:13.5,fontWeight:600}}>Usar esta lista en la compra actual</button>)}
-        {enCompra&&<div style={{fontSize:11.5,color:colors.textMuted,marginTop:10,lineHeight:1.4}}>Tocá el círculo para cargar el precio. Mantené apretado un producto para tildarlo sin precio o marcar que no había.</div>}
       </div>
 
       {/* Agregar */}
@@ -3501,7 +3504,7 @@
       {!q&&!enCompra&&sugeridos.length>0&&(
         <div className="card" style={{padding:"12px 14px",marginBottom:12,border:`1px solid ${colors.warning}55`}}>
           <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>setVerSug(v=>!v)}>
-            <div style={{flex:1,fontSize:13.5,fontWeight:600,color:colors.text}}>💡 Se te están por acabar ({sugeridos.length})</div>
+            <div style={{flex:1,fontSize:13.5,fontWeight:600,color:colors.text}}>💡 Sugerencias ({sugeridos.length})</div>
             <span style={{fontSize:12,color:colors.textMuted}}>{verSug?"▼":"▶"}</span>
           </div>
           {verSug&&<>
@@ -3521,6 +3524,15 @@
       {ordenGrupos.map(g=><React.Fragment key={g.cat?.id||"otros"}>{Seccion({titulo:g.cat?`${g.cat.emoji} ${g.cat.label}`:"📝 Otros",its:g.items})}</React.Fragment>)}
       {Seccion({titulo:`No había (${noHabia.length})`,its:noHabia,color:colors.warning})}
       {Seccion({titulo:`Comprado (${hechos.length})`,its:hechos,color:"#10b981"})}
+
+      {!enCompra&&items.length>0&&(<>
+        <div style={{height:64}}/>
+        <div style={{position:"fixed",left:0,right:0,bottom:modoCompras?140:72,zIndex:140,maxWidth:500,margin:"0 auto",padding:"0 16px"}}>
+          {!modoCompras
+            ?<button className="btn" onClick={()=>iniciarCompra(l.id)} style={{width:"100%",background:"#10b981",color:"#fff",padding:13,fontSize:14.5,fontWeight:700,boxShadow:`0 6px 20px ${colors.shadowSoft}`}}>🛒 Ir de compras con esta lista</button>
+            :<button className="btn" onClick={()=>{setCompraListaId(l.id);showToast("📝 Lista vinculada a la compra");}} style={{width:"100%",background:colors.card,border:"1px solid #10b981",color:"#10b981",padding:12,fontSize:14,fontWeight:600,boxShadow:`0 6px 20px ${colors.shadowSoft}`}}>Usar esta lista en la compra actual</button>}
+        </div>
+      </>)}
 
       {/* Tarjeta de precio al tildar en compra */}
       {compraItem&&compraP&&<ComprasCardInline p={compraP} cat={cats.find(c=>c.id===compraP.catId)} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} colors={colors}
