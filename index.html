@@ -1484,14 +1484,12 @@
       if(!p.unidadesMes)return 1;
       return Math.max(1,Math.ceil(p.unidadesMes-stockTotal(p)-1e-9));
     };
-    // Al terminar la compra: lo comprado sale de la lista (o se destilda si es fija); "no había" vuelve a pendiente
+    // Al terminar la compra: lo comprado queda como "ya comprado" (tachado al fondo); lo demás vuelve a pendiente
     const cerrarListaDeCompra=(listaId,itemsTicket)=>{
       const l=listas.find(x=>x.id===listaId); if(!l)return;
       const enTicket=new Set(itemsTicket.map(i=>i.prodId));
       const comprado=it=>it.estado==="tilde"||(it.prodId&&enTicket.has(it.prodId));
-      const items=l.fija
-        ?l.items.map(it=>({...it,estado:"pendiente"}))
-        :l.items.map(it=>({...it,estado:it.estado==="comprado"||comprado(it)?"comprado":"pendiente"}));
+      const items=l.items.map(it=>({...it,estado:it.estado==="comprado"||comprado(it)?"comprado":"pendiente"}));
       guardarLista({...l,items});
     };
 
@@ -3439,7 +3437,6 @@
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <div style={{fontWeight:600,fontSize:16,color:colors.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.nombre}</div>
-                {l.fija&&<span style={{fontSize:10,fontWeight:700,color:colors.accent,background:colors.accent+"22",borderRadius:5,padding:"2px 6px",flexShrink:0}}>FIJA</span>}
                 {compraListaId===l.id&&<span style={{fontSize:10,fontWeight:700,color:"#10b981",background:"#10b98122",borderRadius:5,padding:"2px 6px",flexShrink:0}}>EN COMPRA</span>}
               </div>
               <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{k.total===0?"Vacía":`${k.comprados}/${k.total} comprados`}</div>
@@ -3474,7 +3471,6 @@
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <div style={{fontWeight:600,fontSize:16,color:colors.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.nombre}</div>
-                {l.fija&&<span style={{fontSize:10,fontWeight:700,color:colors.accent,background:colors.accent+"22",borderRadius:5,padding:"2px 6px"}}>FIJA</span>}
                 {modoCompras&&compraListaId===l.id&&<span style={{fontSize:10,fontWeight:700,color:"#10b981",background:"#10b98122",borderRadius:5,padding:"2px 6px"}}>COMPRANDO</span>}
               </div>
               <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{r.total===0?"Vacía":`${r.pendientes} pendiente${r.pendientes!==1?"s":""} de ${r.total}`}</div>
@@ -3612,7 +3608,7 @@
             <div style={{fontSize:11,color:colors.textMuted,marginTop:2}}>Tocá para marcar o desmarcar</div>
           </div>
         </div>);})():(<>
-      <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?`🛒 ${r.hechos}/${r.total} comprados`:`${r.total} producto${r.total!==1?"s":""}`,l.fija?"Lista fija":null].filter(Boolean).join(" · ")} onBack={()=>{if(enCompra)pausarCompra();pop();}}
+      <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?`🛒 ${r.hechos}/${r.total} comprados`:`${r.total} producto${r.total!==1?"s":""}`].join(" · ")} onBack={()=>{if(enCompra)pausarCompra();pop();}}
         right={enCompra
           ?<div style={{textAlign:"right"}}><div className="mono" style={{fontSize:22,fontWeight:700,color:"#10b981",lineHeight:1.1}}>{fmtEntero(r.gastado)}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{r.estimado>0?`de ${fmtEntero(r.estimado)} estimado`:"gastado"}</div></div>
           :r.estimado>0?<div style={{textAlign:"right"}}><div className="mono" style={{fontSize:22,fontWeight:700,color:colors.text,lineHeight:1.1}}>{fmtEntero(r.estimado)}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>estimado</div></div>:null}/>
@@ -3677,11 +3673,13 @@
 
       {!enCompra&&!selMode&&items.length>0&&(<>
         <div style={{height:64}}/>
+        {ReactDOM.createPortal(
         <div style={{position:"fixed",left:0,right:0,bottom:modoCompras?140:72,zIndex:140,maxWidth:500,margin:"0 auto",padding:"0 16px"}}>
           {!modoCompras
             ?<button className="btn" onClick={()=>iniciarCompra(l.id)} style={{width:"100%",background:"#10b981",color:"#fff",padding:13,fontSize:14.5,fontWeight:700,boxShadow:`0 6px 20px ${colors.shadowSoft}`}}>🛒 Ir de compras con esta lista</button>
             :<button className="btn" onClick={()=>{setCompraListaId(l.id);showToast("📝 Lista vinculada a la compra");}} style={{width:"100%",background:colors.card,border:"1px solid #10b981",color:"#10b981",padding:12,fontSize:14,fontWeight:600,boxShadow:`0 6px 20px ${colors.shadowSoft}`}}>Usar esta lista en la compra actual</button>}
         </div>
+        ,document.body)}
       </>)}
 
       {/* Tarjeta de precio al tildar en compra */}
@@ -3714,18 +3712,13 @@
 
   function ListaOpcionesModal({lista,onGuardar,onClose,colors}) {
     const [nombre,setNombre]=useState(lista.nombre);
-    const [fija,setFija]=useState(!!lista.fija);
     return (
       <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
         <div className="fade" style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:22,maxWidth:380,width:"100%"}}>
           <div style={{fontWeight:700,fontSize:18,color:colors.text,marginBottom:16}}>Editar lista</div>
           <div className="field" style={{marginBottom:16}}><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={nombre} onChange={e=>setNombre(e.target.value)}/></div>
-          <div onClick={()=>setFija(f=>!f)} style={{display:"flex",gap:12,alignItems:"flex-start",cursor:"pointer",background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,borderRadius:12,padding:"12px 14px",marginBottom:16}}>
-            <div style={{width:42,height:24,borderRadius:12,background:fija?colors.accent:colors.hoverCard,position:"relative",flexShrink:0,transition:"background .15s"}}><div style={{position:"absolute",top:3,left:fija?21:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left .15s"}}/></div>
-            <div><div style={{fontSize:14,fontWeight:600,color:colors.text}}>Lista fija</div><div style={{fontSize:12,color:colors.textMuted,marginTop:3,lineHeight:1.4}}>Al terminar la compra, todos los productos vuelven a quedar pendientes, en vez de pasar a "Ya comprado". Sirve para listas que se repiten, como "Compra quincenal".</div></div>
-          </div>
           <div style={{display:"flex",gap:10}}>
-            <button className="btn" disabled={!nombre.trim()} onClick={()=>onGuardar({nombre:nombre.trim(),fija})} style={{flex:1,background:nombre.trim()?colors.accent:colors.btnSecondary,color:"#fff",padding:12,fontSize:14,fontWeight:700}}>Guardar</button>
+            <button className="btn" disabled={!nombre.trim()} onClick={()=>onGuardar({nombre:nombre.trim()})} style={{flex:1,background:nombre.trim()?colors.accent:colors.btnSecondary,color:"#fff",padding:12,fontSize:14,fontWeight:700}}>Guardar</button>
             <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12,fontSize:14}}>Cancelar</button>
           </div>
         </div>
