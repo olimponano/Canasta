@@ -1472,9 +1472,12 @@
     // Agrega productos a una lista (si ya están, no los duplica)
     const agregarALista=async(listaId,prods)=>{
       const l=listas.find(x=>x.id===listaId); if(!l)return 0;
+      const ids=new Set(prods.map(p=>p.id));
+      let reactivados=0;
+      const items=l.items.map(it=>{if(it.prodId&&ids.has(it.prodId)&&it.estado==="comprado"){reactivados++;return {...it,estado:"pendiente"};}return it;});
       const nuevos=prods.filter(p=>!l.items.some(it=>it.prodId===p.id)).map(p=>({id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}));
-      if(nuevos.length)await guardarLista({...l,items:[...l.items,...nuevos]});
-      return nuevos.length;
+      if(nuevos.length||reactivados)await guardarLista({...l,items:[...items,...nuevos]});
+      return nuevos.length+reactivados;
     };
     // Cantidad sugerida: lo que falta para cubrir un mes de consumo (mínimo 1)
     const cantSugerida=(p)=>{
@@ -1488,7 +1491,7 @@
       const comprado=it=>it.estado==="tilde"||(it.prodId&&enTicket.has(it.prodId));
       const items=l.fija
         ?l.items.map(it=>({...it,estado:"pendiente"}))
-        :l.items.filter(it=>!comprado(it)).map(it=>({...it,estado:"pendiente"}));
+        :l.items.map(it=>({...it,estado:it.estado==="comprado"||comprado(it)?"comprado":"pendiente"}));
       guardarLista({...l,items});
     };
 
@@ -3306,6 +3309,7 @@
     (l.items||[]).forEach(it=>{
       const p=it.prodId?productos.find(x=>x.id===it.prodId):null;
       if(it.prodId&&!p)return; // producto borrado
+      if(it.estado==="comprado")return; // comprado en una compra anterior
       total++;
       const t=it.prodId?enTicket.get(it.prodId):null;
       if(t){hechos++;gastado+=t.totalPagado??t.precio??0;}
@@ -3383,9 +3387,7 @@
     const listaCompra=compraListaId?listas.find(l=>l.id===compraListaId):null;
     return (<div className="fade">
       <div style={{padding:"28px 0 16px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-        <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:colors.text}}>🛒 Compras</div>
-          <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{listas.length} lista{listas.length!==1?"s":""}{compartido?" · compartidas con tu grupo":""}</div>
-        </div>
+        <div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:colors.text,display:"flex",alignItems:"center",gap:8}}><AppLogo size={28}/>Canasta</div>
         <HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} session={session}/>
       </div>
 
@@ -3410,7 +3412,7 @@
 
       <button className="btn" onClick={()=>setNueva(true)} style={{width:"100%",marginBottom:20,padding:"18px 16px",background:colors.card,border:`1px dashed ${colors.hoverCard}`,color:colors.accent,fontSize:15,fontWeight:600,borderRadius:14}}>+ Crear lista</button>
 
-      {listas.length>0&&<div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",margin:"0 2px 10px"}}>Mis listas</div>}
+      {listas.length>0&&<div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",margin:"0 2px 10px"}}>Mis listas ({listas.length})</div>}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {listas.map(l=>{
           const r=resumenLista(l,productos,compraListaId===l.id?ticket:[]);
@@ -3438,7 +3440,7 @@
     const [nueva,setNueva]=useState(false);
     const compartido=(grupoInfo?.miembros?.length||0)>1;
     return (<div className="fade">
-      <TopBar colors={colors} title="📝 Listas" subtitle={compartido?"Compartidas con tu grupo familiar":"Planificá tus compras"} onBack={pop}/>
+      <TopBar colors={colors} title="📝 Listas" onBack={pop}/>
       {listas.length===0&&<div className="card" style={{padding:20,fontSize:13.5,color:colors.textMuted,lineHeight:1.5,marginBottom:12}}>Todavía no tenés listas. Creá una, por ejemplo "Súper" o "Verdulería".</div>}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {listas.map(l=>{
@@ -3481,6 +3483,7 @@
     const prodDe=(it)=>it.prodId?productos.find(x=>x.id===it.prodId):null;
     const items=l.items.filter(it=>!it.prodId||prodDe(it));
     const estadoDe=(it)=>{
+      if(it.estado==="comprado")return "comprado";       // comprado en una compra anterior
       if(!enCompra)return "pendiente";
       if(it.prodId&&enTicket.has(it.prodId))return "ticket";
       return it.estado||"pendiente";
@@ -3488,11 +3491,16 @@
     const setItems=(fn)=>guardarLista({...l,items:fn(l.items)});
     const cambiarItem=(id,cambios)=>setItems(its=>its.map(x=>x.id===id?{...x,...cambios}:x));
     const quitarItem=(id)=>setItems(its=>its.filter(x=>x.id!==id));
-    const agregarProd=(p)=>{setItems(its=>[...its,{id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}]);setQ("");};
+    const agregarProd=(p)=>{
+      const ya=l.items.find(x=>x.prodId===p.id);
+      if(ya)cambiarItem(ya.id,{estado:"pendiente"});
+      else setItems(its=>[...its,{id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}]);
+      setQ("");
+    };
     const agregarTexto=(t)=>{setItems(its=>[...its,{id:uid(),prodId:null,texto:t.trim(),cant:1,estado:"pendiente"}]);setQ("");};
 
     // Buscador para agregar
-    const enLista=new Set(items.filter(x=>x.prodId).map(x=>x.prodId));
+    const enLista=new Set(items.filter(x=>x.prodId&&x.estado!=="comprado").map(x=>x.prodId));
     const resultados=q.trim()?productos.filter(p=>!enLista.has(p.id)&&(norm(p.nombre).includes(norm(q))||norm(p.marca||"").includes(norm(q)))).sort((a,b)=>alphaStr(a.nombre,b.nombre)).slice(0,6):[];
     // Sugerencias: se acaban en menos de 2 semanas
     const sugeridos=productos.filter(p=>!enLista.has(p.id)&&p.unidadesMes>0&&(mesesRestantes(p)??99)<0.5).sort((a,b)=>(mesesRestantes(a)||0)-(mesesRestantes(b)||0));
@@ -3511,21 +3519,22 @@
     const ordenGrupos=Object.values(grupos).sort((a,b)=>!a.cat?1:!b.cat?-1:alpha(a.cat,b.cat));
     const noHabia=items.filter(it=>estadoDe(it)==="no_habia");
     const hechos=items.filter(it=>["tilde","ticket"].includes(estadoDe(it)));
+    const anteriores=items.filter(it=>estadoDe(it)==="comprado");
 
     const Fila=({it})=>{
       const p=prodDe(it); const st=estadoDe(it); const c=p?cats.find(x=>x.id===p.catId):null;
-      const hecho=st==="tilde"||st==="ticket"; const nh=st==="no_habia";
+      const hecho=st==="tilde"||st==="ticket"||st==="comprado"; const nh=st==="no_habia"; const ant=st==="comprado";
       const t=st==="ticket"?enTicket.get(it.prodId):null;
       const pe=precioEstimado(p);
       const meta=p?[p.marca,p.cantidadRef?fmtCantRef(p):null].filter(Boolean).join(" · "):"Ítem libre";
-      return (<div {...lp(()=>setOpcItem(it),null)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderLeft:`3px solid ${c?.color||colors.hoverCard}`,...noSelectStyle}}>
-        {enCompra&&<div onClick={e=>{e.stopPropagation();tocarCirculo(it);}} style={{width:26,height:26,borderRadius:"50%",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",
+      return (<div {...lp(()=>setOpcItem(it),null)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderLeft:`3px solid ${c?.color||colors.hoverCard}`,opacity:ant?0.5:1,...noSelectStyle}}>
+        {enCompra&&!ant&&<div onClick={e=>{e.stopPropagation();tocarCirculo(it);}} style={{width:26,height:26,borderRadius:"50%",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",
           border:`2px solid ${hecho?"#10b981":nh?colors.warning:colors.hoverCard}`,background:hecho?"#10b981":"transparent"}}>{hecho?"✓":nh?<span style={{color:colors.warning,fontSize:12}}>✕</span>:""}</div>}
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:14.5,fontWeight:600,color:hecho||nh?colors.textMuted:colors.text,textDecoration:hecho?"line-through":"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p?p.nombre:it.texto}</div>
           <div style={{display:"flex",gap:8,alignItems:"baseline",marginTop:2,fontSize:11.5,color:colors.textMuted,whiteSpace:"nowrap",overflow:"hidden"}}>
             <span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{meta}{nh?" · no había":""}</span>
-            {!t&&pe&&!nh&&<span className="mono" style={{flexShrink:0,marginLeft:"auto",color:colors.textSecondary}}>~{fmtEntero(pe*(it.cant||1))}</span>}
+            {!t&&pe&&!nh&&!ant&&<span className="mono" style={{flexShrink:0,marginLeft:"auto",color:colors.textSecondary}}>~{fmtEntero(pe*(it.cant||1))}</span>}
           </div>
         </div>
         {!enCompra&&!hecho&&!nh?(
@@ -3550,14 +3559,13 @@
     const pct=r.total?r.hechos/r.total:0;
     const compraP=compraItem?prodDe(compraItem):null;
     return (<div className="fade">
-      <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?"🛒 Comprando":null,l.fija?"Lista fija":null,compartido?"Compartida con tu grupo":null].filter(Boolean).join(" · ")||undefined} onBack={()=>{if(enCompra)pausarCompra();pop();}}
+      <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?`🛒 ${r.hechos} de ${r.total} comprados`:`${r.total} producto${r.total!==1?"s":""}`,l.fija?"Lista fija":null].filter(Boolean).join(" · ")} onBack={()=>{if(enCompra)pausarCompra();pop();}}
         right={<button className="btn" onClick={()=>setOpciones(true)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 12px",fontSize:15}}>⚙️</button>}/>
 
       {/* Resumen / progreso (suelto) */}
       <div style={{margin:"2px 2px 14px"}}>
         {enCompra?(<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
-            <div style={{fontSize:24,fontWeight:700,color:colors.text,letterSpacing:"-.02em"}}>{r.hechos} <span style={{fontSize:15,color:colors.textMuted,fontWeight:500}}>de {r.total}</span></div>
+          <div style={{display:"flex",justifyContent:"flex-end",alignItems:"baseline",gap:10}}>
             <div style={{textAlign:"right"}}>
               <div className="mono" style={{fontSize:22,fontWeight:700,color:"#10b981"}}>{fmtEntero(r.gastado)}</div>
               {r.estimado>0&&<div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>estimado {fmtEntero(r.estimado)}</div>}
@@ -3566,8 +3574,7 @@
           <div style={{height:6,background:colors.card,borderRadius:3,marginTop:10,overflow:"hidden"}}><div style={{width:`${pct*100}%`,height:"100%",background:"#10b981",transition:"width .3s"}}/></div>
           <div style={{fontSize:11.5,color:colors.textMuted,marginTop:8,lineHeight:1.4}}>Tocá el círculo para cargar el precio. Mantené apretado un producto para tildarlo sin precio o marcar que no había.</div>
         </>):(
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
-            <div style={{fontSize:24,fontWeight:700,color:colors.text,letterSpacing:"-.02em"}}>{r.total} <span style={{fontSize:15,color:colors.textMuted,fontWeight:500}}>producto{r.total!==1?"s":""}</span></div>
+          <div style={{display:"flex",justifyContent:"flex-end",alignItems:"baseline",gap:10}}>
             {r.estimado>0&&<div style={{display:"flex",alignItems:"baseline",gap:8}}>
               <span style={{fontSize:15,color:colors.textMuted,fontWeight:500}}>estimado</span>
               <span className="mono" style={{fontSize:22,fontWeight:700,color:colors.text}}>{fmtEntero(r.estimado)}</span>
@@ -3614,6 +3621,7 @@
       {ordenGrupos.map(g=><React.Fragment key={g.cat?.id||"otros"}>{Seccion({titulo:g.cat?`${g.cat.emoji} ${g.cat.label}`:"📝 Otros",its:g.items})}</React.Fragment>)}
       {Seccion({titulo:`No había (${noHabia.length})`,its:noHabia,color:colors.warning})}
       {Seccion({titulo:`Comprado (${hechos.length})`,its:hechos,color:"#10b981"})}
+      {Seccion({titulo:`Ya comprado (${anteriores.length})`,its:anteriores})}
 
       {!enCompra&&items.length>0&&(<>
         <div style={{height:64}}/>
@@ -3635,8 +3643,9 @@
         return (<div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&cerrar()}>
           <div className="fade" style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:20,maxWidth:320,width:"100%",display:"flex",flexDirection:"column",gap:8}}>
             <div style={{fontWeight:700,fontSize:16,color:colors.text,textAlign:"center",marginBottom:6}}>{p?p.nombre:it.texto}</div>
-            {enCompra&&st!=="ticket"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="tilde"?"pendiente":"tilde"});cerrar();}}>{st==="tilde"?"↩️ Destildar":"✓ Tildar sin cargar precio"}</button>}
-            {enCompra&&st!=="ticket"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="no_habia"?"pendiente":"no_habia"});cerrar();}}>{st==="no_habia"?"↩️ Volver a pendiente":"✕ No había"}</button>}
+            {st==="comprado"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:"pendiente"});cerrar();}}>↩️ Volver a la lista</button>}
+            {enCompra&&st!=="ticket"&&st!=="comprado"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="tilde"?"pendiente":"tilde"});cerrar();}}>{st==="tilde"?"↩️ Destildar":"✓ Tildar sin cargar precio"}</button>}
+            {enCompra&&st!=="ticket"&&st!=="comprado"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="no_habia"?"pendiente":"no_habia"});cerrar();}}>{st==="no_habia"?"↩️ Volver a pendiente":"✕ No había"}</button>}
             {st==="pendiente"&&enCompra&&<div style={{display:"flex",alignItems:"center",gap:8,...b}}>
               <span style={{flex:1}}>Cantidad</span>
               <button className="btn" onClick={()=>it.cant>1&&cambiarItem(it.id,{cant:it.cant-1})} style={{width:30,height:30,background:colors.btnSecondary,color:colors.textSecondary,padding:0}}>−</button>
@@ -3652,11 +3661,12 @@
       {opciones&&<ListaOpcionesModal lista={l} colors={colors} onClose={()=>setOpciones(false)}
         onGuardar={(cambios)=>{guardarLista({...l,...cambios});setOpciones(false);showToast("✅ Lista actualizada");}}
         onDestildar={()=>{guardarLista({...l,items:l.items.map(it=>({...it,estado:"pendiente"}))});setOpciones(false);}}
+        onBorrarComprados={()=>{guardarLista({...l,items:l.items.filter(it=>it.estado!=="comprado")});setOpciones(false);showToast("🧹 Se quitaron los ya comprados");}}
         onEliminar={()=>askConfirm(`¿Eliminar la lista "${l.nombre}"?`,async()=>{setOpciones(false);await borrarLista(l.id);pop();showToast("🗑️ Lista eliminada");},"Eliminar","#ef4444")}/>}
     </div>);
   }
 
-  function ListaOpcionesModal({lista,onGuardar,onDestildar,onEliminar,onClose,colors}) {
+  function ListaOpcionesModal({lista,onGuardar,onDestildar,onBorrarComprados,onEliminar,onClose,colors}) {
     const [nombre,setNombre]=useState(lista.nombre);
     const [fija,setFija]=useState(!!lista.fija);
     return (
@@ -3666,14 +3676,15 @@
           <div className="field" style={{marginBottom:16}}><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={nombre} onChange={e=>setNombre(e.target.value)}/></div>
           <div onClick={()=>setFija(f=>!f)} style={{display:"flex",gap:12,alignItems:"flex-start",cursor:"pointer",background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,borderRadius:12,padding:"12px 14px",marginBottom:16}}>
             <div style={{width:42,height:24,borderRadius:12,background:fija?colors.accent:colors.hoverCard,position:"relative",flexShrink:0,transition:"background .15s"}}><div style={{position:"absolute",top:3,left:fija?21:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left .15s"}}/></div>
-            <div><div style={{fontSize:14,fontWeight:600,color:colors.text}}>Lista fija</div><div style={{fontSize:12,color:colors.textMuted,marginTop:3,lineHeight:1.4}}>Al terminar la compra, los productos no se borran: solo se destildan, para usarla otra vez (por ejemplo, "Compra quincenal").</div></div>
+            <div><div style={{fontSize:14,fontWeight:600,color:colors.text}}>Lista fija</div><div style={{fontSize:12,color:colors.textMuted,marginTop:3,lineHeight:1.4}}>Al terminar la compra, todos los productos vuelven a quedar pendientes, en vez de pasar a "Ya comprado". Sirve para listas que se repiten, como "Compra quincenal".</div></div>
           </div>
           <div style={{display:"flex",gap:10,marginBottom:16}}>
             <button className="btn" disabled={!nombre.trim()} onClick={()=>onGuardar({nombre:nombre.trim(),fija})} style={{flex:1,background:nombre.trim()?colors.accent:colors.btnSecondary,color:"#fff",padding:12,fontSize:14,fontWeight:700}}>Guardar</button>
             <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12,fontSize:14}}>Cancelar</button>
           </div>
           <div style={{borderTop:`1px solid ${colors.cardBorder}`,paddingTop:14,display:"flex",flexDirection:"column",gap:8}}>
-            <button className="btn" onClick={onDestildar} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:11,fontSize:13}}>↩️ Destildar todo</button>
+            <button className="btn" onClick={onDestildar} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:11,fontSize:13}}>↩️ Volver todo a pendiente</button>
+            {lista.items.some(it=>it.estado==="comprado")&&<button className="btn" onClick={onBorrarComprados} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:11,fontSize:13}}>🧹 Quitar los ya comprados</button>}
             <button className="btn" onClick={onEliminar} style={{background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:11,fontSize:13}}>🗑️ Eliminar lista</button>
           </div>
         </div>
