@@ -2500,7 +2500,7 @@
           {lista.map(p=>{
             const pcat=(q||isAll)?cats.find(c=>c.id===p.catId):cat;
             // Stock: pulsación larga para seleccionar (si el panel de ese producto no está abierto)
-            if(isStock&&!modoCompras&&!selectMode) return (<div key={p.id} style={{userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
+            if(isStock&&!modoCompras&&!selectMode) return (<div key={"stock-"+p.id} style={{userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
               onPointerDown={e=>{if(openStockId!==p.id)pressStart(p.id,e);}} onPointerMove={pressMove} onPointerUp={pressEnd} onPointerCancel={pressEnd} onPointerLeave={pressEnd}
               onContextMenu={e=>{if(openStockId!==p.id)e.preventDefault();}}
               onClickCapture={e=>{if(lpFired.current){lpFired.current=false;e.stopPropagation();e.preventDefault();}}}>
@@ -2508,7 +2508,7 @@
             </div>);
             if(modoCompras) return <ComprasCardInline key={p.id} p={p} cat={pcat} stock={stock} stockTotal={stockTotal} guardarStock={guardarStock} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses} guardar={guardar} productos={productos} showToast={showToast} agregarAlTicket={agregarAlTicket} colors={colors}/>;
             const isSel=selected.has(p.id);
-            return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?colors.accent:pcat?.color||"#444"}`,cursor:"pointer",background:isSel?`${colors.accent}22`:colors.card,transition:"all .15s",userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
+            return (<div key={p.id} className="card" style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12,borderLeft:`3px solid ${isSel?colors.accent:pcat?.color||"#444"}`,cursor:"pointer",background:isSel?`${colors.accent}22`:colors.card,transition:"background-color .15s, border-color .15s",userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
               onPointerDown={e=>pressStart(p.id,e)} onPointerMove={pressMove} onPointerUp={pressEnd} onPointerCancel={pressEnd} onPointerLeave={pressEnd}
               onContextMenu={e=>e.preventDefault()}
               onClick={()=>{if(lpFired.current){lpFired.current=false;return;}selectMode?toggleSelect(p.id):push("detalle",{prodId:p.id});}}>
