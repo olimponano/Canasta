@@ -824,7 +824,7 @@
     );
   }
 
-  function HistorialTickets({tickets,setTickets,onClose,askConfirm,colors}) {
+  function HistorialTickets({tickets,setTickets,onClose,askConfirm,colors,pop}) {
     const [ticketAbierto,setTicketAbierto]=useState(null);
     const fmtFecha=(f)=>new Date(f).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit"});
     const eliminarTicket=async(id)=>{
@@ -834,13 +834,9 @@
       try{await sb.from("tickets").delete().eq("id",id);}catch(e){console.warn(e);}
     };
     return (<>
-      <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:colors.card,borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:500,border:`1px solid ${colors.cardBorder}`,borderBottom:"none",maxHeight:"85vh",overflowY:"auto"}}>
-          <div style={{width:40,height:4,background:colors.hoverCard,borderRadius:2,margin:"0 auto 20px"}}/>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div style={{fontWeight:700,fontSize:18,color:colors.text}}>🧾 Historial de compras</div>
-            <div style={{fontSize:12,color:colors.textMuted}}>{tickets.length}/15</div>
-          </div>
+      <div className="fade">
+        <div>
+          <TopBar colors={colors} title="🧾 Historial de compras" subtitle={`${tickets.length} de 15 compras guardadas`} onBack={pop}/>
           {tickets.length===0&&<div style={{color:colors.textMuted,fontSize:14,textAlign:"center",padding:"40px 0"}}>Sin compras registradas aún.</div>}
           {tickets.map((t)=>{
             const totalPagado=t.items.reduce((s,x)=>s+(x.totalPagado??x.precio??0),0);
@@ -872,7 +868,6 @@
               </div>
             );
           })}
-          <button className="btn" onClick={onClose} style={{width:"100%",background:colors.btnSecondary,color:colors.text,padding:13,fontSize:14,marginTop:4}}>Cerrar</button>
         </div>
       </div>
       {ticketAbierto&&<FacturaModal ticket={ticketAbierto} onClose={()=>setTicketAbierto(null)} onEliminar={()=>eliminarTicket(ticketAbierto.id)} askConfirm={askConfirm} colors={colors}/>}
@@ -1212,7 +1207,7 @@
     const [showPromoModal,setShowPromoModal]=useState(false);
     const [ticketOpen,setTicketOpen]=useState(!!draft&&draft.length>0);
     const [tickets,setTickets]=useState([]);
-    const [showHistorial,setShowHistorial]=useState(false);
+    const setShowHistorial=(v)=>{if(v)push("historial");}; // el historial es una pantalla
     const [ticketFinalizado,setTicketFinalizado]=useState(null);
     const [showIniciarCompra,setShowIniciarCompra]=useState(false);
     // ── Listas de compras ──
@@ -1258,6 +1253,30 @@
     const current=stack[stack.length-1];
     const push=(screen,params={})=>setStack(s=>[...s,{screen,...params}]);
     const pop=()=>setStack(s=>s.length>1?s.slice(0,-1):s);
+
+    // ── Botón "Atrás" del teléfono / navegador = flecha de la app ──
+    // Mientras haya una pantalla para volver, se deja una entrada "de reserva" en el historial
+    // del navegador. Al tocar Atrás se consume esa entrada y la app vuelve una pantalla.
+    // En la pantalla inicial no hay reserva: Atrás funciona como siempre (sale de la app).
+    const stackRef=useRef(stack); stackRef.current=stack;
+    const atrasArmado=useRef(false); const ignorarPopstate=useRef(false);
+    const atrasHandlerRef=useRef(null);
+    useEffect(()=>{
+      const hace=stack.length>1;
+      try{
+        if(hace&&!atrasArmado.current){history.pushState({canasta:true},"");atrasArmado.current=true;}
+        else if(!hace&&atrasArmado.current){atrasArmado.current=false;ignorarPopstate.current=true;history.back();}
+      }catch(e){}
+    },[stack.length]);
+    useEffect(()=>{
+      const onPop=()=>{
+        if(ignorarPopstate.current){ignorarPopstate.current=false;return;}
+        atrasArmado.current=false;
+        if(stackRef.current.length>1&&atrasHandlerRef.current)atrasHandlerRef.current();
+      };
+      window.addEventListener("popstate",onPop);
+      return ()=>window.removeEventListener("popstate",onPop);
+    },[]);
 
     // Si se elimina una categoría que está referenciada en el stack de navegación
     // (por ejemplo, la categoría en la que estabas parado), cortamos el stack
@@ -1510,6 +1529,11 @@
     };
     // Volver de la lista en compra: se pausa (sigue en curso) y se vuelve a la pestaña Compras
     const pausarCompra=()=>{setModoCompras(false);setTicketOpen(false);};
+    atrasHandlerRef.current=()=>{
+      const top=stackRef.current[stackRef.current.length-1];
+      if(top?.screen==="lista-detalle"&&modoCompras&&compraListaId===top.listaId)pausarCompra();
+      pop();
+    };
 
     // Empezar: todos los precios actuales pasan a ser la base de este mes; desde el mes siguiente acumulan inflación
     const empezarInflacion=async()=>{
@@ -1889,7 +1913,7 @@
     const s=current.screen;
     const shared={listas,guardarLista,crearLista,borrarLista,agregarALista,cantSugerida,compraListaId,setCompraListaId,compraActiva,iniciarCompra,continuarCompra,pausarCompra,agregarAlTicket,cats,productos:productosUI,inflacion,guardarInflacion,guardarInflacionVarios,borrarInflacion,empezarInflacion,dejarInflacion,refEnMes,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion,borrarBaseDatos,editarCategoria,editarSubcategoria,eliminarCategoria,eliminarSubcategoria};
 
-    const isMenuScreen=["export","backup","import","config","cuenta","grupo","inflacion","listas","lista-detalle"].includes(s);
+    const isMenuScreen=["export","backup","import","config","cuenta","grupo","inflacion","listas","lista-detalle","historial"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
 
     return (
@@ -1909,6 +1933,7 @@
           {s==="export"      &&<ExportScreen {...shared}/>}
           {s==="backup"      &&<BackupScreen {...shared}/>}
           {s==="inflacion"   &&<InflacionScreen {...shared}/>}
+          {s==="historial"   &&<HistorialTickets colors={colors} tickets={tickets} setTickets={setTickets} askConfirm={askConfirm} pop={pop} onClose={pop}/>}
           {s==="listas"      &&<ListasScreen {...shared}/>}
           {s==="lista-detalle"&&<ListaDetalleScreen {...shared} listaId={current.listaId}/>}
           {s==="import"      &&<ImportScreen {...shared}/>}
@@ -1921,7 +1946,7 @@
         {modoCompras&&(
           <TicketDrawer colors={colors} ticket={ticket} setTicket={setTicket} productos={productosUI} cats={cats} ticketOpen={ticketOpen} setTicketOpen={setTicketOpen} onFinalizar={finalizarCompra} onCancelar={cancelarCompra} askConfirm={askConfirm} onAddSuelto={()=>setShowItemSuelto(true)} onAddProducto={()=>setShowNuevoProdModal(true)} promo={promo} onEditPromo={()=>setShowPromoModal(true)} stock={stock} stockTotal={stockTotal} mesesRestantes={mesesRestantes} fmtMeses={fmtMeses}/>
         )}
-        {showHistorial&&<HistorialTickets colors={colors} tickets={tickets} setTickets={setTickets} onClose={()=>setShowHistorial(false)} askConfirm={askConfirm}/>}
+
         {ticketFinalizado&&<TicketFinalizadoModal colors={colors} ticket={ticketFinalizado} onClose={()=>setTicketFinalizado(null)}/>}
         {showIniciarCompra&&(
           <Confirm colors={colors} msg="¿Iniciar compra?" onOk={()=>{setModoCompras(true);setShowIniciarCompra(false);}} onCancel={()=>setShowIniciarCompra(false)} okLabel="Iniciar" okColor={colors.success}/>
