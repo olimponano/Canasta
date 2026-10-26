@@ -3319,6 +3319,17 @@
     return {total,hechos,estimado,gastado,pendientes:total-hechos};
   };
 
+  const contarLista=(l,productos,ticket)=>{
+    const enTicket=new Set((ticket||[]).map(i=>i.prodId));
+    let total=0,comprados=0;
+    (l.items||[]).forEach(it=>{
+      if(it.prodId&&!productos.some(x=>x.id===it.prodId))return;
+      total++;
+      if(it.estado==="comprado"||it.estado==="tilde"||(it.prodId&&enTicket.has(it.prodId)))comprados++;
+    });
+    return {total,comprados};
+  };
+
   // Hoja que aparece al tocar el carrito
   function CarritoSheet({listas,productos,onListas,onIniciar,onClose,colors}) {
     const [paso,setPaso]=useState("inicio");
@@ -3379,9 +3390,11 @@
   }
 
   // ── Pestaña Compras: iniciar sin lista, crear lista y ver las listas ───────────
-  function ComprasHomeScreen({listas,productos,ticket,compraListaId,compraActiva,crearLista,push,colors,grupoInfo,iniciarCompra,continuarCompra,setShowHistorial,isDarkMode,toggleDarkMode,session}) {
+  function ComprasHomeScreen({listas,productos,ticket,compraListaId,compraActiva,crearLista,guardarLista,borrarLista,askConfirm,showToast,push,colors,grupoInfo,iniciarCompra,continuarCompra,setShowHistorial,isDarkMode,toggleDarkMode,session}) {
     const [nueva,setNueva]=useState(false);
-    const compartido=(grupoInfo?.miembros?.length||0)>1;
+    const [accion,setAccion]=useState(null);   // lista con menú de pulsación larga
+    const [editar,setEditar]=useState(null);
+    const lp=useLongPress();
     const enCurso=!!compraActiva||(ticket||[]).length>0||!!compraListaId;
     const totalTicket=(ticket||[]).reduce((a,i)=>a+(i.totalPagado??i.precio??0),0);
     const listaCompra=compraListaId?listas.find(l=>l.id===compraListaId):null;
@@ -3410,13 +3423,18 @@
         </button>
       )}
 
-      <button className="btn" onClick={()=>setNueva(true)} style={{width:"100%",marginBottom:20,padding:"18px 16px",background:colors.card,border:`1px dashed ${colors.hoverCard}`,color:colors.accent,fontSize:15,fontWeight:600,borderRadius:14}}>+ Crear lista</button>
+      <button className="btn" onClick={()=>setNueva(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:14,textAlign:"left",padding:"16px 18px",marginBottom:22,background:`linear-gradient(135deg, ${colors.accent}1f, ${colors.accent}08)`,border:`1px solid ${colors.accent}66`,color:colors.text,borderRadius:14}}>
+        <span style={{width:44,height:44,borderRadius:12,background:colors.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:400,flexShrink:0,boxShadow:`0 4px 14px ${colors.accent}55`}}>+</span>
+        <span style={{flex:1}}><div style={{fontWeight:700,fontSize:16}}>Crear lista</div><div style={{fontSize:12.5,color:colors.textMuted,fontWeight:400,marginTop:3}}>Planificá qué vas a comprar</div></span>
+        <span style={{color:colors.hoverCard,fontSize:18}}>›</span>
+      </button>
 
       {listas.length>0&&<div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",margin:"0 2px 10px"}}>Mis listas ({listas.length})</div>}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {listas.map(l=>{
           const r=resumenLista(l,productos,compraListaId===l.id?ticket:[]);
-          return (<div key={l.id} className="card row" onClick={()=>compraListaId===l.id?continuarCompra():push("lista-detalle",{listaId:l.id})} style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14}}>
+          const k=contarLista(l,productos,compraListaId===l.id?ticket:[]);
+          return (<div key={l.id} className="card row" {...lp(()=>setAccion(l),()=>compraListaId===l.id?continuarCompra():push("lista-detalle",{listaId:l.id}))} style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14,...noSelectStyle}}>
             <div style={{fontSize:26}}>📝</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -3424,7 +3442,7 @@
                 {l.fija&&<span style={{fontSize:10,fontWeight:700,color:colors.accent,background:colors.accent+"22",borderRadius:5,padding:"2px 6px",flexShrink:0}}>FIJA</span>}
                 {compraListaId===l.id&&<span style={{fontSize:10,fontWeight:700,color:"#10b981",background:"#10b98122",borderRadius:5,padding:"2px 6px",flexShrink:0}}>EN COMPRA</span>}
               </div>
-              <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{r.total===0?"Vacía":`${r.pendientes} pendiente${r.pendientes!==1?"s":""} de ${r.total}`}</div>
+              <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{k.total===0?"Vacía":`${k.comprados}/${k.total} comprados`}</div>
             </div>
             {r.estimado>0&&<div className="mono" style={{fontSize:14,fontWeight:700,color:colors.textSecondary}}>{fmtEntero(r.estimado)}</div>}
             <div style={{fontSize:18,color:colors.hoverCard}}>›</div>
@@ -3433,6 +3451,12 @@
       </div>
       {nueva&&<EditarCatModal colors={colors} titulo="Nueva lista" inicial={{label:""}} conColor={false} onClose={()=>setNueva(false)}
         onSave={async({label})=>{const l=await crearLista(label);setNueva(false);push("lista-detalle",{listaId:l.id});}}/>}
+      {accion&&<AccionesModal colors={colors} titulo={`📝 ${accion.nombre}`} subtitulo={(()=>{const k=contarLista(accion,productos,[]);return k.total?`${k.total} producto${k.total!==1?"s":""}`:"Vacía";})()}
+        onClose={()=>setAccion(null)}
+        onEditar={()=>{setEditar(accion);setAccion(null);}}
+        onEliminar={()=>{const l=accion;setAccion(null);askConfirm(`¿Eliminar la lista "${l.nombre}"?${compraListaId===l.id?" La compra en curso sigue, pero sin lista.":""}`,async()=>{await borrarLista(l.id);showToast("🗑️ Lista eliminada");},"Eliminar","#ef4444");}}/>}
+      {editar&&<ListaOpcionesModal lista={editar} colors={colors} onClose={()=>setEditar(null)}
+        onGuardar={(cambios)=>{guardarLista({...editar,...cambios});setEditar(null);showToast("✅ Lista actualizada");}}/>}
     </div>);
   }
 
@@ -3471,8 +3495,9 @@
     const [q,setQ]=useState("");
     const [compraItem,setCompraItem]=useState(null);   // item que se está comprando (abre la tarjeta de precio)
     const [opcItem,setOpcItem]=useState(null);         // item con menú de opciones (pulsación larga)
-    const [opciones,setOpciones]=useState(false);      // opciones de la lista
-    const [verSug,setVerSug]=useState(false);
+    const [verSug,setVerSug]=useState(false);          // ventana de sugerencias
+    const [selMode,setSelMode]=useState(false);        // selección múltiple (fuera de la compra)
+    const [sel,setSel]=useState(new Set());
     const lp=useLongPress();
     if(!l) return (<div className="fade"><TopBar colors={colors} title="📝 Lista" onBack={pop}/><div style={{color:colors.textMuted,padding:20,textAlign:"center"}}>Esta lista ya no existe.</div></div>);
 
@@ -3497,6 +3522,12 @@
       else setItems(its=>[...its,{id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}]);
       setQ("");
     };
+    const agregarVarios=(prods)=>setItems(its=>{
+      const ids=new Set(prods.map(p=>p.id));
+      const act=its.map(x=>x.prodId&&ids.has(x.prodId)?{...x,estado:"pendiente"}:x);
+      const nuevos=prods.filter(p=>!its.some(x=>x.prodId===p.id)).map(p=>({id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}));
+      return [...act,...nuevos];
+    });
     const agregarTexto=(t)=>{setItems(its=>[...its,{id:uid(),prodId:null,texto:t.trim(),cant:1,estado:"pendiente"}]);setQ("");};
 
     // Buscador para agregar
@@ -3527,24 +3558,29 @@
       const t=st==="ticket"?enTicket.get(it.prodId):null;
       const pe=precioEstimado(p);
       const meta=p?[p.marca,p.cantidadRef?fmtCantRef(p):null].filter(Boolean).join(" · "):"Ítem libre";
-      return (<div {...lp(()=>setOpcItem(it),null)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderLeft:`3px solid ${c?.color||colors.hoverCard}`,opacity:ant?0.5:1,...noSelectStyle}}>
+      const isSel=selMode&&sel.has(it.id);
+      return (<div {...lp(
+          enCompra?()=>setOpcItem(it):()=>{setSelMode(true);setSel(prev=>new Set(prev).add(it.id));},
+          selMode?()=>setSel(prev=>{const n=new Set(prev);n.has(it.id)?n.delete(it.id):n.add(it.id);return n;}):null
+        )} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderLeft:`3px solid ${isSel?colors.accent:c?.color||colors.hoverCard}`,background:isSel?`${colors.accent}22`:"transparent",cursor:selMode?"pointer":"default",...noSelectStyle}}>
+        {selMode&&<div style={{width:22,height:22,borderRadius:"50%",flexShrink:0,border:`2px solid ${isSel?colors.accent:colors.hoverCard}`,background:isSel?colors.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",fontWeight:700}}>{isSel?"✓":""}</div>}
         {enCompra&&!ant&&<div onClick={e=>{e.stopPropagation();tocarCirculo(it);}} style={{width:26,height:26,borderRadius:"50%",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",
           border:`2px solid ${hecho?"#10b981":nh?colors.warning:colors.hoverCard}`,background:hecho?"#10b981":"transparent"}}>{hecho?"✓":nh?<span style={{color:colors.warning,fontSize:12}}>✕</span>:""}</div>}
-        <div style={{flex:1,minWidth:0}}>
+        <div style={{flex:1,minWidth:0,opacity:ant?0.5:1}}>
           <div style={{fontSize:14.5,fontWeight:600,color:hecho||nh?colors.textMuted:colors.text,textDecoration:hecho?"line-through":"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p?p.nombre:it.texto}</div>
           <div style={{display:"flex",gap:8,alignItems:"baseline",marginTop:2,fontSize:11.5,color:colors.textMuted,whiteSpace:"nowrap",overflow:"hidden"}}>
             <span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{meta}{nh?" · no había":""}</span>
             {!t&&pe&&!nh&&!ant&&<span className="mono" style={{flexShrink:0,marginLeft:"auto",color:colors.textSecondary}}>~{fmtEntero(pe*(it.cant||1))}</span>}
           </div>
         </div>
-        {!enCompra&&!hecho&&!nh?(
+        {!enCompra&&!hecho&&!nh&&!selMode?(
           <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}} onPointerDown={e=>e.stopPropagation()}>
             <button className="btn" onClick={()=>it.cant>1?cambiarItem(it.id,{cant:it.cant-1}):quitarItem(it.id)} style={{width:28,height:28,background:colors.btnSecondary,color:colors.textSecondary,fontSize:it.cant>1?15:12,padding:0}}>{it.cant>1?"−":"🗑"}</button>
             <span className="mono" style={{minWidth:22,textAlign:"center",fontSize:14,fontWeight:700,color:colors.text}}>{fmtU(it.cant)}</span>
             <button className="btn" onClick={()=>cambiarItem(it.id,{cant:(it.cant||1)+1})} style={{width:28,height:28,background:colors.btnSecondary,color:colors.accent,fontSize:15,padding:0}}>+</button>
           </div>
         ):(
-          <div style={{textAlign:"right",flexShrink:0}}>
+          <div style={{textAlign:"right",flexShrink:0,opacity:ant?0.5:1}}>
             <div className="mono" style={{fontSize:13,color:colors.textMuted}}>× {fmtU(t?t.cantComprada:it.cant)}</div>
             {t&&<div className="mono" style={{fontSize:13.5,fontWeight:700,color:"#10b981",marginTop:2}}>{fmtEntero(t.totalPagado??t.precio)}</div>}
           </div>
@@ -3559,32 +3595,36 @@
     const pct=r.total?r.hechos/r.total:0;
     const compraP=compraItem?prodDe(compraItem):null;
     return (<div className="fade">
-      <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?`🛒 ${r.hechos} de ${r.total} comprados`:`${r.total} producto${r.total!==1?"s":""}`,l.fija?"Lista fija":null].filter(Boolean).join(" · ")} onBack={()=>{if(enCompra)pausarCompra();pop();}}
-        right={<button className="btn" onClick={()=>setOpciones(true)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 12px",fontSize:15}}>⚙️</button>}/>
+      {selMode?(()=>{
+        const its=l.items.filter(x=>sel.has(x.id));
+        const hayComprados=its.some(x=>x.estado==="comprado");
+        const salir=()=>{setSelMode(false);setSel(new Set());};
+        return (<div style={{position:"sticky",top:0,zIndex:120,background:colors.bg,margin:"0 -16px 14px",padding:"28px 16px 12px",borderBottom:`1px solid ${colors.cardBorder}`}}>
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            <button className="btn" disabled={!its.length} onClick={()=>askConfirm(`¿Quitar ${its.length} producto${its.length!==1?"s":""} de la lista?`,()=>{const ids=new Set(its.map(x=>x.id));setItems(xs=>xs.filter(x=>!ids.has(x.id)));salir();showToast("🗑️ Quitados de la lista");},"Eliminar","#ef4444")}
+              style={{flex:1,background:colors.errorBg,color:its.length?colors.error:colors.textMuted,border:`1px solid ${colors.errorBorder}`,padding:"11px 0",fontSize:14}}>🗑️ Eliminar</button>
+            <button className="btn" disabled={!hayComprados} onClick={()=>{const ids=new Set(its.map(x=>x.id));setItems(xs=>xs.map(x=>ids.has(x.id)&&x.estado==="comprado"?{...x,estado:"pendiente"}:x));salir();showToast("↩️ Volvieron a la lista");}}
+              style={{flex:1,background:hayComprados?colors.accent:colors.btnSecondary,color:hayComprados?"#fff":colors.textMuted,padding:"11px 0",fontSize:14,cursor:hayComprados?"pointer":"default"}}>↩️ Resetear</button>
+            <button className="btn" onClick={salir} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,border:`1px solid ${colors.hoverCard}`,padding:"11px 0",fontSize:14}}>Cancelar</button>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontWeight:700,fontSize:15,color:colors.text}}>{its.length} seleccionado{its.length!==1?"s":""}</div>
+            <div style={{fontSize:11,color:colors.textMuted,marginTop:2}}>Tocá para marcar o desmarcar</div>
+          </div>
+        </div>);})():(<>
+      <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?`🛒 ${r.hechos}/${r.total} comprados`:`${r.total} producto${r.total!==1?"s":""}`,l.fija?"Lista fija":null].filter(Boolean).join(" · ")} onBack={()=>{if(enCompra)pausarCompra();pop();}}
+        right={enCompra
+          ?<div style={{textAlign:"right"}}><div className="mono" style={{fontSize:22,fontWeight:700,color:"#10b981",lineHeight:1.1}}>{fmtEntero(r.gastado)}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{r.estimado>0?`de ${fmtEntero(r.estimado)} estimado`:"gastado"}</div></div>
+          :r.estimado>0?<div style={{textAlign:"right"}}><div className="mono" style={{fontSize:22,fontWeight:700,color:colors.text,lineHeight:1.1}}>{fmtEntero(r.estimado)}</div><div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>estimado</div></div>:null}/>
 
-      {/* Resumen / progreso (suelto) */}
-      <div style={{margin:"2px 2px 14px"}}>
-        {enCompra?(<>
-          <div style={{display:"flex",justifyContent:"flex-end",alignItems:"baseline",gap:10}}>
-            <div style={{textAlign:"right"}}>
-              <div className="mono" style={{fontSize:22,fontWeight:700,color:"#10b981"}}>{fmtEntero(r.gastado)}</div>
-              {r.estimado>0&&<div style={{fontSize:12,color:colors.textMuted,marginTop:2}}>estimado {fmtEntero(r.estimado)}</div>}
-            </div>
-          </div>
-          <div style={{height:6,background:colors.card,borderRadius:3,marginTop:10,overflow:"hidden"}}><div style={{width:`${pct*100}%`,height:"100%",background:"#10b981",transition:"width .3s"}}/></div>
-          <div style={{fontSize:11.5,color:colors.textMuted,marginTop:8,lineHeight:1.4}}>Tocá el círculo para cargar el precio. Mantené apretado un producto para tildarlo sin precio o marcar que no había.</div>
-        </>):(
-          <div style={{display:"flex",justifyContent:"flex-end",alignItems:"baseline",gap:10}}>
-            {r.estimado>0&&<div style={{display:"flex",alignItems:"baseline",gap:8}}>
-              <span style={{fontSize:15,color:colors.textMuted,fontWeight:500}}>estimado</span>
-              <span className="mono" style={{fontSize:22,fontWeight:700,color:colors.text}}>{fmtEntero(r.estimado)}</span>
-            </div>}
-          </div>
-        )}
-      </div>
+      {enCompra&&(<div style={{margin:"0 2px 14px"}}>
+        <div style={{height:6,background:colors.card,borderRadius:3,overflow:"hidden"}}><div style={{width:`${pct*100}%`,height:"100%",background:"#10b981",transition:"width .3s"}}/></div>
+        <div style={{fontSize:11.5,color:colors.textMuted,marginTop:8,lineHeight:1.4}}>Tocá el círculo para cargar el precio. Mantené apretado un producto para tildarlo sin precio o marcar que no había.</div>
+      </div>)}
+      </>)}
 
       {/* Agregar */}
-      <input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="➕ Agregar producto o ítem libre…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&q.trim()){resultados[0]?agregarProd(resultados[0]):agregarTexto(q);}}} style={{height:44,marginBottom:q?8:12}}/>
+      {!selMode&&<input type="search" autoComplete="canasta-field-ignore" className="inp" placeholder="➕ Agregar producto o ítem libre…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&q.trim()){resultados[0]?agregarProd(resultados[0]):agregarTexto(q);}}} style={{height:44,marginBottom:q?8:12}}/>}
       {q.trim()&&(
         <div className="card" style={{overflow:"hidden",marginBottom:12}}>
           {resultados.map((p,i)=>{const c=cats.find(x=>x.id===p.catId);return(
@@ -3597,23 +3637,35 @@
         </div>
       )}
 
-      {/* Sugerencias por stock */}
-      {!q&&!enCompra&&sugeridos.length>0&&(
-        <div className="card" style={{padding:"12px 14px",marginBottom:12,border:`1px solid ${colors.warning}55`}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>setVerSug(v=>!v)}>
-            <div style={{flex:1,fontSize:13.5,fontWeight:600,color:colors.text}}>💡 Sugerencias ({sugeridos.length})</div>
-            <span style={{fontSize:12,color:colors.textMuted}}>{verSug?"▼":"▶"}</span>
+      {/* Resetear tachados (izq.) · Sugerencias (der.) */}
+      {!q&&!enCompra&&!selMode&&(
+        <div style={{display:"flex",gap:10,marginBottom:12}}>
+          <button className="btn" disabled={!anteriores.length} onClick={()=>askConfirm(`¿Volver a la lista los ${anteriores.length} productos ya comprados?`,()=>{setItems(xs=>xs.map(x=>x.estado==="comprado"?{...x,estado:"pendiente"}:x));showToast("↩️ Se resetearon los tachados");},"Resetear")}
+            style={{flex:1,background:colors.card,border:`1px solid ${colors.cardBorder}`,color:anteriores.length?colors.textSecondary:colors.hoverCard,padding:"11px 0",fontSize:13.5,cursor:anteriores.length?"pointer":"default"}}>↩️ Resetear tachados</button>
+          <button className="btn" disabled={!sugeridos.length} onClick={()=>setVerSug(true)}
+            style={{flex:1,background:sugeridos.length?`${colors.warning}18`:colors.card,border:`1px solid ${sugeridos.length?colors.warning+"88":colors.cardBorder}`,color:sugeridos.length?colors.text:colors.hoverCard,padding:"11px 0",fontSize:13.5,cursor:sugeridos.length?"pointer":"default"}}>💡 Sugerencias ({sugeridos.length})</button>
+        </div>
+      )}
+      {verSug&&(
+        <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&setVerSug(false)}>
+          <div className="fade" style={{background:colors.card,borderRadius:"20px 20px 0 0",padding:"20px 18px 28px",width:"100%",maxWidth:500,maxHeight:"80vh",display:"flex",flexDirection:"column",border:`1px solid ${colors.cardBorder}`,borderBottom:"none"}}>
+            <div style={{width:40,height:4,background:colors.hoverCard,borderRadius:2,margin:"0 auto 14px",flexShrink:0}}/>
+            <div style={{fontWeight:700,fontSize:17,color:colors.text}}>💡 Sugerencias</div>
+            <div style={{fontSize:12,color:colors.textMuted,margin:"4px 0 12px"}}>Les queda menos de 2 semanas de stock. La cantidad cubre un mes de consumo.</div>
+            <div style={{overflowY:"auto",flex:1}}>
+              {sugeridos.length===0&&<div style={{textAlign:"center",color:colors.textMuted,fontSize:13.5,padding:"20px 0"}}>Ya agregaste todas las sugerencias.</div>}
+              {sugeridos.map(p=>(
+                <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:`1px solid ${colors.cardBorder}`}}>
+                  <div style={{flex:1,minWidth:0}}><div style={{fontSize:14,color:colors.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.nombre}</div><div style={{fontSize:11.5,color:colors.warning}}>{fmtMeses(mesesRestantes(p),true)}</div></div>
+                  <button className="btn" onClick={()=>agregarVarios([p])} style={{background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:"7px 12px",fontSize:12.5}}>+ {fmtU(cantSugerida(p))}</button>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:12,flexShrink:0}}>
+              {sugeridos.length>1&&<button className="btn" onClick={()=>{agregarVarios(sugeridos);setVerSug(false);showToast(`📝 ${sugeridos.length} productos agregados`);}} style={{flex:1,background:colors.accent,color:"#fff",padding:12,fontSize:14}}>Agregar todos</button>}
+              <button className="btn" onClick={()=>setVerSug(false)} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12,fontSize:14}}>Cerrar</button>
+            </div>
           </div>
-          {verSug&&<>
-            <div style={{fontSize:11.5,color:colors.textMuted,margin:"4px 0 8px"}}>Les queda menos de 2 semanas de stock. La cantidad cubre un mes de consumo.</div>
-            {sugeridos.slice(0,8).map(p=>(
-              <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderTop:`1px solid ${colors.cardBorder}`}}>
-                <div style={{flex:1,minWidth:0}}><div style={{fontSize:13.5,color:colors.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.nombre}</div><div style={{fontSize:11,color:colors.warning}}>{fmtMeses(mesesRestantes(p),true)}</div></div>
-                <button className="btn" onClick={()=>agregarProd(p)} style={{background:colors.btnSecondary,color:colors.accent,border:`1px solid ${colors.hoverCard}`,padding:"6px 10px",fontSize:12}}>+ {fmtU(cantSugerida(p))}</button>
-              </div>
-            ))}
-            {sugeridos.length>1&&<button className="btn" onClick={()=>setItems(its=>[...its,...sugeridos.map(p=>({id:uid(),prodId:p.id,texto:null,cant:cantSugerida(p),estado:"pendiente"}))])} style={{width:"100%",marginTop:8,background:colors.accent,color:"#fff",padding:10,fontSize:13}}>Agregar todos</button>}
-          </>}
         </div>
       )}
 
@@ -3623,7 +3675,7 @@
       {Seccion({titulo:`Comprado (${hechos.length})`,its:hechos,color:"#10b981"})}
       {Seccion({titulo:`Ya comprado (${anteriores.length})`,its:anteriores})}
 
-      {!enCompra&&items.length>0&&(<>
+      {!enCompra&&!selMode&&items.length>0&&(<>
         <div style={{height:64}}/>
         <div style={{position:"fixed",left:0,right:0,bottom:modoCompras?140:72,zIndex:140,maxWidth:500,margin:"0 auto",padding:"0 16px"}}>
           {!modoCompras
@@ -3657,35 +3709,24 @@
           </div>
         </div>);})()}
 
-      {/* Opciones de la lista */}
-      {opciones&&<ListaOpcionesModal lista={l} colors={colors} onClose={()=>setOpciones(false)}
-        onGuardar={(cambios)=>{guardarLista({...l,...cambios});setOpciones(false);showToast("✅ Lista actualizada");}}
-        onDestildar={()=>{guardarLista({...l,items:l.items.map(it=>({...it,estado:"pendiente"}))});setOpciones(false);}}
-        onBorrarComprados={()=>{guardarLista({...l,items:l.items.filter(it=>it.estado!=="comprado")});setOpciones(false);showToast("🧹 Se quitaron los ya comprados");}}
-        onEliminar={()=>askConfirm(`¿Eliminar la lista "${l.nombre}"?`,async()=>{setOpciones(false);await borrarLista(l.id);pop();showToast("🗑️ Lista eliminada");},"Eliminar","#ef4444")}/>}
     </div>);
   }
 
-  function ListaOpcionesModal({lista,onGuardar,onDestildar,onBorrarComprados,onEliminar,onClose,colors}) {
+  function ListaOpcionesModal({lista,onGuardar,onClose,colors}) {
     const [nombre,setNombre]=useState(lista.nombre);
     const [fija,setFija]=useState(!!lista.fija);
     return (
       <div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2500,overflowY:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 20px"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
         <div className="fade" style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:22,maxWidth:380,width:"100%"}}>
-          <div style={{fontWeight:700,fontSize:18,color:colors.text,marginBottom:16}}>Opciones de la lista</div>
+          <div style={{fontWeight:700,fontSize:18,color:colors.text,marginBottom:16}}>Editar lista</div>
           <div className="field" style={{marginBottom:16}}><label>Nombre</label><input type="search" autoComplete="canasta-field-ignore" className="inp" value={nombre} onChange={e=>setNombre(e.target.value)}/></div>
           <div onClick={()=>setFija(f=>!f)} style={{display:"flex",gap:12,alignItems:"flex-start",cursor:"pointer",background:colors.inputBg,border:`1px solid ${colors.cardBorder}`,borderRadius:12,padding:"12px 14px",marginBottom:16}}>
             <div style={{width:42,height:24,borderRadius:12,background:fija?colors.accent:colors.hoverCard,position:"relative",flexShrink:0,transition:"background .15s"}}><div style={{position:"absolute",top:3,left:fija?21:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left .15s"}}/></div>
             <div><div style={{fontSize:14,fontWeight:600,color:colors.text}}>Lista fija</div><div style={{fontSize:12,color:colors.textMuted,marginTop:3,lineHeight:1.4}}>Al terminar la compra, todos los productos vuelven a quedar pendientes, en vez de pasar a "Ya comprado". Sirve para listas que se repiten, como "Compra quincenal".</div></div>
           </div>
-          <div style={{display:"flex",gap:10,marginBottom:16}}>
+          <div style={{display:"flex",gap:10}}>
             <button className="btn" disabled={!nombre.trim()} onClick={()=>onGuardar({nombre:nombre.trim(),fija})} style={{flex:1,background:nombre.trim()?colors.accent:colors.btnSecondary,color:"#fff",padding:12,fontSize:14,fontWeight:700}}>Guardar</button>
             <button className="btn" onClick={onClose} style={{flex:1,background:colors.btnSecondary,color:colors.textSecondary,padding:12,fontSize:14}}>Cancelar</button>
-          </div>
-          <div style={{borderTop:`1px solid ${colors.cardBorder}`,paddingTop:14,display:"flex",flexDirection:"column",gap:8}}>
-            <button className="btn" onClick={onDestildar} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:11,fontSize:13}}>↩️ Volver todo a pendiente</button>
-            {lista.items.some(it=>it.estado==="comprado")&&<button className="btn" onClick={onBorrarComprados} style={{background:colors.btnSecondary,color:colors.textSecondary,padding:11,fontSize:13}}>🧹 Quitar los ya comprados</button>}
-            <button className="btn" onClick={onEliminar} style={{background:colors.errorBg,color:colors.error,border:`1px solid ${colors.errorBorder}`,padding:11,fontSize:13}}>🗑️ Eliminar lista</button>
           </div>
         </div>
       </div>
