@@ -527,6 +527,13 @@
     );
   }
 
+  // Logo de la app: el mismo archivo que usa el ícono de Chrome (icon-192.png, junto a index.html)
+  function AppLogo({size=26}) {
+    const [err,setErr]=useState(false);
+    if(err) return <span style={{fontSize:size*0.9,lineHeight:1}}>🧺</span>;
+    return <img src="icon-192.png" alt="" onError={()=>setErr(true)} style={{width:size,height:size,borderRadius:size*0.22,objectFit:"cover",display:"inline-block",verticalAlign:"middle",flexShrink:0}}/>;
+  }
+
   function FloatingAdd({onClick,colors}) {
     return <button onClick={onClick} style={{position:"fixed",bottom:84,right:20,width:56,height:56,borderRadius:"50%",background:colors.accent,color:"#fff",fontSize:28,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer",boxShadow:`0 4px 24px ${colors.shadowSoft}`,zIndex:100,lineHeight:1}}>+</button>;
   }
@@ -1145,7 +1152,7 @@
       <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:colors.bg}}>
         <div className="card fade" style={{padding:28,maxWidth:380,width:"100%"}}>
           <div style={{textAlign:"center",marginBottom:22}}>
-            <div style={{fontSize:30,marginBottom:6}}>🧺</div>
+            <div style={{marginBottom:6,display:"flex",justifyContent:"center"}}><AppLogo size={56}/></div>
             <div style={{fontSize:19,fontWeight:700,color:colors.text}}>Canasta</div>
           </div>
           {inviteInfo&&<div style={{background:colors.btnSecondary,border:`1px solid ${colors.cardBorder}`,borderRadius:10,padding:"10px 12px",fontSize:12.5,color:colors.text,marginBottom:16,lineHeight:1.4}}>
@@ -1189,6 +1196,7 @@
     const [activeTab,setActiveTab]=useState("productos");
     const [stack,setStack]=useState([{screen:"home"}]);
     const pantallaActual=stack[stack.length-1]?.screen;
+    const comprasStackRef=useRef(null); // dónde estaba el usuario dentro de la pestaña Compras
     const [toast,setToast]=useState(null);
     const [confirm,setConfirm]=useState(null);
     const [confirmCompra,setConfirmCompra]=useState(null);
@@ -1482,17 +1490,21 @@
     };
 
     // Iniciar compra: pasa a la vista de compras (precios). Con lista, se queda/abre la lista.
+    // Sin lista: se compra desde el catálogo (pestaña Precios). Con lista: se compra dentro de la lista (pestaña Compras).
     const iniciarCompra=(listaId)=>{
       setCompraListaId(listaId||null);
       setModoCompras(true);
-      setActiveTab("productos");
-      if(listaId&&!(current.screen==="lista-detalle"&&current.listaId===listaId)) push("lista-detalle",{listaId});
+      if(!listaId){comprasStackRef.current=null;setActiveTab("productos");setStack([{screen:"home"}]);return;}
+      setActiveTab("compras");
+      if(!(current.screen==="lista-detalle"&&current.listaId===listaId)) push("lista-detalle",{listaId});
     };
     const continuarCompra=()=>{
       setModoCompras(true);
-      setActiveTab("productos");
-      if(compraListaId) push("lista-detalle",{listaId:compraListaId});
+      if(compraListaId){setActiveTab("compras");push("lista-detalle",{listaId:compraListaId});}
+      else{comprasStackRef.current=null;setActiveTab("productos");setStack([{screen:"home"}]);}
     };
+    // Volver de la lista en compra: se pausa (sigue en curso) y se vuelve a la pestaña Compras
+    const pausarCompra=()=>{setModoCompras(false);setTicketOpen(false);};
 
     // Empezar: todos los precios actuales pasan a ser la base de este mes; desde el mes siguiente acumulan inflación
     const empezarInflacion=async()=>{
@@ -1869,7 +1881,7 @@
     if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:colors.accent,fontFamily:"monospace"}}>Cargando…</div>;
 
     const s=current.screen;
-    const shared={listas,guardarLista,crearLista,borrarLista,agregarALista,cantSugerida,compraListaId,setCompraListaId,iniciarCompra,continuarCompra,agregarAlTicket,cats,productos:productosUI,inflacion,guardarInflacion,guardarInflacionVarios,borrarInflacion,empezarInflacion,dejarInflacion,refEnMes,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion,borrarBaseDatos,editarCategoria,editarSubcategoria,eliminarCategoria,eliminarSubcategoria};
+    const shared={listas,guardarLista,crearLista,borrarLista,agregarALista,cantSugerida,compraListaId,setCompraListaId,iniciarCompra,continuarCompra,pausarCompra,agregarAlTicket,cats,productos:productosUI,inflacion,guardarInflacion,guardarInflacionVarios,borrarInflacion,empezarInflacion,dejarInflacion,refEnMes,guardar,showToast,askConfirm,push,pop,gastoMensual,getCat,getSub,handleExport,stock,guardarStock,stockTotal,mesesRestantes,fmtMeses,modoCompras,ticket,agregarAlTicket,setShowHistorial,setConfirmCompra,colors,isDarkMode,toggleDarkMode,session,grupoInfo,grupoId,cargarInfoGrupo,salirDelGrupo,expulsarMiembro,regenerarCodigo,renombrarGrupo,cerrarSesion,borrarBaseDatos,editarCategoria,editarSubcategoria,eliminarCategoria,eliminarSubcategoria};
 
     const isMenuScreen=["export","backup","import","config","cuenta","grupo","inflacion","listas","lista-detalle"].includes(s);
     const isFormScreen=["nuevo-prod","editar-prod","nuevo-precio","detalle"].includes(s);
@@ -1880,11 +1892,7 @@
         {confirm&&<Confirm colors={colors} msg={confirm.msg} onOk={()=>{confirm.onOk();setConfirm(null);}} onCancel={()=>setConfirm(null)} okLabel={confirm.okLabel} okColor={confirm.okColor}/>}
         {confirmCompra&&<ConfirmCompra colors={colors} data={confirmCompra} onOk={()=>{confirmCompra.onOk();setConfirmCompra(null);}} onCancel={()=>setConfirmCompra(null)}/>}
         <div style={{maxWidth:500,margin:"0 auto",padding:`0 16px ${modoCompras?"180px":"100px"}`}}>
-          {modoCompras&&compraListaId&&s!=="lista-detalle"&&(()=>{const l=listas.find(x=>x.id===compraListaId);if(!l)return null;const r=resumenLista(l,productosUI,ticket);return(
-            <div onClick={()=>push("lista-detalle",{listaId:l.id})} style={{position:"sticky",top:0,zIndex:110,margin:"0 -16px",padding:"10px 16px",background:"#10b981",color:"#fff",display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13.5,fontWeight:600}}>
-              <span>📝</span><span style={{flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.nombre} · {r.hechos} de {r.total}</span><span>Ver lista ›</span>
-            </div>);})()}
-          {s==="home"        &&(activeTab==="compras"&&!modoCompras?<ComprasHomeScreen {...shared}/>:<HomeScreen {...shared} activeTab={activeTab}/>)}
+          {s==="home"        &&(activeTab==="compras"?<ComprasHomeScreen {...shared}/>:<HomeScreen {...shared} activeTab={activeTab}/>)}
           {s==="subs"        &&<SubsScreen {...shared} catId={current.catId} activeTab={activeTab}/>}
           {s==="lista"       &&<ListaScreen {...shared} catId={current.catId} subId={current.subId} activeTab={activeTab}/>}
           {s==="detalle"     &&<DetalleScreen {...shared} prodId={current.prodId}/>}
@@ -1921,8 +1929,16 @@
             </div>
           </div>
         )}
-        {!isFormScreen&&<BottomTabs colors={colors} activeTab={activeTab} setActiveTab={(t)=>{if((t!==activeTab&&(t==="compras"||activeTab==="compras"))||["listas","lista-detalle"].includes(current.screen))setStack([{screen:"home"}]);setActiveTab(t);if(modoCompras)setModoCompras(false);}} modoCompras={modoCompras} ticketCount={ticket.length} onTapCompras={()=>{
-          setModoCompras(false);setTicketOpen(false);setActiveTab("compras");setStack([{screen:"home"}]);
+        {!isFormScreen&&<BottomTabs colors={colors} activeTab={activeTab} setActiveTab={(t)=>{if(activeTab==="compras"&&t!=="compras")comprasStackRef.current=stack;if((t!==activeTab&&(t==="compras"||activeTab==="compras"))||["listas","lista-detalle"].includes(current.screen))setStack([{screen:"home"}]);setActiveTab(t);if(modoCompras)setModoCompras(false);}} modoCompras={modoCompras} ticketCount={ticket.length} onTapCompras={()=>{
+          setTicketOpen(false);
+          // Volver a donde estaba dentro de Compras (si la lista sigue existiendo); tocar el carrito estando en Compras vuelve al inicio
+          let st=[{screen:"home"}];
+          const g=comprasStackRef.current;
+          if(activeTab!=="compras"&&g&&g.every(x=>x.screen!=="lista-detalle"||listas.some(l=>l.id===x.listaId)))st=g;
+          comprasStackRef.current=null;
+          const top=st[st.length-1];
+          setModoCompras(!!(top.screen==="lista-detalle"&&compraListaId&&top.listaId===compraListaId));
+          setActiveTab("compras");setStack(st);
         }}/>}
       </div>
     );
@@ -2183,7 +2199,7 @@
     const results=q?productos.filter(p=>norm(p.nombre).includes(norm(q))||norm(p.marca||"").includes(norm(q))).filter(p=>!modoCompras||!ticketIdsQ.has(p.id)):[];
     return (<div className="fade">
       <div style={{padding:"28px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-        <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:colors.text}}>🧺 Canasta</div>
+        <div><div style={{fontSize:22,fontWeight:700,letterSpacing:"-.03em",color:colors.text,display:"flex",alignItems:"center",gap:8}}><AppLogo size={28}/>Canasta</div>
           <div style={{fontSize:12,color:colors.textMuted,marginTop:3}}>{productos.length} productos{!isStock&&!modoCompras&&<> · <span style={{color:colors.accent,fontWeight:600}}>{fmt(total)}/mes</span></>}</div>
         </div>
         {!modoCompras&&<HamburgerMenu push={push} setShowHistorial={setShowHistorial} colors={colors} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} session={session}/>}
@@ -3380,19 +3396,11 @@
         </button>
       )}
 
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"0 2px 10px"}}>
-        <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em"}}>Mis listas</div>
-        <button className="btn" onClick={()=>setNueva(true)} style={{background:"none",color:colors.accent,padding:"4px 2px",fontSize:14}}>+ Nueva</button>
-      </div>
-      {listas.length===0&&(
-        <button className="btn" onClick={()=>setNueva(true)} style={{width:"100%",padding:"22px 16px",background:colors.card,border:`1px dashed ${colors.hoverCard}`,color:colors.textMuted,fontSize:13.5,fontWeight:500,lineHeight:1.5,borderRadius:14}}>
-          Todavía no tenés listas.<br/><span style={{color:colors.accent,fontWeight:600}}>+ Crear la primera</span>
-        </button>
-      )}
+      <div style={{fontSize:11,fontWeight:600,color:colors.textMuted,textTransform:"uppercase",letterSpacing:".08em",margin:"0 2px 10px"}}>Mis listas</div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {listas.map(l=>{
           const r=resumenLista(l,productos,compraListaId===l.id?ticket:[]);
-          return (<div key={l.id} className="card row" onClick={()=>push("lista-detalle",{listaId:l.id})} style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14}}>
+          return (<div key={l.id} className="card row" onClick={()=>compraListaId===l.id?continuarCompra():push("lista-detalle",{listaId:l.id})} style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:14}}>
             <div style={{fontSize:26}}>📝</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -3407,6 +3415,7 @@
           </div>);
         })}
       </div>
+      <button className="btn" onClick={()=>setNueva(true)} style={{width:"100%",marginTop:listas.length?10:0,padding:"20px 16px",background:colors.card,border:`1px dashed ${colors.hoverCard}`,color:colors.accent,fontSize:15,fontWeight:600,borderRadius:14}}>+ Crear lista</button>
       {nueva&&<EditarCatModal colors={colors} titulo="Nueva lista" inicial={{label:""}} conColor={false} onClose={()=>setNueva(false)}
         onSave={async({label})=>{const l=await crearLista(label);setNueva(false);push("lista-detalle",{listaId:l.id});}}/>}
     </div>);
@@ -3442,7 +3451,7 @@
     </div>);
   }
 
-  function ListaDetalleScreen({listaId,listas,productos,cats,guardarLista,borrarLista,cantSugerida,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,guardar,showToast,askConfirm,pop,colors,grupoInfo,modoCompras,compraListaId,setCompraListaId,iniciarCompra,ticket,agregarAlTicket}) {
+  function ListaDetalleScreen({listaId,listas,productos,cats,guardarLista,borrarLista,cantSugerida,stock,stockTotal,mesesRestantes,fmtMeses,guardarStock,guardar,showToast,askConfirm,pop,colors,grupoInfo,modoCompras,compraListaId,setCompraListaId,iniciarCompra,pausarCompra,ticket,agregarAlTicket}) {
     const l=listas.find(x=>x.id===listaId);
     const [q,setQ]=useState("");
     const [compraItem,setCompraItem]=useState(null);   // item que se está comprando (abre la tarjeta de precio)
@@ -3459,7 +3468,8 @@
     const prodDe=(it)=>it.prodId?productos.find(x=>x.id===it.prodId):null;
     const items=l.items.filter(it=>!it.prodId||prodDe(it));
     const estadoDe=(it)=>{
-      if(enCompra&&it.prodId&&enTicket.has(it.prodId))return "ticket";
+      if(!enCompra)return "pendiente";
+      if(it.prodId&&enTicket.has(it.prodId))return "ticket";
       return it.estado||"pendiente";
     };
     const setItems=(fn)=>guardarLista({...l,items:fn(l.items)});
@@ -3496,8 +3506,8 @@
       const pe=precioEstimado(p);
       const meta=p?[p.marca,p.cantidadRef?fmtCantRef(p):null].filter(Boolean).join(" · "):"Ítem libre";
       return (<div {...lp(()=>setOpcItem(it),null)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderLeft:`3px solid ${c?.color||colors.hoverCard}`,...noSelectStyle}}>
-        <div onClick={e=>{e.stopPropagation();tocarCirculo(it);}} style={{width:26,height:26,borderRadius:"50%",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",
-          border:`2px solid ${hecho?"#10b981":nh?colors.warning:colors.hoverCard}`,background:hecho?"#10b981":"transparent"}}>{hecho?"✓":nh?<span style={{color:colors.warning,fontSize:12}}>✕</span>:""}</div>
+        {enCompra&&<div onClick={e=>{e.stopPropagation();tocarCirculo(it);}} style={{width:26,height:26,borderRadius:"50%",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",
+          border:`2px solid ${hecho?"#10b981":nh?colors.warning:colors.hoverCard}`,background:hecho?"#10b981":"transparent"}}>{hecho?"✓":nh?<span style={{color:colors.warning,fontSize:12}}>✕</span>:""}</div>}
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:14.5,fontWeight:600,color:hecho||nh?colors.textMuted:colors.text,textDecoration:hecho?"line-through":"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p?p.nombre:it.texto}</div>
           <div style={{display:"flex",gap:8,alignItems:"baseline",marginTop:2,fontSize:11.5,color:colors.textMuted,whiteSpace:"nowrap",overflow:"hidden"}}>
@@ -3527,7 +3537,7 @@
     const pct=r.total?r.hechos/r.total:0;
     const compraP=compraItem?prodDe(compraItem):null;
     return (<div className="fade">
-      <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?"🛒 Comprando":null,l.fija?"Lista fija":null,compartido?"Compartida con tu grupo":null].filter(Boolean).join(" · ")||undefined} onBack={pop}
+      <TopBar colors={colors} title={`📝 ${l.nombre}`} subtitle={[enCompra?"🛒 Comprando":null,l.fija?"Lista fija":null,compartido?"Compartida con tu grupo":null].filter(Boolean).join(" · ")||undefined} onBack={()=>{if(enCompra)pausarCompra();pop();}}
         right={<button className="btn" onClick={()=>setOpciones(true)} style={{background:colors.card,border:`1px solid ${colors.cardBorder}`,color:colors.textSecondary,padding:"8px 12px",fontSize:15}}>⚙️</button>}/>
 
       {/* Resumen / progreso (suelto) */}
@@ -3612,8 +3622,8 @@
         return (<div style={{position:"fixed",inset:0,background:colors.overlayDark,zIndex:2500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&cerrar()}>
           <div className="fade" style={{background:colors.card,border:`1px solid ${colors.hoverCard}`,borderRadius:16,padding:20,maxWidth:320,width:"100%",display:"flex",flexDirection:"column",gap:8}}>
             <div style={{fontWeight:700,fontSize:16,color:colors.text,textAlign:"center",marginBottom:6}}>{p?p.nombre:it.texto}</div>
-            {st!=="ticket"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="tilde"?"pendiente":"tilde"});cerrar();}}>{st==="tilde"?"↩️ Destildar":"✓ Tildar sin cargar precio"}</button>}
-            {st!=="ticket"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="no_habia"?"pendiente":"no_habia"});cerrar();}}>{st==="no_habia"?"↩️ Volver a pendiente":"✕ No había"}</button>}
+            {enCompra&&st!=="ticket"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="tilde"?"pendiente":"tilde"});cerrar();}}>{st==="tilde"?"↩️ Destildar":"✓ Tildar sin cargar precio"}</button>}
+            {enCompra&&st!=="ticket"&&<button className="btn" style={b} onClick={()=>{cambiarItem(it.id,{estado:st==="no_habia"?"pendiente":"no_habia"});cerrar();}}>{st==="no_habia"?"↩️ Volver a pendiente":"✕ No había"}</button>}
             {st==="pendiente"&&enCompra&&<div style={{display:"flex",alignItems:"center",gap:8,...b}}>
               <span style={{flex:1}}>Cantidad</span>
               <button className="btn" onClick={()=>it.cant>1&&cambiarItem(it.id,{cant:it.cant-1})} style={{width:30,height:30,background:colors.btnSecondary,color:colors.textSecondary,padding:0}}>−</button>
